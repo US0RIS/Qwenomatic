@@ -1,6 +1,6 @@
 # Qwenomatic — Evolutionary Agent Farm Design Specification
 
-**Status:** Designed, not yet implemented  
+**Status:** Implemented; Phase 0 and the Generation Zero criteria are verified in simulation (see README "Status")  
 **Primary objective:** Build a local-first population of economically motivated AI agents whose resource allocation and reproduction are driven by externally measured legitimate economic performance while an independent supervisor retains control over permissions, money, compute, persistence, and reproduction.
 
 ---

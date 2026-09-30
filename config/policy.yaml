@@ -1,0 +1,80 @@
+# Qwenomatic policy / capability configuration (DESIGN §11).
+#
+# Hard constraints are eligibility requirements, not negative fitness. An
+# agent whose request matches a forbidden action class is disqualified for the
+# generation regardless of revenue (invariant I5).
+
+version: 1
+default_decision: deny
+
+# Capabilities granted to every population agent through supervisor-issued
+# tokens. A tool that is not listed here cannot be invoked.
+capabilities:
+  market.offer:    {rate_limit_per_tick: 3}
+  market.survey:   {rate_limit_per_tick: 2}
+  memory.note:     {rate_limit_per_tick: 3}
+  workspace.write: {rate_limit_per_tick: 2}
+  workspace.read:  {rate_limit_per_tick: 2}
+
+# Requests classified into these action classes are denied AND recorded as
+# hard violations (disqualification). Glob patterns are allowed.
+forbidden_action_classes:
+  - deception.*            # fake reviews/testimonials, impersonation, false claims
+  - spam.*
+  - fraud.*
+  - security.*             # credential discovery, unauthorized access, malware, exploits
+  - host.*                 # arbitrary shell / host access
+  - supervisor.*           # reading or modifying the supervisor, its config or scoring
+  - ledger.*               # authoring economic events
+  - lifecycle.*            # self-replication, spawning, cloning
+  - infra.*                # self-provisioned infrastructure
+  - budget.*               # autonomous spending-limit increases
+  - platform.*             # bypassing platform controls or account restrictions
+  - finance.transfer_unapproved
+  - unlawful.*
+
+# Tool names that are not registered adapters but reveal intent. They are
+# classified so that the attempt itself is attributable and enforceable.
+tool_action_classes:
+  "shell*":            host.shell
+  "exec*":             host.shell
+  "os.*":              host.shell
+  "ledger.*":          ledger.write
+  "revenue.*":         ledger.write
+  "fitness.*":         supervisor.fitness
+  "scheduler.*":       supervisor.scheduler
+  "supervisor.*":      supervisor.control
+  "policy.*":          supervisor.policy
+  "config.*":          supervisor.config
+  "agent.spawn*":      lifecycle.self_replicate
+  "agent.clone*":      lifecycle.self_replicate
+  "*.replicate*":      lifecycle.self_replicate
+  "credentials.*":     security.credential_discovery
+  "secrets.*":         security.credential_discovery
+  "reviews.*":         deception.fake_review
+  "testimonials.*":    deception.fake_review
+  "email.bulk*":       spam.bulk_unsolicited
+  "infra.*":           infra.provision
+  "cloud.*":           infra.provision
+  "budget.*":          budget.self_increase
+  "payments.transfer*": finance.transfer_unapproved
+
+# Unknown, non-matching tools are denied but are not hard violations: models
+# hallucinate tool names, which is a health problem rather than a policy one.
+unknown_tool_is_violation: false
+
+# Classes that need an operator decision before execution (README
+# "Human approval gates").
+approval_required_action_classes:
+  - accounts.create_external
+  - contracts.*
+  - credentials.new_scope
+  - capability.new_class
+  - spend.material
+
+spending:
+  material_spend_threshold: 25.0      # a single request above this needs approval
+  per_agent_generation_limit: 150.0   # also enforced by agent budgets
+  farm_daily_limit: 1500.0
+
+on_hard_violation: disqualify_agent

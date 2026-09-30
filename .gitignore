@@ -1,0 +1,10 @@
+# Farm runtime data: ledger, workspaces, supervisor secret, lock, inbox
+var/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
