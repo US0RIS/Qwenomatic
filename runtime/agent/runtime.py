@@ -54,12 +54,13 @@ class AgentRuntime:
         g = agent.genotype
         tools = self.registry.describe(g["tool_preferences"])
         messages = build_messages(g, tools, state["memory"], state["notes"], state["step_index"], self.max_actions)
+        request_seed = int(digest([seed, agent.id, state["step_index"], "inference"])[:8], 16)
         return InferenceRequest(
             messages=messages,
             max_tokens=int(g["planning_parameters"]["max_tokens"]),
             temperature=float(g["planning_parameters"]["temperature"]),
             metadata={"agent_id": agent.id, "step_index": state["step_index"], "genotype": g,
-                      "memory": state["memory"], "seed": seed},
+                      "memory": state["memory"], "seed": request_seed},
         )
 
     def execute(self, agent: Any, token: str, step: Any, text: str, version: int, state: dict[str, Any]) -> StepOutcome:
