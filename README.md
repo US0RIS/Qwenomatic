@@ -374,3 +374,20 @@ python scripts/evolution_ab.py --reset --generations 2 `
 The experiment is resumable after Ctrl+C. It writes `var/evolution-ab/report.md` and `report.json`, including per-generation net profit, call-count parity, the raw post-baseline treatment-control difference, and a baseline-adjusted difference-in-differences estimate per model call.
 
 A single paired run is evidence, not a statistical conclusion. Repeat with additional seeds before treating the measured effect as durable.
+
+
+### Multi-seed campaign
+
+A single treatment/control pair can still be lucky. For a stronger unattended experiment, run multiple independent pairs. Pair seeds are distinct and arm order alternates automatically to reduce order/cache/thermal bias.
+
+```powershell
+python scripts/evolution_ab_campaign.py --reset --pairs 2 --generations 2 `
+  --backend openai_compatible `
+  --base-url http://127.0.0.1:11434/v1 `
+  --model qwen3:14b `
+  --max-concurrency 2
+```
+
+The campaign prints live per-arm progress and ETA, is resumable after Ctrl+C, and writes both per-pair reports and an aggregate `campaign-report.md` / `campaign-report.json`. The aggregate reports sign consistency, mean/median raw treatment effects, and baseline-adjusted difference-in-differences per model call.
+
+For an interrupted campaign, rerun the same command **without** `--reset`.
