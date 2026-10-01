@@ -58,7 +58,7 @@ class InferenceService:
             self._seq += 1
             job_id = job_id or (self._new_id() if self._new_id else f"job-{self._seq}")
             self._jobs[job_id] = Job(job_id, agent_id, request, priority, budget, self._seq,
-                                     submitted_wall=time.monotonic())
+                                     submitted_wall=time.perf_counter())
         return job_id
 
     def cancel(self, job_id: str) -> bool:
@@ -109,7 +109,7 @@ class InferenceService:
     def _run_one(self, job: Job) -> None:
         if job.state == "cancelled":
             return
-        started = time.monotonic()
+        started = time.perf_counter()
         backend = self.backend
         try:
             try:
