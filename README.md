@@ -435,3 +435,16 @@ qwenomatic --data-dir var\farm run `
 ```
 
 Matching these values prevents hidden server-side queueing and keeps GPU-time attribution consistent.
+
+
+### Autotune Ollama parallelism
+
+Instead of assuming that 2-way parallelism is optimal, Qwenomatic includes a Windows autotuner. Quit the Ollama desktop app first so it cannot respawn its background server, then run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\autotune_ollama.ps1
+```
+
+It restarts Ollama at parallelism 1, 2, 3, and 4 with Flash Attention enabled and q8_0 KV cache, benchmarks representative Qwenomatic structured-reasoning calls, and prints the fastest aggregate completion-token throughput. Use the winning value for both `OLLAMA_NUM_PARALLEL` and Qwenomatic's `--max-concurrency`.
+
+This is preferable to choosing the highest concurrency blindly: once the GPU is saturated, more parallel contexts can reduce per-request speed or cause memory pressure.
