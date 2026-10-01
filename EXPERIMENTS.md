@@ -1,0 +1,670 @@
+# EXPERIMENTS.md — Qwenomatic Experimental Constitution
+
+This file defines how Qwenomatic may test, promote, roll back, or reject changes that affect agent behavior, software, capital allocation, inference, scheduling, shared knowledge, or farm-level policy implementation.
+
+A feature is **not considered successful because it looks promising, because an agent says it works, or because one run made more money**. It is promoted only when the experiment defined here produces the required observable evidence.
+
+The immutable supervisor, ledger, economic evidence, budget authority, policy gateway, and experiment-promotion mechanism remain outside agent control.
+
+---
+
+## 1. Core invariants
+
+Every experiment must preserve all of the following.
+
+1. **Scoring authority is immutable to agents.** Agents may not alter fitness computation, economic attribution, confidence intervals, control assignment, or promotion criteria.
+2. **Budget authority is immutable to agents.** Agents may propose spending or capital allocation, but only the supervisor grants spending authority.
+3. **Policy authority is immutable to agents.** Agents may not weaken, bypass, or edit policy enforcement.
+4. **Economic evidence is supervisor/adaptor authored.** Agent claims never count as revenue, profit, refunds, conversions, or costs.
+5. **Treatment assignment is supervisor controlled.** Agents may not choose whether they are in a control or treatment cohort when that would bias the result.
+6. **Every behavioral change is reversible.** The supervisor must retain the last known-good version and be able to roll back without reconstructing state by hand.
+7. **Every promoted change has a receipt.** The ledger or experiment report must identify the exact code/config version, treatment, control, sample, outcome, and promotion decision.
+8. **No silent scope expansion.** A treatment may alter only the dimensions named in its experiment definition.
+9. **No metric substitution after the run begins.** Primary metrics, guardrails, stopping rules, and promotion thresholds are frozen before treatment starts.
+10. **No real-money promotion from simulation alone.** Any feature that affects real capital, customer interaction, payouts, fraud, or external accounts must be re-tested against real-world evidence before broad deployment.
+
+---
+
+## 2. Experiment classes
+
+Qwenomatic uses three experiment classes.
+
+### A. Infrastructure benchmark
+
+Used when a change should not alter decisions, only efficiency.
+
+Examples:
+- prompt-prefix caching
+- concurrency settings
+- inference engine changes
+- serialization or database optimization
+
+Requirements:
+- identical prompts/requests where practical
+- identical model and seeds where supported
+- compare throughput, latency, resource use, malformed rate, and output equivalence
+- no agent-level randomized trial required if behavior is demonstrably unchanged
+
+Promotion requires:
+- no statistically or operationally meaningful degradation in valid-output rate or decision equivalence
+- measurable efficiency improvement
+- no safety regression
+
+### B. Agent/lineage randomized experiment
+
+Used when a feature changes what agents know or how they decide.
+
+Examples:
+- shared knowledge
+- autopilot
+- small-model routing
+- predictions
+- two-parent recombination
+
+Requirements:
+- randomized treatment/control assignment by agent or lineage
+- treatment and control operate during the same market regime whenever possible
+- control receives equal opportunity exposure
+- treatment cannot choose its own assignment
+- report profit/call, profit/GPU-hour, malformed rate, policy violations, external spend, and relevant feature-specific metrics
+
+### C. Farm-level paired campaign
+
+Used when a feature changes the environment, scheduler, capital allocation, population dynamics, or shared rules for everyone.
+
+Examples:
+- segment crowding
+- market-shift response
+- self-tuning farm settings
+- evolution-vs-control
+- farm-wide capital allocation
+
+Requirements:
+- matched treatment/control farms
+- same initial population, market seed, model configuration, and generation budget where possible
+- multiple seeds
+- counterbalanced run order when experiments are sequential
+- baseline-adjusted effect estimate if treatment/control baselines differ
+
+---
+
+## 3. Standard primary metrics
+
+Unless an experiment specifies otherwise, the primary economic metric is:
+
+[
+\text{net realized profit}
+]
+
+with secondary efficiency metrics:
+
+[
+\text{profit per model call}
+]
+
+[
+\text{profit per GPU-hour}
+]
+
+[
+\text{profit per external dollar}
+]
+
+For real-money operation, only **settled** economic results count toward promotion.
+
+Unrealized revenue may be reported but may not substitute for settled profit.
+
+### Guardrail metrics
+
+Every experiment also records:
+
+- policy violations
+- human interventions
+- malformed outputs
+- refunds / chargebacks
+- failed tool calls
+- external spend
+- GPU seconds
+- prompt tokens
+- completion tokens
+- concentration by agent and lineage
+- control/treatment exposure counts
+
+Any hard policy regression blocks promotion regardless of economic gain.
+
+---
+
+## 4. Default promotion rule
+
+Unless an experiment below specifies a stronger rule, a behavioral or farm-level feature may be promoted only when:
+
+1. the treatment's primary metric is better than control;
+2. the effect is positive in a majority of independent paired trials;
+3. no guardrail shows a material regression;
+4. call/exposure imbalance does not explain the result;
+5. the result survives replay/audit;
+6. rollback has been tested;
+7. for real-money deployment, the feature has also passed a real-world shadow or limited-capital trial.
+
+For early simulation work, **2 independent positive paired trials** is the minimum evidence to call a feature promising.
+
+For broad real-money deployment, require at least **3 independent positive paired trials or an equivalent sequential test with a predeclared stopping rule**, plus no unresolved safety/accounting anomaly.
+
+A single run may justify further testing. It may not justify broad promotion.
+
+---
+
+## 5. Rollback rule
+
+Every feature has a named rollback condition.
+
+The supervisor automatically disables or rolls back a promoted feature when any of these occur:
+
+- a hard policy violation attributable to the feature;
+- accounting/replay failure;
+- malformed-output rate exceeds the feature's predeclared guardrail;
+- realized performance falls materially below the previous version over its evaluation window;
+- real-world refunds, chargebacks, or fraud indicators cross configured limits;
+- required control exposure disappears;
+- the feature modifies anything outside its allowed scope.
+
+Rollback does not delete evidence. The failed version remains archived.
+
+---
+
+# Feature experiments
+
+## E01 — Shared farm knowledge
+
+**Status:** proposed
+
+**Hypothesis:** Supervisor-generated, read-only farm knowledge improves economic decisions by letting agents benefit from verified experience outside their own short memory.
+
+**Treatment:** Agent receives a read-only supervisor snapshot derived only from ledger/adaptor evidence and delayed until at least the prior generation.
+
+**Control:** Agent receives only its existing private memory/notes.
+
+**Randomization:** Agent-level or lineage-level, 50/50.
+
+**Primary metric:** net realized profit per model call.
+
+**Secondary metrics:** profit/GPU-hour, conversion rate, decision diversity, segment concentration.
+
+**Guardrails:**
+- knowledge entries can only originate from trusted ledger/adaptor evidence;
+- no agent writes to the shared store;
+- knowledge item exposure may not cause more than 60% of the population to converge on the same strategy solely because of one shared recommendation.
+
+**Promotion:** positive economic effect in at least 2 independent paired trials with no material increase in concentration.
+
+**Rollback:** remove knowledge injection from prompts; private memories remain intact.
+
+---
+
+## E02 — Retirement reports and strategy archive
+
+**Status:** proposed
+
+**Hypothesis:** Preserving verified history of retired strategies helps the farm recover useful strategies when market conditions recur.
+
+**Treatment:** Retired strategy is archived with:
+- genotype/code version
+- verified outcomes
+- failure reason
+- market-regime fingerprint
+- generation and lineage history
+
+A subset of future immigrant slots may resurrect archive entries whose historical regime resembles the current one.
+
+**Control:** fresh random immigrants only.
+
+**Randomization:** immigrant-slot level.
+
+**Primary metric:** net realized profit of resurrected vs fresh immigrant agents over equal exposure.
+
+**Secondary metrics:** time to profitability, survival rate, regime-match score.
+
+**Guardrails:**
+- archived returnees <= 50% of immigrant/new-agent slots;
+- archive cannot contain agent-authored revenue claims;
+- no strategy receives preferential capital merely because it was archived.
+
+**Promotion:** archived returnees outperform fresh random immigrants across at least 2 regime-shift trials.
+
+**Rollback:** disable archive sampling; retain archive as inert history.
+
+---
+
+## E03 — Two-parent recombination
+
+**Status:** proposed
+
+**Hypothesis:** Recombining complementary traits from successful lineages can outperform clone-plus-mutation reproduction.
+
+**Treatment:** Offspring may inherit field groups from two successful parents.
+
+Preferred crossover blocks:
+- segment + price
+- prompt + workflow + tool preferences
+- memory/planner implementation version, if compatible
+
+**Control:** current single-parent clone plus bounded mutation.
+
+**Randomization:** offspring-level.
+
+**Primary metric:** offspring net realized profit per call after minimum exposure.
+
+**Secondary metrics:** survival, malformed rate, lineage diversity.
+
+**Guardrails:**
+- no arbitrary byte/field mixing;
+- incompatible field groups must fail validation before activation;
+- lineage concentration caps remain unchanged.
+
+**Promotion:** recombined offspring outperform single-parent offspring across at least 2 independent campaigns.
+
+**Rollback:** reproduction returns to single-parent clone-plus-mutation.
+
+---
+
+## E04 — Small model for routine steps
+
+**Status:** proposed
+
+**Hypothesis:** Routing low-novelty decisions to a smaller model increases profit/GPU-hour without materially harming economic performance.
+
+**Treatment:** Supervisor routes low-novelty steps to a smaller local model. Escalate to the main model when:
+- segment changes;
+- price crosses a configured band;
+- workflow changes;
+- tool class changes;
+- spend increases materially;
+- model uncertainty exceeds threshold;
+- recent evidence contradicts the current strategy.
+
+**Control:** main model for every inference step.
+
+**Randomization:** agent-level.
+
+**Primary metric:** net realized profit per GPU-hour.
+
+**Secondary metrics:** net profit/call, malformed rate, escalation rate, model tokens.
+
+**Guardrails:** any materially risky or novel action routes to the main model.
+
+**Promotion:** >= 20% improvement in profit/GPU-hour with no material reduction in net profit per exposure across at least 2 trials.
+
+**Rollback:** route all steps to the main model.
+
+---
+
+## E05 — Autopilot / approved action replay
+
+**Status:** proposed
+
+**Hypothesis:** Replaying stable, already-approved profitable actions without inference can dramatically reduce GPU usage.
+
+**Treatment:** Supervisor may replay a previously approved action template when a supervisor-owned stability predicate is true.
+
+Possible stability conditions:
+- no recent market-shift signal;
+- recent conversion/refund performance remains within expected bounds;
+- no strategy/price/segment change;
+- fixed maximum replay count since last model review.
+
+**Control:** model inference every scheduled step.
+
+**Randomization:** agent-level.
+
+**Primary metric:** net realized profit per GPU-hour.
+
+**Secondary metrics:** net profit per opportunity, avoided model calls, time-to-detect regime change.
+
+**Guardrails:**
+- agent cannot extend its own autopilot window;
+- periodic forced model review;
+- immediate invalidation on regime-shift/fraud/policy signal.
+
+**Promotion:** significant compute reduction with non-inferior economic performance in at least 2 trials.
+
+**Rollback:** disable replay; next step returns to model inference.
+
+---
+
+## E06 — Shared prompt prefix / cache optimization
+
+**Status:** proposed
+
+**Class:** infrastructure benchmark
+
+**Hypothesis:** Making static prompt portions byte-identical improves inference-server prefix-cache reuse and throughput.
+
+**Treatment:**
+- deterministic tool ordering;
+- deterministic schema ordering;
+- static system-policy wording;
+- agent-specific content moved after the largest possible shared prefix.
+
+**Control:** current prompt construction.
+
+**Primary metric:** aggregate completion throughput and wall-clock generation time.
+
+**Secondary metrics:** prompt-evaluation time, cache hit behavior where observable, malformed rate.
+
+**Guardrails:** generated decisions must remain behaviorally equivalent within expected stochastic variation.
+
+**Promotion:** measurable throughput/latency improvement with no validity/safety regression.
+
+**Rollback:** restore previous prompt formatter.
+
+---
+
+## E07 — Segment crowding control
+
+**Status:** proposed
+
+**Hypothesis:** Farm-level diversification improves total profit when agents otherwise compete for the same customers or create spam-like concentration.
+
+**Treatment:** Crowding affects scheduler/capital allocation using a mild concentration penalty.
+
+**Control:** allocation ignores crowding.
+
+**Important:** raw economic fitness is **not rewritten**. Crowding influences resource allocation only.
+
+**Class:** farm-level paired campaign.
+
+**Primary metric:** total farm net realized profit.
+
+**Secondary metrics:** segment concentration, conversion rate, complaints/refunds where available.
+
+**Guardrails:** do not force agents into negative-expectation segments merely for diversity.
+
+**Promotion:** total farm profit improves across at least 2 paired campaigns without material loss in profit/GPU-hour.
+
+**Rollback:** remove crowding term from allocation.
+
+---
+
+## E08 — Predictions before actions
+
+**Status:** proposed
+
+**Hypothesis:** Requiring calibrated predictions improves decision quality and provides useful early evidence about slow strategies.
+
+**Treatment:** Before an economically meaningful action, agent predicts a probability or expected outcome.
+
+**Control:** no prediction requirement.
+
+**Scoring:** use a proper scoring rule such as Brier score or log loss. Prediction accuracy is auxiliary evidence, not economic fitness.
+
+**Primary metric:** future net realized profit.
+
+**Secondary metrics:** calibration error, Brier/log loss, correlation between calibrated forecasts and future economic outcomes.
+
+**Guardrails:** predictions cannot directly create budget, revenue, or fitness.
+
+**Promotion:** forecast quality predicts future economic results and treatment improves decisions in at least 2 trials.
+
+**Rollback:** stop requesting predictions; historical forecasts remain auditable.
+
+---
+
+## E09 — Market-shift adaptation
+
+**Status:** proposed
+
+**Hypothesis:** Temporarily increasing exploration after a genuine regime shift helps the farm adapt faster.
+
+**Treatment:** Supervisor detects cross-lineage changes in conversion/refund/economic distributions and temporarily raises exploration/new-agent share.
+
+**Control:** fixed exploration rate.
+
+**Class:** farm-level paired campaign with scripted regime changes in simulation.
+
+**Primary metric:** cumulative net realized profit after the regime change.
+
+**Secondary metrics:** adaptation time, false-positive shift detections, exploration cost.
+
+**Guardrails:** shift requires evidence across multiple agents/lineages and several ticks.
+
+**Promotion:** faster recovery and higher post-shift cumulative profit across at least 2 regime-change campaigns.
+
+**Rollback:** restore fixed exploration rate.
+
+---
+
+## E10 — R&D red-team agent
+
+**Status:** proposed
+
+**Hypothesis:** A dedicated adversarial R&D role finds policy/security defects before economic agents encounter them.
+
+**Treatment:** One R&D agent attacks only isolated copies of policy/tool/supervisor interfaces.
+
+**Control:** existing static adversarial tests alone.
+
+**Primary metric:** confirmed unique loopholes found that become regression tests.
+
+**Secondary metrics:** false positives, duplicate findings, GPU cost per confirmed defect.
+
+**Guardrails:**
+- no access to live farm adapters;
+- no access to real credentials;
+- findings require human review;
+- every confirmed issue becomes a permanent test in `tests/adversarial/`.
+
+**Promotion:** retained as an R&D specialty if it produces confirmed defects at acceptable compute cost.
+
+**Rollback:** disable red-team sandbox; regression tests remain.
+
+---
+
+## E11 — Fraud and anomaly watch
+
+**Status:** proposed; required before real-money payout automation
+
+**Class:** supervisor-side safety intervention
+
+**Hypothesis:** Supervisor-side anomaly detection can pause suspicious distributions before losses become irreversible.
+
+**Signals may include:**
+- unusual refund/chargeback rate;
+- conversion spikes inconsistent with historical variance;
+- repeated customer/payment identities;
+- velocity anomalies;
+- geographic/customer clustering;
+- lineage-specific payout anomalies.
+
+**Treatment:** anomaly flags pause distributions and increase reserve/clawback exposure.
+
+**Control:** historical replay/shadow mode initially; later limited randomized or threshold comparison where safe.
+
+**Primary metric:** preventable loss detected before payout.
+
+**Secondary metrics:** false-positive rate, payout delay, recovered funds.
+
+**Guardrails:** flags pause payouts, not agents, unless independent policy evidence exists.
+
+**Promotion:** mandatory shadow validation before affecting real payouts.
+
+**Rollback:** return to shadow-only mode.
+
+---
+
+## E12 — Self-tuning farm settings
+
+**Status:** proposed; late-stage
+
+**Hypothesis:** Systematic experiments over scheduler/evolution settings improve farm-level economics.
+
+**May propose/test:**
+- exploration share;
+- retire fraction;
+- mutation size;
+- scheduler weights;
+- capital-allocation parameters;
+- payout-share interpolation parameters.
+
+**May never modify autonomously:**
+- accounting definitions;
+- economic evidence rules;
+- policy constraints;
+- immutable capital ownership;
+- experiment/promotion authority.
+
+**Class:** farm-level paired campaign.
+
+**Primary metric:** net realized profit per GPU-hour.
+
+**Guardrails:** every candidate setting is predeclared, tested, and requires human approval before promotion.
+
+**Promotion:** positive across multiple seeds and re-tested after transition to real revenue.
+
+**Rollback:** restore last known-good supervisor configuration.
+
+---
+
+# R&D cohort
+
+## R01 — Permanent R&D cohort
+
+**Status:** proposed
+
+Target architecture:
+
+- 17 economic agents
+- 3 R&D agents
+
+Suggested R&D specialties:
+
+1. **Architect** — planner, memory, workflow, nonprivileged tooling
+2. **Optimizer** — inference speed, caching, token efficiency, implementation efficiency
+3. **Scientist / Red Team** — experiment design, failure analysis, adversarial testing
+
+R&D agents do not earn economic fitness from self-reported improvements. Their work is evaluated by downstream verified experiments.
+
+Their outputs are proposals:
+- code patches;
+- benchmark plans;
+- new tests;
+- upgrade candidates;
+- failure analyses.
+
+They never merge directly into the live farm.
+
+---
+
+# Upgrade registry
+
+## U01 — Software upgrade lifecycle
+
+All agent-software modifications follow:
+
+```text
+R&D agent proposes patch
+        ↓
+isolated branch / sandbox
+        ↓
+static validation + tests
+        ↓
+simulation benchmark
+        ↓
+upgrade registry entry
+        ↓
+randomized trial / controlled adoption
+        ↓
+PROMOTE / REJECT / ROLLBACK
+```
+
+Each upgrade registry entry must include:
+
+- immutable upgrade ID
+- parent version
+- commit/hash
+- proposer
+- files changed
+- permitted scope
+- test results
+- benchmark results
+- treatment/control design
+- required evaluation window
+- rollback version
+- promotion decision
+- evidence references
+
+Economic agents may eventually have three supervisor-mediated choices for eligible upgrades:
+
+- **IGNORE**
+- **TRIAL**
+- **ADOPT**
+
+But trial/control assignment must remain randomized whenever voluntary selection would bias the experiment.
+
+Descendants normally inherit the parent's promoted software version. Money is never cloned with software.
+
+---
+
+# Capital experiments
+
+Future capital-allocation experiments must preserve the real-money waterfall:
+
+1. past losses
+2. reserve target
+3. residual split among Owner, Infrastructure, Agent Capital, Exploration
+
+Agents never hold money. They receive revocable spending authority.
+
+Capital experiments must preserve:
+- <= 15% Agent Capital concentration per agent;
+- <= 40% per lineage;
+- separate Exploration capital;
+- unspent authority returns to the appropriate farm bucket;
+- owner payouts require human approval;
+- infrastructure purchases require human approval plus before/after test.
+
+Capital allocation should be evaluated on **incremental return on allocated capital**, with luck discounted using confidence bounds rather than raw realized profit.
+
+---
+
+# Build order
+
+Current intended sequence:
+
+1. E06 — shared prompt prefix
+2. E05 — autopilot
+3. E04 — small-model routing
+4. E01 — shared farm knowledge
+5. E02 — retirement archive
+6. R01/U01 — R&D cohort and upgrade registry
+7. E07 — segment crowding
+8. E11 — fraud/anomaly watch
+9. E08 — predictions
+10. E03 — two-parent recombination
+11. E09 — regime-shift response
+12. E10 — red-team specialization
+13. E12 — self-tuning farm settings
+
+This order may be changed only for a documented reason. Safety prerequisites for real-money operation take priority over convenience.
+
+---
+
+# Definition of done
+
+A feature is not "done" until all applicable items below are true:
+
+- [ ] implementation exists
+- [ ] unit tests pass
+- [ ] adversarial/safety tests pass where relevant
+- [ ] rollback mechanism exists and was exercised
+- [ ] treatment/control design is frozen before the run
+- [ ] comparison group actually ran
+- [ ] sample/exposure counts are recorded
+- [ ] primary metric is reported
+- [ ] guardrail metrics are reported
+- [ ] ledger/audit replay passes
+- [ ] exact code/config version is recorded
+- [ ] promotion threshold is met
+- [ ] promotion decision is written to evidence
+- [ ] real-money features completed a real-world limited trial before broad deployment
+
+If any required item is missing, status is **implemented-but-unverified**, not **working** or **done**.
