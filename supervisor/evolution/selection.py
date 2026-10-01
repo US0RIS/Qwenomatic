@@ -74,14 +74,6 @@ def plan_selection(
         retired_by_selection += bottom
         survivors = sorted(set(survivors) - set(bottom))
 
-    retirements = (
-        [{"agent_id": a, "reason": "disqualified: " + "; ".join(results[a]["eligibility_reasons"])} for a in disq]
-        + [{"agent_id": a, "reason": "health check failed"} for a in health]
-        + [{"agent_id": a, "reason": f"selection: fitness rank {ranked.index(a) + 1} of {len(ranked)}, "
-                                     f"upper bound {results[a]['fitness_ucb']:.2f}"
-            if a in ranked else "selection: population cap"} for a in retired_by_selection]
-    )
-
     # Lineage cap, relaxed only when one lineage clearly leads.
     by_lineage: dict[str, list[str]] = {}
     for a in exposed:
@@ -94,6 +86,42 @@ def plan_selection(
     strong = len(best) >= 2 and best[0][0] > max(b[1] for b in best[1:])
     cap_share = float(cfg.get("max_lineage_share_strong_evidence" if strong else "max_lineage_share", 1.0))
     cap = max(1, math.floor(cap_share * population_size))
+
+    # The cap applies to the *next population*, not merely to newly-created
+    # offspring. The earlier implementation only prevented additional
+    # children from overrepresented lineages, so a lineage that already had
+    # too many survivors could exceed the cap indefinitely.
+    #
+    # Agents below minimum exposure remain protected by the cold-start rule;
+    # among exposed survivors, retire the weakest members of any lineage
+    # above the cap. This may retire more than retire_fraction when necessary
+    # to preserve the hard lineage concentration invariant.
+    counts_now = Counter(lineage_of[a] for a in survivors)
+    protected_set = set(protected)
+    for lineage, count in sorted(counts_now.items()):
+        excess = max(0, count - cap)
+        if not excess:
+            continue
+        candidates = [
+            a for a in survivors
+            if lineage_of[a] == lineage and a not in protected_set
+        ]
+        weakest = sorted(
+            candidates,
+            key=lambda a: (results[a]["fitness_ucb"] if results[a]["fitness_ucb"] is not None else -math.inf, a),
+        )
+        for a in weakest[:excess]:
+            if a not in retired_by_selection:
+                retired_by_selection.append(a)
+            survivors.remove(a)
+
+    retirements = (
+        [{"agent_id": a, "reason": "disqualified: " + "; ".join(results[a]["eligibility_reasons"])} for a in disq]
+        + [{"agent_id": a, "reason": "health check failed"} for a in health]
+        + [{"agent_id": a, "reason": f"selection: fitness rank {ranked.index(a) + 1} of {len(ranked)}, "
+                                     f"upper bound {results[a]['fitness_ucb']:.2f}"
+            if a in ranked else "selection: population/lineage cap"} for a in retired_by_selection]
+    )
 
     slots = max(0, population_size - len(survivors))
     immigrants = min(slots, round(slots * float(cfg.get("immigration_rate", 0.0))))
