@@ -154,7 +154,8 @@ class Supervisor:
         """Acquire the single-supervisor process lock on POSIX or Windows."""
         path = self.data_dir / "supervisor.lock"
         # Windows byte-range locking requires at least one byte to exist.
-        fh = open(path, "a+", encoding="utf-8")
+        path.touch(exist_ok=True)
+        fh = open(path, "r+", encoding="utf-8")
         fh.seek(0, os.SEEK_END)
         if fh.tell() == 0:
             fh.write(" ")
@@ -171,8 +172,7 @@ class Supervisor:
 
         # PID is diagnostic only; the OS lock is authoritative.
         fh.seek(0)
-        fh.truncate()
-        fh.write(str(os.getpid()))
+        fh.write(f"{os.getpid():<20}")
         fh.flush()
         return fh
 
