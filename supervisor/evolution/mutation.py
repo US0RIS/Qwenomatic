@@ -110,6 +110,19 @@ def _survey_every(before: int, rng: random.Random, cfg: dict[str, Any]) -> int:
     return int(min(b["max"], max(b["min"], before + rng.choice([-2, -1, 1, 2]))))
 
 
+def _max_tokens(before: int, rng: random.Random, cfg: dict[str, Any]) -> int:
+    b = cfg.get("max_tokens", {"min": 512, "max": 8192})
+    choices = [int(x) for x in b.get("choices", [512, 1024, 2048, 4096, 8192])
+               if int(b.get("min", 512)) <= int(x) <= int(b.get("max", 8192))]
+    choices = sorted(set(choices))
+    if not choices:
+        return before
+    # Move locally most of the time so compute budgets evolve gradually.
+    nearest = min(range(len(choices)), key=lambda i: abs(choices[i] - before))
+    candidates = [i for i in (nearest - 1, nearest + 1) if 0 <= i < len(choices)]
+    return choices[rng.choice(candidates)] if candidates else choices[nearest]
+
+
 def default_registry() -> MutationRegistry:
     reg = MutationRegistry()
     for op in (
@@ -120,6 +133,7 @@ def default_registry() -> MutationRegistry:
         MutationOperator("tool_preferences", "tool_preferences", _tools),
         MutationOperator("planning_temperature", "planning_parameters.temperature", _temperature),
         MutationOperator("planning_survey_every", "planning_parameters.survey_every", _survey_every),
+        MutationOperator("planning_max_tokens", "planning_parameters.max_tokens", _max_tokens),
     ):
         reg.register(op)
     return reg
@@ -130,6 +144,7 @@ def default_registry() -> MutationRegistry:
 DEFAULT_WEIGHTS = {
     "pricing_parameter": 4.0, "target_segment": 1.5, "workflow": 1.0, "strategy_prompt": 1.0,
     "tool_preferences": 0.5, "planning_temperature": 0.75, "planning_survey_every": 0.75,
+    "planning_max_tokens": 0.75,
 }
 
 
