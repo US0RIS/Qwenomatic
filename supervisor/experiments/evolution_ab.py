@@ -17,6 +17,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+import time
 
 from storage.events import EventStore, FarmState
 from supervisor.config import FarmConfig
@@ -180,6 +181,7 @@ def run_arm(
         target_generation = int(generations)
         last_generation = sup.state.current_generation or 0
         ticks = 0
+        wall_started = time.monotonic()
         print(f"\n== {arm}: target {generations} closed generations ==")
         while (sup.state.current_generation or 0) < target_generation:
             result = sup.tick()
@@ -203,9 +205,17 @@ def run_arm(
                     _assert_frozen_control(sup, current)
             elif progress_every_ticks and ticks % progress_every_ticks == 0:
                 gv = sup.state.generations[current]
+                gen_tick = sup.clock.tick - gv.start_tick
+                elapsed = max(0.001, time.monotonic() - wall_started)
+                rate = ticks / elapsed
+                remaining_ticks = max(0, (target_generation - current - 1) * cfg.ticks_per_generation
+                                      + (cfg.ticks_per_generation - gen_tick))
+                eta_minutes = remaining_ticks / rate / 60 if rate > 0 else None
                 print(
-                    f"{arm} gen {current}: tick {sup.clock.tick - gv.start_tick}/"
-                    f"{cfg.ticks_per_generation}"
+                    f"{arm} gen {current}: tick {gen_tick}/{cfg.ticks_per_generation} | "
+                    f"wall {elapsed/60:.1f}m | ETA "
+                    f"{eta_minutes:.1f}m" if eta_minutes is not None else
+                    f"{arm} gen {current}: tick {gen_tick}/{cfg.ticks_per_generation}"
                 )
 
         if arm == "control":
