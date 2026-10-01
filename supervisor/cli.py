@@ -37,6 +37,8 @@ def _config(args: argparse.Namespace) -> FarmConfig:
         overrides["farm"].setdefault("inference", {})["openai_compatible"] = {"base_url": args.base_url}
     if getattr(args, "model", None):
         overrides["farm"].setdefault("inference", {}).setdefault("openai_compatible", {})["model"] = args.model
+    if getattr(args, "max_concurrency", None) is not None:
+        overrides["farm"].setdefault("inference", {}).setdefault("openai_compatible", {})["max_concurrency"] = int(args.max_concurrency)
     if getattr(args, "wall_clock", False):
         overrides["farm"]["clock"] = {"mode": "wall"}
     return FarmConfig.load(args.config_dir, data_dir=args.data_dir, overrides=overrides)
@@ -239,6 +241,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--backend", choices=["simulated", "openai_compatible"])
     r.add_argument("--base-url")
     r.add_argument("--model")
+    r.add_argument("--max-concurrency", type=int, help="client inference concurrency; match the model server")
     r.add_argument("--wall-clock", action="store_true", help="real time instead of simulated ticks")
     add("status", cmd_status, help="summary from the ledger")
     d = add("dashboard", cmd_dashboard, help="read-only web dashboard")
