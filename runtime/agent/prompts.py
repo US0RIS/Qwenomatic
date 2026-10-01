@@ -29,7 +29,9 @@ Tools:
 
 Reply with exactly one JSON object and nothing else:
 {{"thought": "<short reasoning>", "actions": [{{"tool": "<name>", "args": {{...}}}}], "memory": "<note to keep>"}}
-Use at most {max_actions} actions."""
+Use at most {max_actions} actions.
+
+/no_think"""
 
 
 def build_messages(
