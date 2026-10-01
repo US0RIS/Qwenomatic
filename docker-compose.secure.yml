@@ -1,0 +1,42 @@
+services:
+  broker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ["python", "-m", "supervisor.security.broker"]
+    command:
+      - --manifest
+      - /security/egress-manifest.json
+      - --socket
+      - /run/qwenomatic/egress.sock
+    volumes:
+      - broker-socket:/run/qwenomatic
+      - "${QWENOMATIC_EGRESS_MANIFEST:?set QWENOMATIC_EGRESS_MANIFEST}:/security/egress-manifest.json:ro"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(1); s.connect('/run/qwenomatic/egress.sock'); s.close()"
+      interval: 1s
+      timeout: 2s
+      retries: 20
+
+  farm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    network_mode: none
+    depends_on:
+      broker:
+        condition: service_healthy
+    environment:
+      QWENOMATIC_NETWORK_MODE: container_none
+    volumes:
+      - broker-socket:/run/qwenomatic
+      - "${QWENOMATIC_DATA_DIR:?set QWENOMATIC_DATA_DIR}:/data"
+
+volumes:
+  broker-socket:

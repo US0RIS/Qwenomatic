@@ -8,6 +8,16 @@ from typing import Any
 from supervisor.config import FarmConfig, deep_merge
 from supervisor.core import Supervisor
 
+class _HermeticTestNetworkGuard:
+    """Dependency-injected only by tests; production has no config bypass."""
+
+    def required(self, backend_name: str, *, has_real_world_adapters: bool = False) -> bool:
+        return False
+
+    def verify(self, backend_name: str, *, has_real_world_adapters: bool = False):
+        return None
+
+
 # Six-hour generations of 15-minute ticks: 24 ticks per generation.
 FAST = {
     "farm": {
@@ -32,6 +42,7 @@ def make_config(tmp_path: Path, overrides: dict[str, Any] | None = None, *, fast
 def make_supervisor(tmp_path: Path, overrides: dict[str, Any] | None = None, *, fast: bool = True,
                     seed_genotypes: list[dict[str, Any]] | None = None, bootstrap: bool = True,
                     segments: list[str] | None = None, **kw) -> Supervisor:
+    kw.setdefault("network_guard", _HermeticTestNetworkGuard())
     sup = Supervisor(make_config(tmp_path, overrides, fast=fast, segments=segments), **kw)
     if bootstrap:
         sup.bootstrap(seed_genotypes)
@@ -41,6 +52,7 @@ def make_supervisor(tmp_path: Path, overrides: dict[str, Any] | None = None, *, 
 def reopen(sup: Supervisor, **kw) -> Supervisor:
     cfg = sup.config
     sup.close()
+    kw.setdefault("network_guard", _HermeticTestNetworkGuard())
     return Supervisor(cfg, **kw)
 
 

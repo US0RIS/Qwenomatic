@@ -9,18 +9,20 @@ def engine():
     return PolicyEngine(FarmConfig.load().policy)
 
 
-def req(engine, tool="market.offer", action_class="sales.offer", spend=0.5, approved=False, limit=False):
+def req(engine, tool="market.offer", action_class="sales.offer", spend=0.5, approved=False, limit=False,
+        force_approval=False):
     return CapabilityRequest(request_id="r", agent_id="a", generation_id=0, tool=tool, action_class=action_class,
                              args={}, spend=spend, granted=frozenset(engine.capabilities),
-                             supports_spend_limit=limit, approved=approved)
+                             supports_spend_limit=limit, approved=approved, force_approval=force_approval)
 
 
 def test_allow(engine):
     assert engine.evaluate(req(engine), PolicyContext()).decision is Decision.ALLOW
 
 
-@pytest.mark.parametrize("tool", ["shell.exec", "ledger.record_revenue", "agent.spawn", "credentials.list",
-                                  "reviews.post", "supervisor.set_fitness", "budget.raise", "cloud.provision"])
+@pytest.mark.parametrize("tool", ["shell.exec", "python.exec", "http.request", "browser.navigate", "socket.connect",
+                                  "ledger.record_revenue", "agent.spawn", "credentials.list", "reviews.post",
+                                  "supervisor.set_fitness", "budget.raise", "cloud.provision"])
 def test_dangerous_tool_names_are_hard_violations(engine, tool):
     ac = engine.classify_tool_name(tool)
     result = engine.evaluate(req(engine, tool=tool, action_class=ac), PolicyContext())
@@ -45,6 +47,12 @@ def test_rate_limit(engine):
 def test_material_spend_requires_approval_then_allows(engine):
     assert engine.evaluate(req(engine, spend=30), PolicyContext()).decision is Decision.REQUIRE_HUMAN_APPROVAL
     assert engine.evaluate(req(engine, spend=30, approved=True), PolicyContext()).decision is Decision.ALLOW
+
+
+def test_adapter_can_require_human_approval_below_global_material_threshold(engine):
+    r = engine.evaluate(req(engine, spend=1, force_approval=True), PolicyContext())
+    assert r.decision is Decision.REQUIRE_HUMAN_APPROVAL
+    assert engine.evaluate(req(engine, spend=1, force_approval=True, approved=True), PolicyContext()).decision is Decision.ALLOW
 
 
 def test_approval_class(engine):

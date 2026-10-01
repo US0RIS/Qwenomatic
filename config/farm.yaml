@@ -32,7 +32,11 @@ inference:
   openai_compatible:
     # Any OpenAI-compatible local server: llama.cpp `llama-server`, vLLM, Ollama.
     # 16 GB RTX 5080: a ~14B Qwen model at Q4_K_M leaves room for a parallel KV cache.
+    # Direct base_url is retained for isolated tests only. Production/real-Qwen
+    # execution is fail-closed and uses the Unix-socket named route below.
     base_url: http://127.0.0.1:8080/v1
+    broker_socket: /run/qwenomatic/egress.sock
+    route_id: local_model
     model: Qwen3-14B-Instruct
     quantization: Q4_K_M
     max_concurrency: 4         # match llama-server --parallel

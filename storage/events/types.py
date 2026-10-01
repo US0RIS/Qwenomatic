@@ -45,6 +45,9 @@ class EventType(str, Enum):
     HUMAN_APPROVAL_REQUESTED = "human_approval_requested"
     HUMAN_APPROVAL_RESOLVED = "human_approval_resolved"
     HUMAN_INTERVENTION = "human_intervention"
+    SECURITY_SCOPE_APPROVED = "security_scope_approved"
+    SECURITY_SCOPE_REVOKED = "security_scope_revoked"
+    NETWORK_ATTESTED = "network_attested"
 
     # Economy
     OPPORTUNITY = "opportunity"

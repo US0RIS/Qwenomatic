@@ -23,6 +23,7 @@ forbidden_action_classes:
   - spam.*
   - fraud.*
   - security.*             # credential discovery, unauthorized access, malware, exploits
+  - network.*              # arbitrary egress / destination selection
   - host.*                 # arbitrary shell / host access
   - supervisor.*           # reading or modifying the supervisor, its config or scoring
   - ledger.*               # authoring economic events
@@ -37,6 +38,13 @@ forbidden_action_classes:
 # classified so that the attempt itself is attributable and enforceable.
 tool_action_classes:
   "shell*":            host.shell
+  "python*":           host.code_execution
+  "code*":             host.code_execution
+  "http*":             network.arbitrary_egress
+  "browser*":          network.arbitrary_egress
+  "socket*":           network.arbitrary_egress
+  "curl*":             network.arbitrary_egress
+  "wget*":             network.arbitrary_egress
   "exec*":             host.shell
   "os.*":              host.shell
   "ledger.*":          ledger.write

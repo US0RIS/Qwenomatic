@@ -6,7 +6,9 @@ the local GPU. Standard library only.
 
 from __future__ import annotations
 
+import http.client
 import json
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -23,6 +25,17 @@ from .base import BackendUnavailable, Generation, Health, InferenceBackend, Infe
 THINKING_CONTROLS = ("soft_switch", "template_kwargs", "both", "none")
 
 
+class _UnixHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, socket_path: str, timeout: float) -> None:
+        super().__init__("qwenomatic-broker", timeout=timeout)
+        self.socket_path = socket_path
+
+    def connect(self) -> None:
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
+        self.sock.connect(self.socket_path)
+
+
 class OpenAICompatibleBackend(InferenceBackend):
     name = "openai_compatible"
 
@@ -36,15 +49,44 @@ class OpenAICompatibleBackend(InferenceBackend):
         self.api_key = config.get("api_key")
         self.cost_per_1k_tokens = float(config.get("cost_per_1k_tokens", 0.0))
         self.local = bool(config.get("local", True))
+        self.broker_socket = config.get("broker_socket")
+        self.route_id = config.get("route_id")
+        if bool(self.broker_socket) != bool(self.route_id):
+            raise ValueError("broker_socket and route_id must be configured together")
+        if self.broker_socket and self.api_key:
+            raise ValueError("credentials must be held by the egress broker, not the farm process")
         self.thinking_control = config.get("thinking_control", "both")
         if self.thinking_control not in THINKING_CONTROLS:
             raise ValueError(f"thinking_control must be one of {', '.join(THINKING_CONTROLS)}")
 
+    def _broker_request(self, method: str, path: str, body: bytes | None = None) -> tuple[int, bytes]:
+        if not self.broker_socket or not self.route_id:
+            raise BackendUnavailable("named egress route is not configured")
+        conn = _UnixHTTPConnection(str(self.broker_socket), self.timeout)
+        route_path = f"/route/{self.route_id}{path}"
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        try:
+            conn.request(method, route_path, body=body, headers=headers)
+            resp = conn.getresponse()
+            data = resp.read()
+            return resp.status, data
+        except (OSError, TimeoutError, http.client.HTTPException) as exc:
+            raise BackendUnavailable(str(exc)) from exc
+        finally:
+            conn.close()
+
     def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        payload = json.dumps(body).encode()
+        if self.broker_socket:
+            status, raw = self._broker_request("POST", path, payload)
+            if status < 200 or status >= 300:
+                raise BackendUnavailable(f"egress broker/model returned HTTP {status}")
+            return json.loads(raw)
+
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        req = urllib.request.Request(f"{self.base_url}{path}", data=json.dumps(body).encode(), headers=headers)
+        req = urllib.request.Request(f"{self.base_url}{path}", data=payload, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read())
@@ -81,6 +123,13 @@ class OpenAICompatibleBackend(InferenceBackend):
         return Generation(text, prompt_tokens, completion_tokens, wall_seconds=wall, gpu_seconds=gpu, cloud_usd=cloud)
 
     def health(self) -> Health:
+        if self.broker_socket:
+            try:
+                status, _ = self._broker_request("GET", "/models")
+                ok = status == 200
+            except Exception as exc:
+                return Health(False, self.name, self.model, str(exc))
+            return Health(ok, self.name, self.model, "ok" if ok else f"HTTP {status}")
         req = urllib.request.Request(f"{self.base_url}/models")
         try:
             with urllib.request.urlopen(req, timeout=5) as resp:

@@ -111,3 +111,14 @@ def test_thinking_switch_wire_format(server):
     assert kwargs_only["chat_template_kwargs"] == {"enable_thinking": False}
     for sent in (_send(server, None), _send(server, False, "none")):
         assert sent["messages"][-1]["content"] == "Step 3." and "chat_template_kwargs" not in sent
+
+
+def test_brokered_backend_rejects_credentials_in_farm_process():
+    with pytest.raises(ValueError, match="credentials must be held by the egress broker"):
+        OpenAICompatibleBackend({
+            "base_url": "http://127.0.0.1:9/v1",
+            "model": "m",
+            "broker_socket": "/tmp/egress.sock",
+            "route_id": "local_model",
+            "api_key": "must-not-live-here",
+        })

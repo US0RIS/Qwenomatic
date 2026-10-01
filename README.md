@@ -40,6 +40,79 @@ qwenomatic run --backend openai_compatible --model Qwen3-14B-Instruct --wall-clo
 
 Set `inference.openai_compatible` in `config/farm.yaml` (URL, model name, quantization label, `max_concurrency` matching `--parallel`). `--wall-clock` makes a generation last 24 real hours; without it, ticks advance simulated time as fast as the model answers. Every completion records model, quantization, token counts, wall time, attributed GPU time and queue latency.
 
+## Secure execution boundary
+
+The simulated backend has no real external I/O and may run directly on the host. Any
+`openai_compatible` run, and any future real-world adapter, is different: executable
+farm code must run inside the fail-closed container boundary.
+
+The secure topology deliberately separates **decision-making code** from **network
+authority**:
+
+```text
+network_mode: none farm container
+        |
+        | AF_UNIX socket only
+        v
+trusted egress broker
+        |
+        +--> named, operator-approved local_model route
+        +--> future named, operator-approved adapter routes
+```
+
+The farm container has no Docker network interface. At every executable tick the
+supervisor verifies that only loopback exists, actively proves that a direct
+connection to a known unapproved Internet address fails, verifies the Unix-socket
+broker, and compares the broker manifest digest to the exact scopes approved in the
+append-only ledger. Any failed or indeterminate check aborts execution before
+inference or tools run.
+
+Configuration is **not authority**. `config/security.yaml` may propose a destination,
+credential, payee, or real-world adapter, but changing the file does not activate it.
+An operator must approve the exact current definition; changing that definition
+invalidates the old approval.
+
+On Windows with Docker Desktop, initialize a secure data directory and explicitly
+approve the local model route after reviewing `config/security.yaml`:
+
+```powershell
+.\.venv\Scripts\python.exe -m supervisor.cli --data-dir var\real-secure init
+.\.venv\Scripts\python.exe -m supervisor.cli --data-dir var\real-secure security status
+
+# Human/operator decision:
+.\.venv\Scripts\python.exe -m supervisor.cli --data-dir var\real-secure `
+  security approve destination local_model
+```
+
+Then obtain an active isolation receipt:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\secure_network_check.ps1 `
+  -DataDir var\real-secure
+```
+
+Only after that check succeeds, run the farm:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\secure_run.ps1 `
+  -DataDir var\real-secure `
+  -Model qwen3:14b `
+  -MaxConcurrency 2 `
+  -Ticks 10
+```
+
+`status`, `dashboard`, `verify`, and other non-executing inspection workflows can
+still run directly on the host. The secure launcher is required for model/tool
+execution covered by the boundary.
+
+Real-world adapters have an additional contract: their destination is fixed in
+supervisor-owned configuration; model arguments may not contain URLs, hosts, ports,
+credentials, payees/accounts, commands, scripts, or executable code. Credentials
+are held by the broker, not the farm process. Payment adapters additionally bind a
+fixed approved payee, a hard per-action cap, and a human-approval threshold. Every
+adapter invocation still traverses the existing capability-token gateway, policy
+engine, budget checks, and ledger attribution.
+
 ## Core loop
 
 ```text
