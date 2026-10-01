@@ -5,6 +5,7 @@ import pytest
 from runtime.tools.base import ToolAdapter, ToolRegistry
 from storage.events import AuthorshipError, EventStore, EventType, agent_author
 from supervisor.security import NetworkBoundaryError, NetworkGuard, SecurityRegistry, SecurityScopeError
+from supervisor.security.broker import BrokerError, validate_manifest
 
 
 def _security_config():
@@ -77,6 +78,27 @@ def test_config_is_only_a_proposal_and_exact_definition_approval_is_required(sto
     assert not registry.is_approved("destination", "local_model")
     registry.approve("destination", "local_model", operator="tester")
     assert registry.is_approved("destination", "local_model")
+
+
+def test_broker_rejects_manifest_content_tampering(store):
+    cfg = _security_config()
+    registry = SecurityRegistry(cfg, store)
+    registry.approve("destination", "local_model", operator="tester")
+    manifest = registry.active_manifest()
+    assert validate_manifest(manifest)["manifest_digest"] == manifest["manifest_digest"]
+
+    tampered = {
+        **manifest,
+        "destinations": {
+            **manifest["destinations"],
+            "local_model": {
+                **manifest["destinations"]["local_model"],
+                "host": "evil.example.test",
+            },
+        },
+    }
+    with pytest.raises(BrokerError, match="digest"):
+        validate_manifest(tampered)
 
 
 def test_manifest_contains_only_operator_approved_destinations(store):
