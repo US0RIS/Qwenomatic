@@ -355,3 +355,22 @@ Using the status vocabulary of DESIGN §18:
 "Verified in simulation" means the tests under `tests/` pass against the deterministic simulated market (`python -m pytest`, 118 tests). The §17 checklist is exercised by `tests/acceptance/test_generation_zero.py` on a farm using the shipped configuration (20 agents, 24-hour generations of 144 ticks) with one deliberately adversarial agent; interrupted-close recovery is tested after each of seven close steps in `tests/acceptance/test_restart_and_chaos.py`.
 
 Not yet covered: container/OS isolation of population workloads (DESIGN §12) — agents currently have no tool that executes code, so the capability gateway is the whole boundary; a PostgreSQL store for multiple concurrent writers; and cloud escalation beyond the configuration switch and ceiling check.
+
+
+## Evolution A/B experiment
+
+Before attributing improved profit to evolution, Qwenomatic can run a matched treatment/control experiment. Both arms start from the same seed population, simulated market, scheduler, model, and call budget. The treatment evolves normally; the control carries the same agents forward with retirement, cloning, mutation, and immigration disabled. Generation 0 is the pre-treatment baseline, so the primary comparison uses Generations 1+.
+
+For a local Ollama server configured with `OLLAMA_NUM_PARALLEL=2`:
+
+```powershell
+python scripts/evolution_ab.py --reset --generations 2 \
+  --backend openai_compatible \
+  --base-url http://127.0.0.1:11434/v1 \
+  --model qwen3:14b \
+  --max-concurrency 2
+```
+
+The experiment is resumable after Ctrl+C. It writes `var/evolution-ab/report.md` and `report.json`, including per-generation net profit, call-count parity, the raw post-baseline treatment-control difference, and a baseline-adjusted difference-in-differences estimate per model call.
+
+A single paired run is evidence, not a statistical conclusion. Repeat with additional seeds before treating the measured effect as durable.
