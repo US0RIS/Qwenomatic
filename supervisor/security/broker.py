@@ -17,6 +17,8 @@ import ssl
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from storage.events.canonical import digest
+
 
 HOP_BY_HOP = {
     "connection", "proxy-connection", "keep-alive", "transfer-encoding",
@@ -27,6 +29,19 @@ MAX_BODY = 16 * 1024 * 1024
 
 class BrokerError(RuntimeError):
     pass
+
+
+def validate_manifest(manifest: dict) -> dict:
+    """Reject a manifest whose claimed digest does not match its route content."""
+    destinations = manifest.get("destinations")
+    claimed = str(manifest.get("manifest_digest", ""))
+    if not isinstance(destinations, dict) or not claimed:
+        raise BrokerError("invalid egress manifest")
+    core = {"version": int(manifest.get("version", 1)), "destinations": destinations}
+    actual = digest(core)
+    if actual != claimed:
+        raise BrokerError("egress manifest digest does not match route content")
+    return {**core, "manifest_digest": actual}
 
 
 class ThreadingUnixHTTPServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
@@ -173,9 +188,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--manifest", required=True)
     p.add_argument("--socket", default="/run/qwenomatic/egress.sock")
     args = p.parse_args(argv)
-    manifest = json.loads(Path(args.manifest).read_text("utf-8"))
-    if not isinstance(manifest.get("destinations"), dict) or not manifest.get("manifest_digest"):
-        raise SystemExit("invalid egress manifest")
+    try:
+        manifest = validate_manifest(json.loads(Path(args.manifest).read_text("utf-8")))
+    except (OSError, json.JSONDecodeError, BrokerError, ValueError) as exc:
+        raise SystemExit(f"invalid egress manifest: {exc}") from exc
     socket_path = Path(args.socket)
     socket_path.parent.mkdir(parents=True, exist_ok=True)
     try:
