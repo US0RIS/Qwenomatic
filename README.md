@@ -391,3 +391,47 @@ python scripts/evolution_ab_campaign.py --reset --pairs 2 --generations 2 `
 The campaign prints live per-arm progress and ETA, is resumable after Ctrl+C, and writes both per-pair reports and an aggregate `campaign-report.md` / `campaign-report.json`. The aggregate reports sign consistency, mean/median raw treatment effects, and baseline-adjusted difference-in-differences per model call.
 
 For an interrupted campaign, rerun the same command **without** `--reset`.
+
+
+## Performance tuning
+
+For real local-model runs, most wall time is model inference. Qwenomatic batches scheduled agents and blocks until the current inference batch completes; the local simulated tools and ledger operations are comparatively small. Use measured throughput rather than assuming that more concurrency is faster.
+
+### Profile an existing run
+
+```powershell
+python scripts\inference_profile.py --data-dir var\real-smart
+```
+
+This reports prompt/completion token distributions, per-call latency, queue latency, output throughput, and how often responses reach the token ceiling.
+
+### Optimized Ollama launcher
+
+Quit the Ollama desktop/background server first, then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_ollama_optimized.ps1 -Parallel 2
+```
+
+The launcher enables Flash Attention and uses a q8_0 KV cache. Ollama documents q8_0 KV caching as roughly half the KV-cache memory of f16 with only a very small precision loss, which can create room for additional parallel contexts.
+
+### Measure concurrency rather than guessing
+
+If the server was started with a maximum parallelism high enough to test the desired range:
+
+```powershell
+python scripts\benchmark_ollama.py --model qwen3:14b --concurrency 1,2,3,4
+```
+
+Use the fastest measured value for both Ollama's `OLLAMA_NUM_PARALLEL` and Qwenomatic's client concurrency:
+
+```powershell
+qwenomatic --data-dir var\farm run `
+  --backend openai_compatible `
+  --base-url http://127.0.0.1:11434/v1 `
+  --model qwen3:14b `
+  --max-concurrency 2 `
+  --generations 1
+```
+
+Matching these values prevents hidden server-side queueing and keeps GPU-time attribution consistent.
