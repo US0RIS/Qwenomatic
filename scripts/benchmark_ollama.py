@@ -65,10 +65,12 @@ def main() -> int:
     p.add_argument("--concurrency", default="1,2,3,4")
     p.add_argument("--requests", type=int, default=8)
     p.add_argument("--max-tokens", type=int, default=1024)
+    p.add_argument("--json", action="store_true", help="emit machine-readable JSON after the benchmark")
     args = p.parse_args()
 
     levels = [int(x) for x in args.concurrency.split(",") if x.strip()]
-    print("warming model...")
+    if not args.json:
+        print("warming model...")
     call(args.base_url, args.model, 999001, min(args.max_tokens, 256))
 
     results = []
@@ -88,15 +90,35 @@ def main() -> int:
         valid = sum(r["valid"] for r in rows)
         row = (level, aggregate_tps, median_latency, elapsed, pt, ct, valid)
         results.append(row)
-        print(
-            f"concurrency {level}: {aggregate_tps:.2f} completion tok/s aggregate | "
-            f"median latency {median_latency:.2f}s | batch {elapsed:.2f}s | JSON {valid}/{len(rows)}"
-        )
+        if not args.json:
+            print(
+                f"concurrency {level}: {aggregate_tps:.2f} completion tok/s aggregate | "
+                f"median latency {median_latency:.2f}s | batch {elapsed:.2f}s | JSON {valid}/{len(rows)}"
+            )
 
     best = max(results, key=lambda r: r[1])
-    print()
-    print(f"FASTEST CLIENT CONCURRENCY: {best[0]} ({best[1]:.2f} completion tok/s aggregate)")
-    print("Use that value for Qwenomatic --max-concurrency, but do not exceed the Ollama server's OLLAMA_NUM_PARALLEL.")
+    if args.json:
+        print(json.dumps({
+            "model": args.model,
+            "results": [
+                {
+                    "concurrency": r[0],
+                    "aggregate_completion_tokens_per_second": round(r[1], 6),
+                    "median_latency_seconds": round(r[2], 6),
+                    "batch_seconds": round(r[3], 6),
+                    "prompt_tokens": r[4],
+                    "completion_tokens": r[5],
+                    "valid_json": r[6],
+                }
+                for r in results
+            ],
+            "best_concurrency": best[0],
+            "best_aggregate_completion_tokens_per_second": round(best[1], 6),
+        }))
+    else:
+        print()
+        print(f"FASTEST CLIENT CONCURRENCY: {best[0]} ({best[1]:.2f} completion tok/s aggregate)")
+        print("Use that value for Qwenomatic --max-concurrency, but do not exceed the Ollama server's OLLAMA_NUM_PARALLEL.")
     return 0
 
 
