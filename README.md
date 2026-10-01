@@ -364,10 +364,10 @@ Before attributing improved profit to evolution, Qwenomatic can run a matched tr
 For a local Ollama server configured with `OLLAMA_NUM_PARALLEL=2`:
 
 ```powershell
-python scripts/evolution_ab.py --reset --generations 2 \
-  --backend openai_compatible \
-  --base-url http://127.0.0.1:11434/v1 \
-  --model qwen3:14b \
+python scripts/evolution_ab.py --reset --generations 2 `
+  --backend openai_compatible `
+  --base-url http://127.0.0.1:11434/v1 `
+  --model qwen3:14b `
   --max-concurrency 2
 ```
 
