@@ -7,10 +7,15 @@ channel to the world is the capability gateway.
 
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import random
+
+try:
+    import fcntl  # POSIX
+except ImportError:  # pragma: no cover - exercised on Windows
+    fcntl = None  # type: ignore[assignment]
+    import msvcrt
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -146,12 +151,27 @@ class Supervisor:
 
     # ================================================================ setup
     def _acquire_lock(self):
-        fh = open(self.data_dir / "supervisor.lock", "w")
+        """Acquire the single-supervisor process lock on POSIX or Windows."""
+        path = self.data_dir / "supervisor.lock"
+        # Windows byte-range locking requires at least one byte to exist.
+        fh = open(path, "a+", encoding="utf-8")
+        fh.seek(0, os.SEEK_END)
+        if fh.tell() == 0:
+            fh.write(" ")
+            fh.flush()
         try:
-            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if fcntl is not None:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError as exc:
             fh.close()
-            raise SupervisorLocked(f"another supervisor holds {self.data_dir / 'supervisor.lock'}") from exc
+            raise SupervisorLocked(f"another supervisor holds {path}") from exc
+
+        # PID is diagnostic only; the OS lock is authoritative.
+        fh.seek(0)
+        fh.truncate()
         fh.write(str(os.getpid()))
         fh.flush()
         return fh
@@ -159,9 +179,15 @@ class Supervisor:
     def close(self) -> None:
         self.store.close()
         if self._lock_fh:
-            fcntl.flock(self._lock_fh, fcntl.LOCK_UN)
-            self._lock_fh.close()
-            self._lock_fh = None
+            try:
+                if fcntl is not None:
+                    fcntl.flock(self._lock_fh, fcntl.LOCK_UN)
+                else:
+                    self._lock_fh.seek(0)
+                    msvcrt.locking(self._lock_fh.fileno(), msvcrt.LK_UNLCK, 1)
+            finally:
+                self._lock_fh.close()
+                self._lock_fh = None
 
     def _rebuild_state(self) -> None:
         self.state.reset()
