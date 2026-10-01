@@ -49,6 +49,8 @@ class OpenAICompatibleBackend(InferenceBackend):
         }
         if self.json_mode:
             body["response_format"] = {"type": "json_object"}
+        if "seed" in request.metadata:
+            body["seed"] = int(request.metadata["seed"])
         started = time.perf_counter()
         data = self._post("/chat/completions", body)
         wall = time.perf_counter() - started
