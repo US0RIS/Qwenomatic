@@ -49,9 +49,9 @@ class OpenAICompatibleBackend(InferenceBackend):
         }
         if self.json_mode:
             body["response_format"] = {"type": "json_object"}
-        started = time.monotonic()
+        started = time.perf_counter()
         data = self._post("/chat/completions", body)
-        wall = time.monotonic() - started
+        wall = time.perf_counter() - started
         text = data["choices"][0]["message"].get("content") or ""
         usage = data.get("usage", {})
         prompt_tokens = int(usage.get("prompt_tokens", 0))
