@@ -31,7 +31,8 @@ Reply with exactly one JSON object and nothing else:
 {{"thought": "<short reasoning>", "actions": [{{"tool": "<name>", "args": {{...}}}}], "memory": "<note to keep>"}}
 Use at most {max_actions} actions.
 
-/no_think"""
+
+Think carefully before acting. You may use Qwen's thinking mode, but always finish with the required JSON object within the available token budget."""
 
 
 def build_messages(
