@@ -23,6 +23,8 @@ Every experiment must preserve all of the following.
 9. **No metric substitution after the run begins.** Primary metrics, guardrails, stopping rules, and promotion thresholds are frozen before treatment starts.
 10. **No real-money promotion from simulation alone.** Any feature that affects real capital, customer interaction, payouts, fraud, or external accounts must be re-tested against real-world evidence before broad deployment.
 11. **No executable-code path between population agents.** Agent-authored code is data until the supervisor builds, validates, promotes, hashes, and explicitly instantiates it. No agent may cause itself or another agent to execute unpromoted code.
+12. **Cheap paths never bypass enforcement.** Small-model routing, cached/autopilot actions, replay, speculative execution, or any future fast path must traverse the exact same supervisor capability gateway, policy engine, budget checks, and economic attribution path as the full model.
+13. **Prefer invariant/damage detection over signature-only detection.** Enumerated known-bad triggers may supplement but never replace uncertainty/OOD signals and trusted outcome-distribution monitoring when a fast path can silently degrade.
 
 ---
 
@@ -272,28 +274,37 @@ Preferred crossover blocks:
 
 **Status:** proposed
 
-**Hypothesis:** Routing low-novelty decisions to a smaller model increases profit/GPU-hour without materially harming economic performance.
+**Hypothesis:** Routing genuinely routine decisions to a smaller model increases profit/GPU-hour without materially harming economic performance.
 
-**Treatment:** Supervisor routes low-novelty steps to a smaller local model. Escalate to the main model when:
-- segment changes;
-- price crosses a configured band;
-- workflow changes;
-- tool class changes;
-- spend increases materially;
-- model uncertainty exceeds threshold;
-- recent evidence contradicts the current strategy.
+**Treatment:** Supervisor routes a step to the small model only when a supervisor-owned cheap-path classifier says the situation is inside the previously validated operating region.
+
+Routing must not rely only on an enumerated list of known-important events. It must combine:
+
+1. **Known-event escalation:** segment/price/workflow/tool/spend changes and other explicitly important classes.
+2. **Confidence escalation:** escalate when the cheap model's calibrated confidence is low or disagreement with a reference model/ensemble exceeds threshold.
+3. **Out-of-distribution escalation:** escalate when current state/context is sufficiently unlike states on which cheap-path behavior was previously validated.
+4. **Damage/outcome trigger:** escalate when realized value per action, conversion quality, refund rate, or another trusted outcome metric drifts adversely even if no discrete event fired.
 
 **Control:** main model for every inference step.
 
-**Randomization:** agent-level.
+**Randomization:** dedicated agent-level A/B. This experiment must not be bundled into the evolution-vs-control experiment; both arms of any evolution experiment must use identical routing policy.
 
-**Primary metric:** net realized profit per GPU-hour.
+**Primary metrics:**
+- net realized profit;
+- net realized profit per GPU-hour.
 
-**Secondary metrics:** net profit/call, malformed rate, escalation rate, model tokens.
+**Secondary metrics:** profit/call, malformed rate, escalation rate, prompt/completion tokens, independent-oracle mistake rate, long-horizon strategy drift.
 
-**Guardrails:** any materially risky or novel action routes to the main model.
+**Evaluation window:** at least one full generation. Immediate action correctness is insufficient because routing errors may surface later as strategy drift.
 
-**Promotion:** >= 20% improvement in profit/GPU-hour with no material reduction in net profit per exposure across at least 2 trials.
+**Independent oracle:** mistake rate is determined from supervisor/adaptor-observed outcomes and predeclared decision-quality checks, never agent self-report.
+
+**Guardrails:**
+- every small-model action passes through the exact same capability gateway and policy engine as a main-model action;
+- no model tier changes budget, scoring, policy, credential scope, or tool authority;
+- OOD/uncertainty/drift triggers are supervisor-owned and immutable to agents.
+
+**Promotion:** >= 20% improvement in profit/GPU-hour, positive or non-inferior net profit over a full generation, and no material increase in independent-oracle mistakes across at least 2 trials.
 
 **Rollback:** route all steps to the main model.
 
@@ -303,30 +314,39 @@ Preferred crossover blocks:
 
 **Status:** proposed
 
-**Hypothesis:** Replaying stable, already-approved profitable actions without inference can dramatically reduce GPU usage.
+**Prerequisite:** a validated outcome-drift detector must exist before autopilot may touch real money.
 
-**Treatment:** Supervisor may replay a previously approved action template when a supervisor-owned stability predicate is true.
+**Hypothesis:** Replaying stable, already-approved profitable actions without inference can dramatically reduce GPU usage while preserving economic performance.
 
-Possible stability conditions:
-- no recent market-shift signal;
-- recent conversion/refund performance remains within expected bounds;
-- no strategy/price/segment change;
-- fixed maximum replay count since last model review.
+**Treatment:** Supervisor may replay a previously approved action template only while a supervisor-owned stability predicate remains true.
 
-**Control:** model inference every scheduled step.
+The stability predicate must not rely only on enumerated incident signatures. It combines:
 
-**Randomization:** agent-level.
+1. **Known-event invalidation:** strategy/price/segment/tool/spend changes, fraud/policy events, and other explicit triggers.
+2. **Distribution-drift detection:** trusted realized outcomes are monitored for gradual change, including declining value per action, conversion deterioration, refund/chargeback drift, and spend without matching return.
+3. **OOD/state-distance detection:** autopilot stops when the current state is sufficiently unlike the validated states in which the cached action was safe.
+4. **Maximum blind interval:** a hard cap on replay count/time between fresh model reviews, regardless of apparent stability.
 
-**Primary metric:** net realized profit per GPU-hour.
+**Control / counterfactual design:** Do not compare autopilot-enabled agents against the whole population, because autopilot eligibility pre-selects stable successful agents. Use within-agent randomized or matched counterfactual windows: for an eligible agent, randomly assign otherwise-equivalent opportunities/windows to autopilot vs fresh-model execution where practical, or use a predeclared crossover design.
 
-**Secondary metrics:** net profit per opportunity, avoided model calls, time-to-detect regime change.
+**Primary metrics:**
+- net realized profit per GPU-hour;
+- net realized profit per opportunity/action.
+
+**Secondary metrics:** avoided model calls, drift-detection delay, counterfactual profit difference, refund/chargeback rate, spend efficiency.
 
 **Guardrails:**
+- every replayed action traverses the exact same capability gateway and policy engine as a freshly generated action;
 - agent cannot extend its own autopilot window;
-- periodic forced model review;
-- immediate invalidation on regime-shift/fraud/policy signal.
+- hard per-generation autopilot spend ceiling;
+- fresh review required before crossing that ceiling;
+- immediate invalidation on policy/fraud signal;
+- gradual drift alone is sufficient to terminate autopilot;
+- cached decisions never bypass budget, scoring, policy, or credential checks.
 
-**Promotion:** significant compute reduction with non-inferior economic performance in at least 2 trials.
+**Promotion:** substantial compute reduction with non-inferior within-agent economic performance across at least 2 controlled trials.
+
+**Real-money promotion:** prohibited until the drift detector has passed dedicated regime-drift tests, including slow monotonic degradation that never crosses a single abrupt threshold.
 
 **Rollback:** disable replay; next step returns to model inference.
 
@@ -336,27 +356,47 @@ Possible stability conditions:
 
 **Status:** proposed
 
+This experiment is split into two subfeatures because only one is behaviorally free.
+
+### E06A — Byte-identical prefix reuse
+
 **Class:** infrastructure benchmark
 
-**Hypothesis:** Making static prompt portions byte-identical improves inference-server prefix-cache reuse and throughput.
+**Hypothesis:** Reusing an already-identical static prefix improves inference-server cache reuse without changing model computation.
 
-**Treatment:**
-- deterministic tool ordering;
-- deterministic schema ordering;
-- static system-policy wording;
-- agent-specific content moved after the largest possible shared prefix.
+**Treatment:** Make existing static content deterministically serialized and byte-identical where semantics/order are already unchanged.
 
-**Control:** current prompt construction.
+Examples:
+- deterministic tool ordering where order is already semantically fixed;
+- deterministic JSON/schema serialization;
+- stable whitespace and static policy wording;
+- ensure no per-call IDs/timestamps/rotating data enter the cacheable prefix.
 
-**Primary metric:** aggregate completion throughput and wall-clock generation time.
+**Control:** current serialization of the same prompt structure.
 
-**Secondary metrics:** prompt-evaluation time, cache hit behavior where observable, malformed rate.
+**Primary metric:** aggregate throughput / prompt-prefill latency.
 
-**Guardrails:** generated decisions must remain behaviorally equivalent within expected stochastic variation.
+**Secondary metrics:** cache hits where observable, malformed rate.
 
-**Promotion:** measurable throughput/latency improvement with no validity/safety regression.
+**Promotion:** measurable efficiency improvement with no output-validity regression.
 
-**Rollback:** restore previous prompt formatter.
+### E06B — Prompt reordering for a larger cacheable prefix
+
+**Class:** behavioral validation + infrastructure benchmark
+
+Moving schemas, tool definitions, instructions, or task-specific context relative to one another is treated as a real prompt change, not a free cache optimization.
+
+**Treatment:** reordered prompt intended to enlarge the common prefix.
+
+**Control:** original prompt order.
+
+**Primary metrics:** fixed-seed decision equivalence / independent-oracle decision quality, plus throughput.
+
+**Guardrails:** no promotion based solely on speed. Any meaningful behavior shift requires the same controlled validation standard as other agent-behavior changes.
+
+**Promotion:** throughput improvement plus no material degradation in decision quality across fixed-seed and randomized validation.
+
+**Rollback:** restore previous prompt formatter/order.
 
 ---
 
