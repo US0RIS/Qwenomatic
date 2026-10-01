@@ -4,9 +4,11 @@ The lab below writes the same supervisor/adapter-authored events a farm
 writes, so the controller is exercised through its real ledger harvest.
 """
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from helpers import genotype
 from storage.events import EventStore, EventType, FarmState, adapter_author
@@ -217,3 +219,10 @@ def test_restart_restores_anchor_cadence_and_drift_state(tmp_path):
         assert getattr(restored, f) == getattr(live, f), f
     assert [o.to_dict() for o in restored.history] == [o.to_dict() for o in live.history]
     assert [o.to_dict() for o in restored.since_anchor] == [o.to_dict() for o in live.since_anchor]
+
+
+def test_adaptive_is_opt_in_until_e13_is_promoted():
+    """Flip this only together with a promotion receipt for EXPERIMENTS.md E13."""
+    farm = yaml.safe_load((Path(__file__).resolve().parents[2] / "config" / "farm.yaml").read_text())
+    assert farm["runtime"]["thinking"]["mode"] == "server"
+    assert ThinkingController(None, FarmState(), {}).mode == "server"

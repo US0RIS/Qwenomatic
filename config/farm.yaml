@@ -78,7 +78,9 @@ runtime:
   # (supervisor/thinking.py, EXPERIMENTS.md E13). Unlisted knobs use the
   # defaults in supervisor/thinking.py.
   thinking:
-    mode: adaptive             # server (no control sent) | on | off | adaptive
+    # server (no control sent; the default) | on | off | adaptive. `adaptive` stays
+    # opt-in (here or `run --thinking-mode adaptive`) until EXPERIMENTS.md E13 is promoted.
+    mode: server
     deep_every: 8              # HARD CADENCE: a deep review at least every 8 steps (<= 7 thinking-off
                                # steps in a row). Detectors can force earlier reviews, never later ones.
     first_steps: 1             # known-event triggers (supplemental): first steps, every deep_every-th

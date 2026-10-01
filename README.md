@@ -414,9 +414,9 @@ With hybrid reasoning models such as `qwen3:14b`, thinking tokens can dominate w
 
 | `mode` | Behavior |
 |---|---|
-| `adaptive` (default) | A step may skip thinking only while the agent stays inside the operating region validated at its last deep step (see below). |
+| `server` (default) | Send no control; the server's default applies. |
+| `adaptive` (opt-in) | A step may skip thinking only while the agent stays inside the operating region validated at its last deep step (see below). |
 | `on` / `off` | Every step thinks / no step thinks. |
-| `server` | Send no control; the server's default applies. |
 
 In `adaptive` mode, in order of authority:
 
@@ -438,7 +438,7 @@ The decision changes only the inference request. Every mode reaches the world th
 - `template_kwargs`: `chat_template_kwargs.enable_thinking` (llama.cpp with `--jinja`, vLLM)
 - `both` (default)
 
-**Status: implemented-but-unverified.** It has not run against a real Qwen3 server, and the economic A/B (adaptive vs always-on) defined in [EXPERIMENTS.md E13](EXPERIMENTS.md) has not been run. `run --thinking-mode adaptive|on` selects an arm.
+**Status: implemented-but-unverified.** It has not run against a real Qwen3 server, and the economic A/B (adaptive vs always-on) defined in [EXPERIMENTS.md E13](EXPERIMENTS.md) has not been run. Until E13 is promoted, `adaptive` is opt-in: set `runtime.thinking.mode: adaptive` or pass `run --thinking-mode adaptive`. `run --thinking-mode adaptive|on` selects an A/B arm.
 
 ### Optimized Ollama launcher
 

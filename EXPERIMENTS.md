@@ -578,6 +578,8 @@ Moving schemas, tool definitions, instructions, or task-specific context relativ
 
 **Hypothesis:** Letting routine steps skip Qwen3 thinking, but only while the agent stays inside a supervisor-validated operating region, raises profit per GPU-hour without materially harming net realized profit.
 
+**Default until promoted:** the shipped `config/farm.yaml` uses `mode: server` (no thinking control sent). `adaptive` is opt-in and becomes the default only after this experiment is promoted (`tests/unit/test_thinking_controller.py` checks this).
+
 **Treatment:** `runtime.thinking.mode: adaptive` (`supervisor/thinking.py`). Each step, the supervisor decides from ledger state alone; model text, confidence and claims are never read. In order of authority:
 
 1. **Hard cadence (primary bound):** a deep (thinking-on) review at least every `deep_every` steps (8), i.e. at most 7 thinking-off steps in a row. A failed or malformed deep step does not reset it. No detector reading can lengthen it.
