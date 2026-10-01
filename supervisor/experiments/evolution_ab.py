@@ -325,3 +325,87 @@ def write_report(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     ]
     md_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
     return json_path, md_path
+
+
+def aggregate_reports(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate independent paired trials without pretending small-N is certainty."""
+    if not reports:
+        raise ValueError("at least one paired report is required")
+
+    deltas = [float(r["primary_effect"]["delta_net_realized"]) for r in reports]
+    dids = [float(r["primary_effect"]["difference_in_differences_net_per_call"]) for r in reports]
+    ordered = sorted(deltas)
+    mid = len(ordered) // 2
+    median = ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+    ordered_did = sorted(dids)
+    mid_did = len(ordered_did) // 2
+    median_did = (
+        ordered_did[mid_did]
+        if len(ordered_did) % 2
+        else (ordered_did[mid_did - 1] + ordered_did[mid_did]) / 2
+    )
+    return {
+        "pairs": len(reports),
+        "positive_raw_delta_pairs": sum(d > 0 for d in deltas),
+        "positive_baseline_adjusted_pairs": sum(d > 0 for d in dids),
+        "mean_raw_delta_net": round(sum(deltas) / len(deltas), 6),
+        "median_raw_delta_net": round(median, 6),
+        "mean_difference_in_differences_net_per_call": round(sum(dids) / len(dids), 9),
+        "median_difference_in_differences_net_per_call": round(median_did, 9),
+        "all_call_counts_equal": all(
+            bool(r["primary_effect"]["all_generation_call_counts_equal"]) for r in reports
+        ),
+        "pair_effects": [
+            {
+                "pair": i + 1,
+                "raw_delta_net": round(deltas[i], 6),
+                "difference_in_differences_net_per_call": round(dids[i], 9),
+                "baseline_delta_net": round(float(reports[i]["baseline_balance"]["delta_net"]), 6),
+            }
+            for i in range(len(reports))
+        ],
+    }
+
+
+def write_campaign_report(root: Path, reports: list[dict[str, Any]]) -> tuple[Path, Path]:
+    summary = aggregate_reports(reports)
+    payload = {"summary": summary, "pairs": reports}
+    json_path = root / "campaign-report.json"
+    md_path = root / "campaign-report.md"
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    rows = [
+        "# Qwenomatic Evolution A/B Campaign",
+        "",
+        f"Paired trials completed: {summary['pairs']}",
+        "",
+        "| Pair | Raw post-baseline delta | Baseline-adjusted delta/call | Baseline imbalance |",
+        "|---:|---:|---:|---:|",
+    ]
+    for p in summary["pair_effects"]:
+        rows.append(
+            f"| {p['pair']} | {p['raw_delta_net']:+.2f} | "
+            f"{p['difference_in_differences_net_per_call']:+.6f} | "
+            f"{p['baseline_delta_net']:+.2f} |"
+        )
+    rows += [
+        "",
+        "## Aggregate",
+        "",
+        f"- Positive raw-delta pairs: {summary['positive_raw_delta_pairs']}/{summary['pairs']}",
+        f"- Positive baseline-adjusted pairs: "
+        f"{summary['positive_baseline_adjusted_pairs']}/{summary['pairs']}",
+        f"- Mean raw post-baseline delta: {summary['mean_raw_delta_net']:+.2f}",
+        f"- Median raw post-baseline delta: {summary['median_raw_delta_net']:+.2f}",
+        f"- Mean baseline-adjusted delta/call: "
+        f"{summary['mean_difference_in_differences_net_per_call']:+.6f}",
+        f"- Median baseline-adjusted delta/call: "
+        f"{summary['median_difference_in_differences_net_per_call']:+.6f}",
+        f"- Equal call counts in every paired run: {summary['all_call_counts_equal']}",
+        "",
+        "Interpretation: repeated paired trials reduce the chance that one lucky model trajectory is mistaken "
+        "for an evolutionary effect. This is still an experiment in a simulated market, not evidence of "
+        "real-world profitability.",
+    ]
+    md_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return json_path, md_path
