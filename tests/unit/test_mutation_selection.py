@@ -95,3 +95,28 @@ def test_lineage_cap_and_min_lineages():
     nxt = [lin[a] for a in plan["survivors"]] + [o.get("lineage_id") for o in plan["offspring"] if o["parent_id"]]
     assert nxt.count("L") <= plan["lineage_cap"] == 8
     assert len({lin[a] for a in plan["survivors"]}) >= min(EVO["min_lineages"], 4)
+
+
+def test_reasoning_budget_can_mutate_within_bounds():
+    import random
+    from runtime.agent import random_genotype
+    from supervisor.config import FarmConfig
+    from supervisor.evolution.mutation import MutationEngine
+
+    cfg = FarmConfig.load()
+    g = random_genotype(random.Random(1), cfg.farm["mutation"], list(cfg.segments))
+    assert g["planning_parameters"]["max_tokens"] == 4096
+    engine = MutationEngine(
+        cfg.farm["mutation"],
+        segments=list(cfg.segments),
+        granted_tools=sorted(cfg.policy.get("capabilities", {})),
+        max_mutations=2,
+    )
+    seen = set()
+    for seed in range(100):
+        child, diffs = engine.mutate(g, random.Random(seed))
+        for d in diffs:
+            if d.path == "planning_parameters.max_tokens":
+                seen.add(child["planning_parameters"]["max_tokens"])
+    assert seen
+    assert seen <= {512, 1024, 2048, 4096, 8192}
