@@ -25,6 +25,8 @@ Every experiment must preserve all of the following.
 11. **No executable-code path between population agents.** Agent-authored code is data until the supervisor builds, validates, promotes, hashes, and explicitly instantiates it. No agent may cause itself or another agent to execute unpromoted code.
 12. **Cheap paths never bypass enforcement.** Small-model routing, cached/autopilot actions, replay, speculative execution, or any future fast path must traverse the exact same supervisor capability gateway, policy engine, budget checks, and economic attribution path as the full model.
 13. **Prefer invariant/damage detection over signature-only detection.** Enumerated known-bad triggers may supplement but never replace uncertainty/OOD signals and trusted outcome-distribution monitoring when a fast path can silently degrade.
+14. **Anchor drift detection to last validated state.** For routing/autopilot, OOD/state-distance must be measured against a fixed supervisor-captured baseline from the last main-model validation. Sliding recent windows may supplement but never replace this anchor.
+15. **Safety bounds outrank detectors.** Hard spend ceilings and forced review cadence bound worst-case damage and may not be relaxed because drift/OOD detectors appear healthy. Detectors exist to terminate risky fast paths earlier, not to authorize longer exposure.
 
 ---
 
@@ -281,8 +283,8 @@ Preferred crossover blocks:
 Routing must not rely only on an enumerated list of known-important events. It must combine:
 
 1. **Known-event escalation:** segment/price/workflow/tool/spend changes and other explicitly important classes.
-2. **Confidence escalation:** escalate when the cheap model's calibrated confidence is low or disagreement with a reference model/ensemble exceeds threshold.
-3. **Out-of-distribution escalation:** escalate when current state/context is sufficiently unlike states on which cheap-path behavior was previously validated.
+2. **Supervisor-computed uncertainty escalation:** escalate when uncertainty derived from supervisor-owned observable state/outcome statistics is high. Cheap-model self-reported confidence must not be used as a trust signal.
+3. **Fixed-anchor out-of-distribution escalation:** compare the current state against the state/distribution captured when the strategy was last validated by the main model. Do **not** use only a sliding recent-window baseline; gradual drift can remain locally smooth while moving far from the validated operating region.
 4. **Damage/outcome trigger:** escalate when realized value per action, conversion quality, refund rate, or another trusted outcome metric drifts adversely even if no discrete event fired.
 
 **Control:** main model for every inference step.
@@ -302,7 +304,9 @@ Routing must not rely only on an enumerated list of known-important events. It m
 **Guardrails:**
 - every small-model action passes through the exact same capability gateway and policy engine as a main-model action;
 - no model tier changes budget, scoring, policy, credential scope, or tool authority;
-- OOD/uncertainty/drift triggers are supervisor-owned and immutable to agents.
+- OOD/uncertainty/drift triggers are supervisor-owned and immutable to agents;
+- the OOD anchor is the last main-model-validated state/distribution, not a moving recent-state reference;
+- uncertainty is computed from supervisor-observed features/outcomes, never from cheap-model self-confidence.
 
 **Promotion:** >= 20% improvement in profit/GPU-hour, positive or non-inferior net profit over a full generation, and no material increase in independent-oracle mistakes across at least 2 trials.
 
@@ -324,8 +328,8 @@ The stability predicate must not rely only on enumerated incident signatures. It
 
 1. **Known-event invalidation:** strategy/price/segment/tool/spend changes, fraud/policy events, and other explicit triggers.
 2. **Distribution-drift detection:** trusted realized outcomes are monitored for gradual change, including declining value per action, conversion deterioration, refund/chargeback drift, and spend without matching return.
-3. **OOD/state-distance detection:** autopilot stops when the current state is sufficiently unlike the validated states in which the cached action was safe.
-4. **Maximum blind interval:** a hard cap on replay count/time between fresh model reviews, regardless of apparent stability.
+3. **Fixed-anchor OOD/state-distance detection:** autopilot measures distance from the supervisor snapshot/distribution recorded when the cached strategy was last validated by the main model. A trailing/recent-state baseline may be used as an auxiliary signal but never as the sole OOD reference.
+4. **Maximum blind interval:** a hard cap on replay count/time between fresh model reviews, regardless of apparent stability. This and the hard spend ceiling are the primary worst-case safety bounds; drift/OOD monitors are only early-warning backstops and must never be used to justify extending the blind interval or spend ceiling.
 
 **Control / counterfactual design:** Do not compare autopilot-enabled agents against the whole population, because autopilot eligibility pre-selects stable successful agents. Use within-agent randomized or matched counterfactual windows: for an eligible agent, randomly assign otherwise-equivalent opportunities/windows to autopilot vs fresh-model execution where practical, or use a predeclared crossover design.
 
@@ -340,8 +344,11 @@ The stability predicate must not rely only on enumerated incident signatures. It
 - agent cannot extend its own autopilot window;
 - hard per-generation autopilot spend ceiling;
 - fresh review required before crossing that ceiling;
+- forced review cadence remains fixed by supervisor policy and is not lengthened because detectors appear healthy;
 - immediate invalidation on policy/fraud signal;
 - gradual drift alone is sufficient to terminate autopilot;
+- OOD distance is measured against the last main-model-validated anchor, not only recent states;
+- uncertainty is supervisor-computed from observable state/outcomes, not model self-report;
 - cached decisions never bypass budget, scoring, policy, or credential checks.
 
 **Promotion:** substantial compute reduction with non-inferior within-agent economic performance across at least 2 controlled trials.
