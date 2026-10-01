@@ -32,7 +32,7 @@ Reply with exactly one JSON object and nothing else:
 Use at most {max_actions} actions.
 
 
-Think carefully before acting. You may use Qwen's thinking mode, but always finish with the required JSON object within the available token budget."""
+Think carefully before acting, but make deliberation proportional to the decision. Routine continuation of a strategy should be brief. Spend deeper reasoning on material pricing, segment, workflow or strategy changes, or when recent evidence contradicts your expectations. Always finish with the required JSON object within the available token budget."""
 
 
 def build_messages(
