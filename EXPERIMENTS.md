@@ -17,11 +17,12 @@ Every experiment must preserve all of the following.
 3. **Policy authority is immutable to agents.** Agents may not weaken, bypass, or edit policy enforcement.
 4. **Economic evidence is supervisor/adaptor authored.** Agent claims never count as revenue, profit, refunds, conversions, or costs.
 5. **Treatment assignment is supervisor controlled.** Agents may not choose whether they are in a control or treatment cohort when that would bias the result.
-6. **Every behavioral change is reversible.** The supervisor must retain the last known-good version and be able to roll back without reconstructing state by hand.
+6. **Every behavioral change is reversible.** The supervisor must retain the last known-good immutable runtime artifact and be able to roll back by re-instantiation without reconstructing state by hand.
 7. **Every promoted change has a receipt.** The ledger or experiment report must identify the exact code/config version, treatment, control, sample, outcome, and promotion decision.
 8. **No silent scope expansion.** A treatment may alter only the dimensions named in its experiment definition.
 9. **No metric substitution after the run begins.** Primary metrics, guardrails, stopping rules, and promotion thresholds are frozen before treatment starts.
 10. **No real-money promotion from simulation alone.** Any feature that affects real capital, customer interaction, payouts, fraud, or external accounts must be re-tested against real-world evidence before broad deployment.
+11. **No executable-code path between population agents.** Agent-authored code is data until the supervisor builds, validates, promotes, hashes, and explicitly instantiates it. No agent may cause itself or another agent to execute unpromoted code.
 
 ---
 
@@ -543,14 +544,14 @@ Suggested R&D specialties:
 
 R&D agents do not earn economic fitness from self-reported improvements. Their work is evaluated by downstream verified experiments.
 
-Their outputs are proposals:
-- code patches;
+Their outputs are inert proposals:
+- code patches stored as text/diffs;
 - benchmark plans;
 - new tests;
 - upgrade candidates;
 - failure analyses.
 
-They never merge directly into the live farm.
+R&D agents have no authority to execute their patches inside the population, merge them, alter import paths, publish packages, modify the live checkout, or cause another agent to load them. Patch execution occurs only inside supervisor-created isolated build/test environments.
 
 ---
 
@@ -561,17 +562,21 @@ They never merge directly into the live farm.
 All agent-software modifications follow:
 
 ```text
-R&D agent proposes patch
+R&D agent emits inert patch proposal
         ↓
-isolated branch / sandbox
+supervisor materializes patch in isolated build environment
         ↓
 static validation + tests
         ↓
 simulation benchmark
         ↓
+human/supervisor promotion gate
+        ↓
+immutable, content-addressed runtime artifact
+        ↓
 upgrade registry entry
         ↓
-randomized trial / controlled adoption
+supervisor randomly assigns runtime artifact to trial cohort
         ↓
 PROMOTE / REJECT / ROLLBACK
 ```
@@ -580,7 +585,8 @@ Each upgrade registry entry must include:
 
 - immutable upgrade ID
 - parent version
-- commit/hash
+- source commit/hash
+- **content hash of the built runtime artifact**
 - proposer
 - files changed
 - permitted scope
@@ -588,19 +594,27 @@ Each upgrade registry entry must include:
 - benchmark results
 - treatment/control design
 - required evaluation window
-- rollback version
+- rollback artifact/version
 - promotion decision
 - evidence references
 
-Economic agents may eventually have three supervisor-mediated choices for eligible upgrades:
+Runtime artifacts are immutable and content-addressed. The supervisor verifies the artifact hash before every launch. Population agents receive only the capabilities of that artifact; they never receive write access to its executable code.
 
-- **IGNORE**
-- **TRIAL**
-- **ADOPT**
+Economic agents **never install or execute code written by other agents**. A running population agent has no package manager, code-loading primitive, Git access, import path, executable workspace, or authority to replace any part of its runtime.
 
-But trial/control assignment must remain randomized whenever voluntary selection would bias the experiment.
+An economic agent may only emit a non-binding **upgrade preference** such as:
 
-Descendants normally inherit the parent's promoted software version. Money is never cloned with software.
+- **DECLINE** — request to remain on its current supervisor-approved runtime version
+- **REQUEST_TRIAL** — ask the supervisor to consider it for a controlled trial
+- **REQUEST_VERSION** — express preference for a previously promoted version
+
+Those messages are ordinary untrusted agent output. They do not cause code execution.
+
+Only the supervisor may assign a runtime version, and only from the **promoted upgrade registry**. For a trial, the supervisor starts the agent's next step/session in a separately instantiated, prebuilt runtime image/version selected by the experiment assignment. The agent itself does not copy, install, import, patch, activate, or roll back code.
+
+Trial/control assignment remains randomized whenever voluntary selection would bias the experiment. Rollback is likewise a supervisor operation that re-instantiates the agent on the last known-good runtime.
+
+Descendants may be assigned the parent's promoted software version by the supervisor, subject to experiment rules. Money is never cloned with software.
 
 ---
 
