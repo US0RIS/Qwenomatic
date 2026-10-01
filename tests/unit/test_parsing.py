@@ -30,3 +30,18 @@ def test_claims_are_extracted_not_trusted():
 def test_malformed(text):
     with pytest.raises(MalformedOutput):
         parse_output(text, max_actions=3)
+
+
+def test_qwen_agent_prompt_disables_thinking():
+    from runtime.agent.prompts import build_messages
+
+    genotype = {
+        "strategy_prompt": "Test a legitimate offer.",
+        "workflow": "offer_first",
+        "target": {"segment": "local-services"},
+        "pricing_parameters": {"price": 19.0},
+        "tool_preferences": ["market.offer"],
+        "planning_parameters": {"temperature": 0.2, "max_tokens": 512, "survey_every": 4},
+    }
+    messages = build_messages(genotype, [], [], [], 0, 3)
+    assert messages[0]["content"].rstrip().endswith("/no_think")
