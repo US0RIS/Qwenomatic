@@ -24,6 +24,7 @@ class NetworkAttestation:
     blocked_probe: str
     broker_socket: str
     manifest_digest: str
+    unapproved_route_denied: bool
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -32,6 +33,7 @@ class NetworkAttestation:
             "blocked_probe": self.blocked_probe,
             "broker_socket": self.broker_socket,
             "manifest_digest": self.manifest_digest,
+            "unapproved_route_denied": self.unapproved_route_denied,
         }
 
 
@@ -142,10 +144,24 @@ class NetworkGuard:
                 "egress broker manifest does not match the ledger-approved security scopes"
             )
 
+        # Prove that possession of the broker socket is not a generic proxy:
+        # a route absent from the operator-approved manifest must be rejected.
+        try:
+            denied_status, _ = _unix_http_get(
+                broker_socket, "/route/__qwenomatic_unapproved_probe__/probe"
+            )
+        except Exception as exc:
+            raise NetworkBoundaryError(f"cannot probe broker deny-by-default behavior: {exc}") from exc
+        if denied_status != 403:
+            raise NetworkBoundaryError(
+                f"egress broker did not reject an unapproved named route (HTTP {denied_status})"
+            )
+
         return NetworkAttestation(
             mode="container_none",
             interfaces=interfaces,
             blocked_probe=f"{probe_host}:{probe_port}",
             broker_socket=broker_socket,
             manifest_digest=actual_digest,
+            unapproved_route_denied=True,
         )
