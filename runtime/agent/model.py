@@ -36,6 +36,7 @@ MUTABLE_PATHS = frozenset({
     "tool_preferences",
     "planning_parameters.temperature",
     "planning_parameters.survey_every",
+    "planning_parameters.max_tokens",
 })
 
 STATUSES = ("queued", "running", "paused", "retired", "disqualified")
@@ -96,7 +97,8 @@ def validate_genotype(
         errors.append("temperature out of bounds")
     if not sb["min"] <= int(pp["survey_every"]) <= sb["max"]:
         errors.append("survey_every out of bounds")
-    if not 64 <= int(pp["max_tokens"]) <= 4096:
+    mb = mutation_cfg.get("max_tokens", {"min": 256, "max": 8192})
+    if not int(mb.get("min", 256)) <= int(pp["max_tokens"]) <= int(mb.get("max", 8192)):
         errors.append("max_tokens out of bounds")
     return errors
 
@@ -149,7 +151,7 @@ def random_genotype(rng: random.Random, mutation_cfg: dict[str, Any], segments: 
         "tool_preferences": sorted(set(tools)),
         "planning_parameters": {
             "temperature": round(rng.uniform(tb["min"], tb["max"]), 2),
-            "max_tokens": 512,
+            "max_tokens": 4096,
             "survey_every": rng.randint(sb["min"], sb["max"]),
         },
     }
