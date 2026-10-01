@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from runtime.tools.base import ToolAdapter, ToolRegistry
-from storage.events import EventStore
+from storage.events import AuthorshipError, EventStore, EventType, agent_author
 from supervisor.security import NetworkBoundaryError, NetworkGuard, SecurityRegistry, SecurityScopeError
 
 
@@ -46,6 +46,19 @@ def store(tmp_path):
     s = EventStore(tmp_path / "ledger.sqlite3")
     yield s
     s.close()
+
+
+def test_agent_cannot_authorize_or_revoke_security_scope(store):
+    payload = {
+        "kind": "destination",
+        "scope_id": "local_model",
+        "scope_digest": "forged",
+        "operator": "agent",
+    }
+    with pytest.raises(AuthorshipError):
+        store.append(EventType.SECURITY_SCOPE_APPROVED, payload, author=agent_author("attacker"))
+    with pytest.raises(AuthorshipError):
+        store.append(EventType.SECURITY_SCOPE_REVOKED, payload, author=agent_author("attacker"))
 
 
 def test_config_is_only_a_proposal_and_exact_definition_approval_is_required(store):
