@@ -239,6 +239,13 @@ def compare(treatment: ArmSummary, control: ArmSummary) -> dict[str, Any]:
     if cp["net_realized"] != 0:
         relative = delta / abs(cp["net_realized"])
 
+    t0, c0 = treatment.generations[0], control.generations[0]
+    t0_rpc = t0.net_realized / t0.steps if t0.steps else 0.0
+    c0_rpc = c0.net_realized / c0.steps if c0.steps else 0.0
+    tpost_rpc = tp["net_per_call"] or 0.0
+    cpost_rpc = cp["net_per_call"] or 0.0
+    did_rpc = (tpost_rpc - t0_rpc) - (cpost_rpc - c0_rpc)
+
     return {
         "design": {
             "primary_outcome": "post-baseline net realized profit",
@@ -249,8 +256,16 @@ def compare(treatment: ArmSummary, control: ArmSummary) -> dict[str, Any]:
         "treatment": td,
         "control": cd,
         "per_generation": per_generation,
+        "baseline_balance": {
+            "treatment_net": round(t0.net_realized, 6),
+            "control_net": round(c0.net_realized, 6),
+            "delta_net": round(t0.net_realized - c0.net_realized, 6),
+            "treatment_net_per_call": round(t0_rpc, 9),
+            "control_net_per_call": round(c0_rpc, 9),
+        },
         "primary_effect": {
             "delta_net_realized": round(delta, 6),
+            "difference_in_differences_net_per_call": round(did_rpc, 9),
             "relative_to_abs_control": round(relative, 6) if relative is not None else None,
             "treatment_net_per_call": tp["net_per_call"],
             "control_net_per_call": cp["net_per_call"],
@@ -289,7 +304,10 @@ def write_report(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
         "",
         f"- Treatment net: {report['treatment']['post_baseline']['net_realized']:.2f}",
         f"- Control net: {report['control']['post_baseline']['net_realized']:.2f}",
-        f"- Delta: {effect['delta_net_realized']:+.2f}",
+        f"- Raw post-baseline delta: {effect['delta_net_realized']:+.2f}",
+        f"- Baseline-adjusted difference-in-differences per call: "
+        f"{effect['difference_in_differences_net_per_call']:+.6f}",
+        f"- Generation-0 baseline delta: {report['baseline_balance']['delta_net']:+.2f}",
         f"- Equal call counts in every generation: {effect['all_generation_call_counts_equal']}",
         "",
         "This single paired run is evidence, not a statistical conclusion. Repeat with additional seeds before "
