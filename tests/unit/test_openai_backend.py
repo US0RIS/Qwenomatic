@@ -59,10 +59,11 @@ def test_client_wire_format(server):
                                  "max_concurrency": 2})
     assert b.health().ok
     gen = b.generate(InferenceRequest(messages=[{"role": "system", "content": "Target segment: s\n"}],
-                                      max_tokens=100, temperature=0.2))
+                                      max_tokens=100, temperature=0.2, metadata={"seed": 424242}))
     assert gen.prompt_tokens == 480 and gen.completion_tokens == 64 and gen.gpu_seconds > 0
     sent = FakeQwen.requests[-1]
     assert sent["response_format"] == {"type": "json_object"} and sent["max_tokens"] == 100
+    assert sent["seed"] == 424242
 
 
 def test_unreachable_server_is_unavailable():
