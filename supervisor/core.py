@@ -41,6 +41,7 @@ from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
 from .scheduler import Candidate, Scheduler
+from .security import NetworkBoundaryError, NetworkGuard, SecurityRegistry, SecurityScopeError
 
 
 class SupervisorLocked(Exception):
@@ -66,6 +67,7 @@ class Supervisor:
         *,
         backend: InferenceBackend | None = None,
         market: SimulatedMarket | None = None,
+        network_guard: NetworkGuard | None = None,
         lock: bool = True,
     ) -> None:
         self.config = config
@@ -88,6 +90,9 @@ class Supervisor:
         self.state.on_rollback = self._rebuild_state  # type: ignore[method-assign]
         self._rebuild_state()
         self.store.subscribe(self.state)
+        self.security = SecurityRegistry(config.security, self.store)
+        self.network_guard = network_guard or NetworkGuard(config.security, self.security)
+        self._security_attested = False
         recovered = self.state.last_seq > 0
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
@@ -113,7 +118,7 @@ class Supervisor:
         start = self.clock.start if isinstance(self.clock, SimulatedClock) else parse_ts(clock_cfg.get("start", self.clock.now()))
         self.market = market or SimulatedMarket(farm["simulation"]["market"], config.seed, start)
         segments = list(econ["segments"])
-        self.registry = ToolRegistry()
+        self.registry = ToolRegistry(security=self.security)
         self.registry.register(MarketOfferTool(self.market, self.observer, self.payments, self.ads, segments))
         self.registry.register(MarketSurveyTool(self.market, segments))
         self.registry.register(MemoryNoteTool())
@@ -126,6 +131,7 @@ class Supervisor:
             store=self.store, state=self.state, registry=self.registry, authority=self.authority,
             policy=self.policy_engine, new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
             on_hard_violation=self._on_hard_violation,
+            security=self.security,
         )
         self.backend = backend or build_backend(farm["inference"], config.seed)
         esc = farm["inference"].get("escalation", {})
@@ -150,6 +156,36 @@ class Supervisor:
         self._last_backend_ok = True
         if recovered:
             self.recover()
+
+    def ensure_execution_security(self) -> None:
+        """Refuse any executable farm tick unless the external barrier is proven."""
+        try:
+            route_id = getattr(self.backend, "route_id", None)
+            required = self.network_guard.required(
+                self.backend.name, has_real_world_adapters=self.registry.has_real_world()
+            )
+            if required and self.backend.name == "openai_compatible" and not route_id:
+                raise NetworkBoundaryError("openai_compatible execution requires a fixed broker route")
+            if route_id and required:
+                self.security.require_approved("destination", str(route_id))
+            attestation = self.network_guard.verify(
+                self.backend.name, has_real_world_adapters=self.registry.has_real_world()
+            )
+        except (NetworkBoundaryError, SecurityScopeError) as exc:
+            self.store.append(
+                EventType.HEALTH_EVENT,
+                {"component": "security", "kind": "network_boundary_failed", "detail": str(exc)[:500]},
+            )
+            if isinstance(exc, NetworkBoundaryError):
+                raise
+            raise NetworkBoundaryError(str(exc)) from exc
+        if attestation is not None and not self._security_attested:
+            self.store.append(
+                EventType.NETWORK_ATTESTED,
+                attestation.to_dict(),
+                idempotency_key=f"network-attested:{attestation.manifest_digest}:{os.getpid()}",
+            )
+            self._security_attested = True
 
     # ================================================================ setup
     def _acquire_lock(self):
@@ -369,6 +405,9 @@ class Supervisor:
         if self.state.halted:
             result.halted = True
             return result
+        # This is before reconciliation, inference, or any tool execution.
+        # Failure raises and therefore fails closed.
+        self.ensure_execution_security()
         if gen is None:
             self.bootstrap()
             gen = self.state.current_generation
@@ -554,6 +593,27 @@ class Supervisor:
         self.generations.close(gen, crash_after=crash_after)
         return gen
 
+    # ==================================================== security scopes
+    def approve_security_scope(self, kind: str, scope_id: str, *, operator: str, note: str = "") -> None:
+        with self.store.transaction():
+            self.security.approve(kind, scope_id, operator=operator, note=note)
+            self.store.append(
+                EventType.HUMAN_INTERVENTION,
+                {"kind": "security_scope_approval", "scope_kind": kind, "scope_id": scope_id,
+                 "operator": operator, "note": note},
+                author=f"operator:{operator}",
+            )
+
+    def revoke_security_scope(self, kind: str, scope_id: str, *, operator: str, note: str = "") -> None:
+        with self.store.transaction():
+            self.security.revoke(kind, scope_id, operator=operator, note=note)
+            self.store.append(
+                EventType.HUMAN_INTERVENTION,
+                {"kind": "security_scope_revocation", "scope_kind": kind, "scope_id": scope_id,
+                 "operator": operator, "note": note},
+                author=f"operator:{operator}",
+            )
+
     # ========================================================= approvals
     def resolve_approval(self, approval_id: str, *, granted: bool, operator: str, note: str = "") -> None:
         approval = self.state.approvals.get(approval_id)
@@ -637,6 +697,14 @@ class Supervisor:
                 elif kind in ("approve", "deny"):
                     self.resolve_approval(cmd["approval_id"], granted=kind == "approve", operator=operator,
                                           note=cmd.get("note", ""))
+                elif kind == "security_approve":
+                    self.approve_security_scope(
+                        str(cmd["scope_kind"]), str(cmd["scope_id"]), operator=operator, note=cmd.get("note", "")
+                    )
+                elif kind == "security_revoke":
+                    self.revoke_security_scope(
+                        str(cmd["scope_kind"]), str(cmd["scope_id"]), operator=operator, note=cmd.get("note", "")
+                    )
                 else:
                     raise ValueError(f"unknown command {kind!r}")
                 outcome = "ok"

@@ -53,6 +53,18 @@ class ToolAdapter:
     optional_args: frozenset[str] = frozenset()
     supports_spend_limit: bool = False
 
+    # Real-world adapters are trusted supervisor code, never model-defined.
+    # These bindings are static class/config attributes: none may come from
+    # model arguments.
+    real_world: bool = False
+    destination_id: str | None = None
+    credential_id: str | None = None
+    outbound_payment: bool = False
+    fixed_payee_id: str | None = None
+    hard_spend_cap: float | None = None
+    approval_threshold: float | None = None
+    executes_agent_code: bool = False
+
     def classify(self, args: dict[str, Any]) -> str:
         return self.action_class
 
@@ -90,10 +102,17 @@ class ToolAdapter:
 
 
 class ToolRegistry:
-    def __init__(self) -> None:
+    def __init__(self, security=None) -> None:
         self._tools: dict[str, ToolAdapter] = {}
+        self.security = security
 
     def register(self, tool: ToolAdapter) -> None:
+        if tool.executes_agent_code:
+            raise ValueError(f"tool {tool.name!r} attempts to execute agent-authored code")
+        if tool.real_world:
+            if self.security is None:
+                raise ValueError(f"real-world tool {tool.name!r} requires a supervisor security registry")
+            self.security.validate_adapter(tool, require_approval=False)
         if tool.name in self._tools:
             raise ValueError(f"tool {tool.name!r} already registered")
         self._tools[tool.name] = tool
@@ -103,6 +122,9 @@ class ToolRegistry:
 
     def names(self) -> list[str]:
         return sorted(self._tools)
+
+    def has_real_world(self) -> bool:
+        return any(t.real_world for t in self._tools.values())
 
     def describe(self, names: list[str]) -> list[dict[str, Any]]:
         return [self._tools[n].describe() for n in names if n in self._tools]

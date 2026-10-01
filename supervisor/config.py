@@ -53,6 +53,7 @@ class FarmConfig:
     farm: dict[str, Any]
     policy: dict[str, Any]
     fitness: dict[str, Any]
+    security: dict[str, Any]
     config_dir: Path
     data_dir: Path
 
@@ -69,11 +70,12 @@ class FarmConfig:
         farm = deep_merge(_read_yaml(config_dir / "farm.yaml"), overrides.get("farm"))
         policy = deep_merge(_read_yaml(config_dir / "policy.yaml"), overrides.get("policy"))
         fitness = deep_merge(_read_yaml(config_dir / "fitness.yaml"), overrides.get("fitness"))
+        security = deep_merge(_read_yaml(config_dir / "security.yaml"), overrides.get("security"))
         if data_dir is None:
             data_dir = Path(farm["farm"].get("data_dir", "var"))
             if not data_dir.is_absolute():
                 data_dir = config_dir.parent / data_dir  # relative to the farm root
-        return cls(farm=farm, policy=policy, fitness=fitness, config_dir=config_dir, data_dir=Path(data_dir))
+        return cls(farm=farm, policy=policy, fitness=fitness, security=security, config_dir=config_dir, data_dir=Path(data_dir))
 
     # Convenience accessors -------------------------------------------------
     @property
@@ -104,6 +106,7 @@ class FarmConfig:
             "farm": config_hash(self.farm),
             "policy": config_hash(self.policy),
             "fitness": config_hash(self.fitness),
+            "security": config_hash(self.security),
         }
 
 

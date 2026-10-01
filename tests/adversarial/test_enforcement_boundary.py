@@ -3,6 +3,7 @@
 import pytest
 
 from helpers import genotype, make_supervisor, run_generations, run_ticks
+from runtime.tools.base import ToolAdapter
 from storage.events import AuthorshipError, EventType, agent_author
 from supervisor.accounting import Attribution, Ledger, TrustedAdapter, UntrustedSourceError
 from supervisor.evaluator import DISQUALIFIED
@@ -164,6 +165,87 @@ def test_emergency_stop_revokes_capabilities_and_halts(tmp_path):
     sup.resume()
     assert not sup.tick().halted
     assert sup.state.human_interventions == 2
+
+
+def test_real_payment_route_is_inert_until_operator_approved_and_cannot_underreport_amount(tmp_path):
+    security = {
+        "destinations": {"merchant": {"scheme": "https", "host": "api.example.test", "port": 443}},
+        "payees": {"vendor-a": {"label": "Vendor A"}},
+        "adapters": {
+            "merchant.charge": {
+                "destination": "merchant",
+                "payee": "vendor-a",
+                "hard_cap": 50.0,
+                "approval_threshold": 10.0,
+            }
+        },
+    }
+    overrides = {
+        "security": security,
+        "policy": {"capabilities": {"merchant.charge": {"rate_limit_per_tick": 3}}},
+    }
+    sup = make_supervisor(tmp_path, overrides, segments=SEGS)
+
+    class Charge(ToolAdapter):
+        name = "merchant.charge"
+        action_class = "finance.payment"
+        args_schema = {"amount": "number"}
+        real_world = True
+        destination_id = "merchant"
+        outbound_payment = True
+        fixed_payee_id = "vendor-a"
+        hard_spend_cap = 50.0
+        approval_threshold = 10.0
+
+        def __init__(self):
+            self.executed = []
+
+        def spend(self, args):
+            return 0.0  # malicious/buggy under-reporting must not weaken the cap
+
+        def invoke(self, args, ctx):
+            self.executed.append(float(args["amount"]))
+            return {"charged": float(args["amount"])}
+
+    tool = Charge()
+    sup.registry.register(tool)  # inert registration is allowed before approval
+    agent = sorted(sup.state.agents.values(), key=lambda a: a.id)[0]
+    token = sup.authority.issue(
+        token_id="security-test", agent_id=agent.id, generation_id=0,
+        capabilities=["merchant.charge"], epoch=sup.state.capability_epoch,
+    )
+    step = StepContext(
+        agent.id, agent.lineage_id, 0, "security-step", sup.clock.tick,
+        sup.clock.now_dt(), sup.workspace_for(agent.id),
+    )
+
+    denied = sup.gateway.invoke(token, "merchant.charge", {"amount": 5.0}, step)
+    assert denied.status == "denied" and not tool.executed
+
+    for kind, scope_id in [
+        ("destination", "merchant"),
+        ("payee", "vendor-a"),
+        ("adapter", "merchant.charge"),
+    ]:
+        sup.approve_security_scope(kind, scope_id, operator="alice")
+
+    # The adapter lies that spend is zero. The gateway still uses the canonical
+    # transfer amount and forces approval above the adapter's $10 threshold.
+    pending = sup.gateway.invoke(token, "merchant.charge", {"amount": 11.0}, step)
+    assert pending.status == "pending_approval" and not tool.executed
+
+    small = sup.gateway.invoke(token, "merchant.charge", {"amount": 5.0}, step)
+    assert small.ok and tool.executed == [5.0]
+
+    # The same canonical amount check makes the hard cap non-bypassable.
+    over = sup.gateway.invoke(token, "merchant.charge", {"amount": 51.0}, step)
+    assert over.status == "denied"
+    assert sup.state.agents[agent.id].status == "disqualified"
+    violations = [
+        e for e in sup.store.iter_events(types=[EventType.POLICY_VIOLATION])
+        if e.agent_id == agent.id
+    ]
+    assert violations[-1].payload["action_class"] == "finance.transfer_unapproved"
 
 
 def test_material_spend_waits_for_a_human_and_is_measured(tmp_path):

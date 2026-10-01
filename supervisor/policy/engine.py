@@ -34,6 +34,7 @@ class CapabilityRequest:
     granted: frozenset[str]
     supports_spend_limit: bool = False
     approved: bool = False
+    force_approval: bool = False
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,8 @@ class PolicyEngine:
         if rate is not None and ctx.calls_this_tick >= int(rate):
             return PolicyResult(Decision.DENY, "rate limit", ac)
         if not req.approved:
+            if req.force_approval:
+                return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, "adapter requires operator approval", ac)
             if self.needs_approval(ac):
                 return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, f"{ac} requires operator approval", ac)
             if req.spend > self.material_threshold:

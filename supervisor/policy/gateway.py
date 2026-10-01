@@ -17,6 +17,7 @@ from runtime.tools.base import ToolContext, ToolError, ToolRegistry, ToolResult
 from storage.events import EventStore, EventType, FarmState, digest
 
 from ..accounting.resources import remaining_spend
+from ..security import SecurityScopeError
 from .capabilities import InvalidToken, TokenAuthority
 from .engine import CapabilityRequest, Decision, PolicyContext, PolicyEngine, PolicyResult
 
@@ -44,6 +45,7 @@ class ToolGateway:
         new_id: Callable[[str], str],
         farm_spend_day: Callable[[], float],
         on_hard_violation: Callable[[str, int, str], None],
+        security=None,
     ) -> None:
         self.store = store
         self.state = state
@@ -53,6 +55,7 @@ class ToolGateway:
         self.new_id = new_id
         self.farm_spend_day = farm_spend_day
         self.on_hard_violation = on_hard_violation
+        self.security = security
         self._calls: dict[tuple[str, str, int], int] = defaultdict(int)
         self._calls_tick: int | None = None
 
@@ -76,14 +79,43 @@ class ToolGateway:
         engine = self.policy()
         adapter = self.registry.get(tool) if isinstance(tool, str) else None
         safe_args = args if isinstance(args, dict) else {}
+        if adapter is not None and bool(getattr(adapter, "real_world", False)):
+            try:
+                if self.security is None:
+                    raise SecurityScopeError("real-world adapter has no supervisor security registry")
+                self.security.validate_adapter(adapter, require_approval=True)
+            except SecurityScopeError as exc:
+                # An unapproved scope is an operator/configuration boundary, not
+                # evidence that the agent itself committed a hard violation.
+                self._decision(
+                    step, request_id, str(tool), "external.scope_unapproved",
+                    Decision.DENY, str(exc), 0.0, safe_args,
+                )
+                return ToolResult(False, "denied", error="real-world scope is not operator-approved")
         action_class = adapter.classify(safe_args) if adapter else engine.classify_tool_name(str(tool))
         spend = adapter.spend(safe_args) if adapter else 0.0
+        if adapter is not None and bool(getattr(adapter, "outbound_payment", False)):
+            # Security accounting for a transfer is canonical: a payment adapter
+            # cannot under-report its own amount through spend(). Invalid/missing
+            # amounts still fail the adapter schema before any side effect.
+            raw_amount = safe_args.get("amount")
+            if isinstance(raw_amount, (int, float)) and not isinstance(raw_amount, bool):
+                spend = max(float(spend), max(0.0, float(raw_amount)))
+        if adapter is not None and self.security is not None and self.security.action_exceeds_hard_cap(adapter, spend):
+            # A fixed payment cap is a hard boundary, not a spend-budget suggestion.
+            action_class = "finance.transfer_unapproved"
+        force_approval = bool(
+            adapter is not None
+            and self.security is not None
+            and self.security.action_requires_approval(adapter, spend)
+        )
         agent = self.state.agents[step.agent_id]
         counters = self.state.counter(step.generation_id, step.agent_id)
         req = CapabilityRequest(
             request_id=request_id, agent_id=step.agent_id, generation_id=step.generation_id, tool=str(tool),
             action_class=action_class, args=safe_args, spend=spend, granted=claims.capabilities,
             supports_spend_limit=bool(adapter and adapter.supports_spend_limit), approved=approval_id is not None,
+            force_approval=force_approval,
         )
         ctx = PolicyContext(
             calls_this_tick=self._calls[(step.agent_id, str(tool), step.tick)],

@@ -1,0 +1,34 @@
+# Security scopes are proposals, not permissions.
+# A destination / credential / payee / adapter becomes active only after an
+# operator approval event for the exact current definition is written to the
+# append-only ledger. Editing a definition invalidates the prior approval.
+
+version: 1
+
+network:
+  mode: container_none
+  broker_socket: /run/qwenomatic/egress.sock
+  blocked_probe:
+    host: 1.1.1.1
+    port: 443
+    timeout_seconds: 0.5
+
+# Named destinations. Agents never receive these host/port values and no tool
+# may accept a URL, host, port, account, payee, command, code or query argument.
+destinations:
+  local_model:
+    scheme: http
+    host: host.docker.internal
+    port: 11434
+    base_path: /v1
+
+# Credential values are never stored here. A credential definition may name
+# an environment variable that exists only in the broker container.
+credentials: {}
+
+# Fixed outbound-payment counterparties. IDs are opaque supervisor labels.
+payees: {}
+
+# Real-world adapter contracts. Each adapter must be separately operator-
+# approved, bind one fixed destination, and (for payments) one fixed payee.
+adapters: {}

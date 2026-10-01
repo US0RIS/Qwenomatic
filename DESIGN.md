@@ -88,6 +88,27 @@ Given the frozen ledger, configuration, and random seed, generation selection ca
 ### I10 — No silent scope expansion
 New tool classes, credentials, spending authority, network scopes, or external account types require operator approval.
 
+### I11 — External network authority is outside the farm
+Any run with a real inference server or real-world adapter executes the farm in an OS/VM/container network boundary that population code cannot relax. The production topology uses a network-less farm container and a separate trusted named-route egress broker.
+
+### I12 — Destinations are static
+Population tools never accept a URL, host, IP, port, destination, account, payee, recipient, command, script, or executable code as a routing/execution argument. A real-world adapter binds one destination in supervisor-owned configuration.
+
+### I13 — Credentials are broker-owned
+Raw external credentials do not enter the farm process, model prompt, agent workspace, or tool arguments. The trusted broker injects a credential only on the exact operator-approved route.
+
+### I14 — Outbound payments are fixed and bounded
+A payment adapter binds one operator-approved payee and has a hard per-action cap. Spending above the adapter's materiality threshold waits for explicit human approval. Payees and account identifiers are not model-controlled fields.
+
+### I15 — Agent code remains inert
+Model output is parsed as data. Agent-authored scripts, commands, SQL, packages, bytecode, and generated programs cannot be executed by population tools.
+
+### I16 — Security verification fails closed
+Before any executable tick, the supervisor actively verifies the external isolation boundary and approved broker manifest. Failure or inability to verify is a stop condition, not a warning.
+
+### I17 — Configuration does not grant authority
+Adding or editing a destination, credential, payee, or real-world adapter in configuration only proposes a scope. It becomes usable only after an operator-authored ledger event approves the exact current definition. Any definition change invalidates the previous approval.
+
 ## 5. Agent model
 
 An agent is a logical entity:
@@ -354,21 +375,58 @@ A denied request is logged and cannot be retried through an alternate unrestrict
 
 ## 12. Isolation
 
-Initial deployment should use OS/container isolation appropriate to untrusted workloads, but containers alone are not treated as a complete security boundary.
+Executable farm code is run as an untrusted workload. For any real inference backend or
+real-world adapter, Python policy checks alone are insufficient: the network barrier is
+enforced outside the process.
 
-Population workspaces should have:
+The production boundary is:
+
+```text
+farm container (network_mode: none)
+    |
+    | shared AF_UNIX socket
+    v
+trusted egress broker
+    |
+    +--> fixed named routes from an operator-approved manifest
+```
+
+The farm container must have no routable network interface, Docker socket, host
+credential directory, or arbitrary secret. The broker is a separate trusted component
+that has network access but no model decision logic. It accepts only named routes;
+there is no CONNECT or arbitrary-URL operation.
+
+At startup and before every executable tick, the supervisor verifies:
+
+- the secure-mode attestation is present;
+- the farm environment exposes only loopback;
+- a direct connection to a known unapproved external address actually fails;
+- the configured broker endpoint is an AF_UNIX socket;
+- the broker's manifest digest exactly matches the currently operator-approved scopes.
+
+Any failed or indeterminate check aborts execution before inference, reconciliation, or
+tool side effects. The active check is the receipt; a configuration flag by itself is
+not evidence of isolation.
+
+Population workspaces additionally have:
 
 - no supervisor write access;
 - no host credential directories;
 - no Docker socket;
 - no arbitrary secrets;
 - bounded filesystem quota;
-- bounded process count;
-- explicit egress policy where feasible;
+- no code-execution primitive;
 - separate writable workspace per agent;
 - read-only shared resources when possible.
 
-The farm must have a supervisor-level emergency stop that terminates population workloads and revokes their issued capabilities.
+Real-world adapters are registered as inert trusted code first. At invocation, the
+gateway revalidates the adapter's exact destination/credential/payee contract against
+operator-authored ledger approvals before policy evaluation and execution. Every
+approved invocation still traverses capability authentication, policy, budgets and
+economic attribution.
+
+The farm retains a supervisor-level emergency stop that halts work and revokes all
+issued capabilities.
 
 ## 13. Event store
 

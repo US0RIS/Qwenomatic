@@ -1,5 +1,9 @@
 name: tests
 
+concurrency:
+  group: qwenomatic-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
   pull_request:
@@ -18,3 +22,26 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: python -m pytest
+
+  secure-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Create explicit operator approval and broker manifest
+        run: |
+          qwenomatic --data-dir /tmp/qwenomatic-secure init
+          qwenomatic --data-dir /tmp/qwenomatic-secure security approve destination local_model --operator ci
+          mkdir -p /tmp/qwenomatic-secure/security
+          qwenomatic --data-dir /tmp/qwenomatic-secure security manifest --output /tmp/qwenomatic-secure/security/egress-manifest.json
+      - name: Prove unapproved direct egress fails inside farm
+        env:
+          QWENOMATIC_DATA_DIR: /tmp/qwenomatic-secure
+          QWENOMATIC_EGRESS_MANIFEST: /tmp/qwenomatic-secure/security/egress-manifest.json
+        run: |
+          docker compose -f docker-compose.secure.yml up -d --build broker
+          trap 'docker compose -f docker-compose.secure.yml down -v' EXIT
+          docker compose -f docker-compose.secure.yml run --rm --build farm --data-dir /data security check --backend openai_compatible

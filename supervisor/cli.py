@@ -72,6 +72,16 @@ def _operator_command(cfg: FarmConfig, command: dict[str, Any]) -> int:
             sup.emergency_stop(command["reason"], operator=command["operator"])
         elif command["command"] == "resume":
             sup.resume(operator=command["operator"])
+        elif command["command"] == "security_approve":
+            sup.approve_security_scope(
+                command["scope_kind"], command["scope_id"], operator=command["operator"],
+                note=command.get("note", "")
+            )
+        elif command["command"] == "security_revoke":
+            sup.revoke_security_scope(
+                command["scope_kind"], command["scope_id"], operator=command["operator"],
+                note=command.get("note", "")
+            )
         else:
             sup.resolve_approval(command["approval_id"], granted=command["command"] == "approve",
                                  operator=command["operator"], note=command.get("note", ""))
@@ -225,6 +235,81 @@ def cmd_resume(args: argparse.Namespace) -> int:
     return _operator_command(_config(args), {"command": "resume", "operator": args.operator})
 
 
+def cmd_security_status(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    if not _db(cfg).exists():
+        print("no ledger yet; run qwenomatic init first")
+        return 1
+    from supervisor.security import SecurityRegistry
+
+    store = EventStore(_db(cfg), read_only=True)
+    try:
+        registry = SecurityRegistry(cfg.security, store)
+        for item in registry.list_status():
+            state = "APPROVED" if item.approved else "NOT APPROVED"
+            print(f"{item.kind:>11}  {item.scope_id:<28} {state}  {item.digest[:12]}")
+    finally:
+        store.close()
+    return 0
+
+
+def cmd_security_change(args: argparse.Namespace) -> int:
+    command = "security_approve" if args.security_action == "approve" else "security_revoke"
+    return _operator_command(
+        _config(args),
+        {
+            "command": command,
+            "scope_kind": args.scope_kind,
+            "scope_id": args.scope_id,
+            "operator": args.operator,
+            "note": args.note or "",
+        },
+    )
+
+
+def cmd_security_manifest(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    if not _db(cfg).exists():
+        print("no ledger yet; run qwenomatic init first")
+        return 1
+    from supervisor.security import SecurityRegistry
+
+    store = EventStore(_db(cfg), read_only=True)
+    try:
+        manifest = SecurityRegistry(cfg.security, store).active_manifest()
+    finally:
+        store.close()
+    rendered = json.dumps(manifest, indent=2, sort_keys=True)
+    if args.output:
+        path = Path(args.output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(rendered + "\n", encoding="utf-8")
+        print(f"wrote approved egress manifest: {path}")
+    else:
+        print(rendered)
+    return 0
+
+
+def cmd_security_check(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    if not _db(cfg).exists():
+        print("no ledger yet; run qwenomatic init first")
+        return 1
+    from supervisor.security import NetworkGuard, SecurityRegistry
+
+    store = EventStore(_db(cfg), read_only=True)
+    try:
+        registry = SecurityRegistry(cfg.security, store)
+        attestation = NetworkGuard(cfg.security, registry).verify(args.backend)
+    finally:
+        store.close()
+    if attestation is None:
+        print("network barrier not required for this backend")
+    else:
+        print(json.dumps(attestation.to_dict(), indent=2, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="qwenomatic", description="Qwenomatic evolutionary agent farm")
     p.add_argument("--config-dir", default=None, help="directory with farm.yaml, policy.yaml, fitness.yaml")
@@ -265,6 +350,24 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--operator", default=getpass.getuser())
     rs = add("resume", cmd_resume, help="resume after a stop")
     rs.add_argument("--operator", default=getpass.getuser())
+
+    sec = sub.add_parser("security", help="operator-owned real-world security scopes and network proof")
+    secsub = sec.add_subparsers(dest="security_action", required=True)
+    ss = secsub.add_parser("status", help="show configured scopes and exact-definition approval state")
+    ss.set_defaults(fn=cmd_security_status)
+    for action in ("approve", "revoke"):
+        sc = secsub.add_parser(action, help=f"{action} one configured security scope")
+        sc.add_argument("scope_kind", choices=["destination", "credential", "payee", "adapter"])
+        sc.add_argument("scope_id")
+        sc.add_argument("--note")
+        sc.add_argument("--operator", default=getpass.getuser())
+        sc.set_defaults(fn=cmd_security_change)
+    sm = secsub.add_parser("manifest", help="write broker manifest from ledger-approved scopes only")
+    sm.add_argument("--output")
+    sm.set_defaults(fn=cmd_security_manifest)
+    ck = secsub.add_parser("check", help="actively prove the fail-closed network boundary")
+    ck.add_argument("--backend", choices=["openai_compatible", "simulated"], default="openai_compatible")
+    ck.set_defaults(fn=cmd_security_check)
     return p
 
 
