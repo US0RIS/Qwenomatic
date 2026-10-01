@@ -8,6 +8,36 @@ The project is designed around a simple question:
 
 The initial target machine is a single consumer workstation (RTX 5080, Ryzen 9 9950X3D, 64 GB RAM). Qwenomatic therefore treats an "agent" as persistent state and policy, not as a separately loaded model. A shared inference service serves many logical agents through a scheduler.
 
+## Quickstart
+
+Python 3.11+, one dependency (PyYAML). No GPU is needed for the simulated farm.
+
+```bash
+pip install -e ".[dev]"
+
+qwenomatic init                     # create Generation Zero (20 agents) in var/
+qwenomatic run --generations 3      # run; each 24-hour generation takes seconds in simulated time
+qwenomatic status                   # headline numbers straight from the ledger
+qwenomatic dashboard                # read-only dashboard on http://127.0.0.1:8765
+qwenomatic verify                   # hash chain + accounting replay + selection replay
+python -m pytest                    # unit, adversarial, simulation and acceptance suites
+```
+
+The CLI looks for configuration in `--config-dir`, then `$QWENOMATIC_CONFIG_DIR`, then `./config`, and keeps the ledger in `var/` beside it. Without installing, use `scripts/qwenomatic <command>`. `scripts/generation_zero.py` runs Generation Zero end to end and prints the audit evidence.
+
+Operator controls: `qwenomatic stop --reason "..."` (emergency stop: halts work and revokes every capability), `qwenomatic resume`, `qwenomatic approvals`, `qwenomatic approve|deny <id>`. While a supervisor is running these are delivered through its inbox, so the supervisor remains the ledger's only writer.
+
+### Running against a local Qwen model
+
+Any OpenAI-compatible server works. On a 16 GB RTX 5080 a ~14B Qwen model at Q4_K_M leaves room for a parallel KV cache, e.g. with llama.cpp:
+
+```bash
+llama-server -m Qwen3-14B-Q4_K_M.gguf --port 8080 --parallel 4 -c 32768 -ngl 99
+qwenomatic run --backend openai_compatible --model Qwen3-14B-Instruct --wall-clock
+```
+
+Set `inference.openai_compatible` in `config/farm.yaml` (URL, model name, quantization label, `max_concurrency` matching `--parallel`). `--wall-clock` makes a generation last 24 real hours; without it, ticks advance simulated time as fast as the model answers. Every completion records model, quantization, token counts, wall time, attributed GPU time and queue latency.
+
 ## Core loop
 
 ```text
@@ -181,36 +211,55 @@ No agent may directly clone itself.
 
 See [DESIGN.md](DESIGN.md) for the full specification.
 
-## Proposed repository layout
+## Repository layout
 
 ```text
 qwenomatic/
 ├── README.md
 ├── DESIGN.md
 ├── config/
-│   ├── farm.yaml
-│   ├── policy.yaml
-│   └── fitness.yaml
-├── supervisor/
-│   ├── scheduler/
-│   ├── evaluator/
-│   ├── evolution/
-│   ├── policy/
-│   └── accounting/
-├── runtime/
-│   ├── agent/
-│   ├── inference/
-│   └── tools/
+│   ├── farm.yaml          population, generations, inference, scheduler, evolution, mutation bounds, economy
+│   ├── policy.yaml        capabilities, forbidden action classes, approval gates, spending limits
+│   └── fitness.yaml       versioned objective, imputed costs, posterior, archetype windows
+├── supervisor/            the trusted computing base
+│   ├── core.py            Supervisor: lifecycle, ticks, recovery, emergency stop, operator inbox
+│   ├── scheduler/         evidence-weighted allocator (Thompson/UCB/softmax/equal), pools, caps
+│   ├── evaluator/         eligibility gate, versioned fitness, control-vs-treatment attribution
+│   ├── evolution/         resumable generation close, selection, typed mutation, lineage, diversity
+│   ├── policy/            policy engine, signed capability tokens, tool gateway, approvals
+│   ├── accounting/        ledger (double entry), trusted adapters, budgets
+│   ├── audit.py           hash-chain, accounting and selection replay
+│   └── cli.py             operator command line
+├── runtime/               hosts the untrusted population
+│   ├── agent/             genotype model and validation, prompts, output parsing, step runtime
+│   ├── inference/         shared inference service, OpenAI-compatible client, simulated backend
+│   └── tools/             typed tool adapters, per-agent workspace, simulated market
 ├── storage/
-│   ├── events/
-│   └── migrations/
-├── dashboard/
+│   ├── events/            append-only hash-chained SQLite store, event types, projections
+│   └── migrations/        schema (UPDATE/DELETE on events are rejected by triggers)
+├── dashboard/             read-only server + single-page UI (Overview, Population, Scheduler,
+│                          Evolution, Audit, Policy), all reconstructed from the ledger
 ├── tests/
-│   ├── acceptance/
-│   ├── adversarial/
-│   └── simulation/
-└── scripts/
+│   ├── unit/              store, ledger, policy, scheduler, mutation/selection, parsing, model client
+│   ├── acceptance/        DESIGN §17 checklist; restart, interrupted close, chaos, replay
+│   ├── adversarial/       policy temptation, score spoofing, self-replication, escapes, stop
+│   └── simulation/        known optimum, deceptive reward, delayed reward, lineage takeover,
+│                          adaptive vs equal scheduling
+└── scripts/               generation_zero.py, qwenomatic wrapper
 ```
+
+## Implementation notes
+
+Choices made where the design left room, and why:
+
+- **One ledger, many views.** Every relevant fact is an event in one SQLite table that triggers make append-only and that is hash-chained row to row. Population, counters, P&L, scheduler state and lineage are projections rebuilt by replay on start-up; the dashboard builds its own projection from a read-only connection.
+- **Authorship is enforced by the store.** Financial events and opportunities must be written by a registered trusted adapter; agent-attributed events are limited to claims and strategy suggestions. Agent self-reports are recorded as `agent_claim` and have no accounting effect.
+- **Capabilities, not prompts.** Each agent gets an HMAC-signed token per generation listing the tools it may call (policy grants intersected with its genotype's preferences). Tokens live in the runtime, never in model context, and an emergency stop bumps the epoch, invalidating all of them. Tool names that reveal forbidden intent (`shell.*`, `ledger.*`, `agent.spawn`, `reviews.*`, …) and path escapes are classified so the attempt itself is a hard violation.
+- **Selection uses the uncertainty.** Fitness is posterior-mean net realized profit per GPU-hour (shrunk toward a prior), with bounds. Elites need a high lower bound; retirement is drawn from the lowest upper bounds, so an agent that might be good is not culled for variance; parents are weighted by the posterior mean. Selection, mutation and cohort draws are seeded by (farm seed, generation), so a close replays exactly from the frozen ledger.
+- **Recency-weighted scheduling.** The scheduler weights each agent's recent steps more (configurable half-life), so an early lucky streak decays within a generation instead of holding priority. A randomized control cohort gets equal allocation each generation and the evaluator reports treatment-vs-control efficiency (DESIGN §9.3).
+- **Generation close is a resumable transaction.** Each of the 14 steps commits a marker with its data; a crash resumes from the last marker, selection is keyed by snapshot hash, and offspring IDs are derived from (seed, generation, slot), so nothing runs twice.
+- **The simulated backend is not a model.** Phase 0 uses a deterministic policy emulator that maps genotype and memory to the same JSON actions a real model is prompted to produce, so parsing, gating and accounting are exercised end to end. It is the only thing standing in for Qwen in the test suite.
+- **Operator commands via an inbox.** A running supervisor holds an exclusive lock on its data directory; the CLI drops stop/resume/approve commands into `var/inbox/`, which the supervisor applies on its next tick.
 
 ## Observability
 
@@ -290,4 +339,19 @@ Claims of revenue or profitability must be backed by reconciled external evidenc
 
 ## Status
 
-**Design stage.** This README describes the intended system. It does not claim that the farm, scheduler, safety boundary, or autonomous economic loop is currently implemented.
+Using the status vocabulary of DESIGN §18:
+
+| Scope | Status |
+|---|---|
+| Phase 0 — scheduler, accounting, lineage, mutation, selection, restart recovery, dashboard | **VERIFIED IN SIMULATION** |
+| Generation Zero acceptance criteria (DESIGN §17) with the simulated backend | **VERIFIED IN SIMULATION** |
+| Phase 3 — adaptive scheduling vs equal scheduling | **VERIFIED IN SIMULATION** |
+| Phase 4 — archetype evaluation windows (long-cycle strategies) | **VERIFIED IN SIMULATION** |
+| Phase 5 — failure handling (DESIGN §15) | **VERIFIED IN SIMULATION** for supervisor restart, interrupted close, inference outage, failing jobs, malformed output, corrupted agent state, duplicate/delayed settlement |
+| Phase 1 — 24-hour generation driven by a real local Qwen model | **IMPLEMENTED, UNVERIFIED** (the client is tested against a fake OpenAI-compatible server only) |
+| Phase 2 — real-world economic adapter | Not implemented, by design: no external adapter is approved yet |
+| Revenue or profit of any kind | None claimed. All revenue in this repository is simulated. |
+
+"Verified in simulation" means the tests under `tests/` pass against the deterministic simulated market (`python -m pytest`, 118 tests). The §17 checklist is exercised by `tests/acceptance/test_generation_zero.py` on a farm using the shipped configuration (20 agents, 24-hour generations of 144 ticks) with one deliberately adversarial agent; interrupted-close recovery is tested after each of seven close steps in `tests/acceptance/test_restart_and_chaos.py`.
+
+Not yet covered: container/OS isolation of population workloads (DESIGN §12) — agents currently have no tool that executes code, so the capability gateway is the whole boundary; a PostgreSQL store for multiple concurrent writers; and cloud escalation beyond the configuration switch and ceiling check.

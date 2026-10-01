@@ -1,0 +1,168 @@
+# Qwenomatic farm configuration.
+#
+# Owned by the supervisor. Population agents have no tool that can read or
+# write this file. Values are configuration, not doctrine (README "Scheduler").
+
+farm:
+  name: qwenomatic
+  seed: 20260930               # master seed: selection, mutation, scheduling, simulation
+  data_dir: var                # ledger, agent workspaces, supervisor secret, lock
+  population_size: 20
+
+generation:
+  duration_hours: 24
+  tick_seconds: 600            # one scheduler round per tick (144 ticks / generation)
+  auto_advance: true           # start the next generation without intervention
+
+clock:
+  mode: simulated              # simulated | wall
+  start: "2026-01-01T00:00:00+00:00"
+
+inference:
+  backend: simulated           # simulated | openai_compatible
+  slots_per_tick: 8            # inference jobs admitted per scheduler round
+  gpu_count: 1
+  simulated:
+    model: qwen-policy-emulator
+    quantization: none
+    max_concurrency: 4
+    seconds_per_prompt_token: 0.0002
+    seconds_per_completion_token: 0.02
+    malformed_rate: 0.01       # fraction of outputs that are deliberately malformed
+  openai_compatible:
+    # Any OpenAI-compatible local server: llama.cpp `llama-server`, vLLM, Ollama.
+    # 16 GB RTX 5080: a ~14B Qwen model at Q4_K_M leaves room for a parallel KV cache.
+    base_url: http://127.0.0.1:8080/v1
+    model: Qwen3-14B-Instruct
+    quantization: Q4_K_M
+    max_concurrency: 4         # match llama-server --parallel
+    timeout_seconds: 120
+    json_mode: true
+  escalation:
+    enabled: false             # cloud escalation is off unless an operator enables it
+    ceiling_usd: 0.0
+
+scheduler:
+  method: thompson             # thompson | ucb | softmax | equal
+  exploitation_share: 0.70     # of non-control slots
+  exploration_share: 0.30
+  control_cohort_fraction: 0.20  # randomized equal-allocation cohort (DESIGN 9.3)
+  max_agent_share: 0.15        # of slots over the cap window
+  max_lineage_share: 0.40
+  cap_window_ticks: 36
+  max_burst_ticks: 12          # consecutive ticks one agent may hold a slot
+  starvation_ticks: 18         # guaranteed service after this many unscheduled ticks
+  starvation_weight: 1.0
+  exploration_weight: 1.0
+  lineage_penalty_weight: 1.0
+  resource_cost_weight: 0.1
+  softmax_temperature: 0.25
+  prior_strength: 5            # pseudo-steps for the posterior prior
+  evidence_half_life_steps: 12 # recency weighting of an agent's step outcomes
+  daily_gpu_seconds_ceiling: 86400
+  min_exposure_steps: 20       # cold-start sample before an agent can be retired
+
+agent_budgets:                 # per agent per generation; supervisor-owned, never inherited
+  inference_tokens: 600000
+  gpu_seconds: 7200
+  external_spend: 150.0
+  tool_calls: 1500
+
+runtime:
+  max_actions_per_step: 3
+  memory_items: 12
+  workspace_quota_bytes: 262144
+  malformed_output_threshold: 8  # consecutive malformed outputs before a health pause
+
+evolution:
+  elite_count: 2
+  retire_fraction: 0.35        # of eligible, sufficiently exposed agents
+  parent_temperature: 0.5
+  immigration_rate: 0.10       # fresh random genotypes, new lineages
+  min_lineages: 4
+  max_lineage_share: 0.40
+  max_lineage_share_strong_evidence: 0.60
+  max_mutations: 2
+
+mutation:
+  price: {min: 1.0, max: 900.0, sigma: 0.20}
+  temperature: {min: 0.1, max: 1.2, sigma: 0.15}
+  survey_every: {min: 2, max: 12}
+  max_prompt_chars: 1200
+  workflows: [survey_then_offer, offer_first, iterate_price]
+  tools: [market.offer, market.survey, memory.note, workspace.write, workspace.read]
+  required_tools: [market.offer]
+  strategy_fragments:
+    - "Lead with a concrete, verifiable benefit."
+    - "Prefer fewer, better-qualified offers over volume."
+    - "Test a slightly higher price when conversion is strong."
+    - "Test a lower price when conversion is weak."
+    - "Survey the segment before committing to a price."
+    - "Keep the offer simple and specific to the segment's workflow."
+    - "Position the product as premium and justify the price."
+    - "Position the product as the low-cost option."
+
+# Approved economic segments. Each segment carries an archetype so the
+# evaluator can apply archetype-specific evaluation windows (fitness.yaml).
+economy:
+  currency: USD
+  farm_controlled_accounts: [farm-treasury, farm-operating]
+  segments:
+    freelancer-templates: {archetype: standard}
+    smb-bookkeeping:      {archetype: standard}
+    local-services:       {archetype: standard}
+    trend-hype:           {archetype: standard}
+    enterprise-audit:     {archetype: long_cycle}
+
+# Deterministic economic environment for Phase 0. The simulated market is the
+# "external world": agents cannot read these parameters.
+simulation:
+  market:
+    survey_noise: 0.25
+    segments:
+      freelancer-templates:
+        base_conversion: 0.30
+        reference_price: 20
+        ad_cost: 0.50
+        fee_rate: 0.029
+        fee_fixed: 0.30
+        settlement_delay_hours: 0
+        refund_rate: 0.03
+        refund_delay_hours: 6
+      smb-bookkeeping:
+        base_conversion: 0.15
+        reference_price: 60
+        ad_cost: 1.00
+        fee_rate: 0.029
+        fee_fixed: 0.30
+        settlement_delay_hours: 2
+        refund_rate: 0.05
+        refund_delay_hours: 12
+      local-services:
+        base_conversion: 0.25
+        reference_price: 10
+        ad_cost: 0.30
+        fee_rate: 0.029
+        fee_fixed: 0.30
+        settlement_delay_hours: 0
+        refund_rate: 0.02
+        refund_delay_hours: 6
+      trend-hype:                 # deceptive early reward: conversion collapses
+        base_conversion: 0.90
+        reference_price: 30
+        ad_cost: 0.80
+        fee_rate: 0.029
+        fee_fixed: 0.30
+        settlement_delay_hours: 0
+        refund_rate: 0.10
+        refund_delay_hours: 6
+        decay: {half_life_hours: 3, floor: 0.01}
+      enterprise-audit:           # long-cycle: revenue settles after a long delay
+        base_conversion: 0.03
+        reference_price: 500
+        ad_cost: 2.00
+        fee_rate: 0.01
+        fee_fixed: 0.00
+        settlement_delay_hours: 36
+        refund_rate: 0.0
+        refund_delay_hours: 0

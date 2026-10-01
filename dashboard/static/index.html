@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qwenomatic Farm</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
+    --accent: #2f6f5e; --good: #1f7a3a; --bad: #b3261e; --warn: #9a6700; --control: #6750a4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --panel: #1d1d1b; --text: #ecece8; --muted: #a0a09a; --line: #33332f;
+            --accent: #6fbfa6; --good: #6ccf88; --bad: #f2877e; --warn: #e3b341; --control: #b39ddb; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; padding: 16px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+  nav button { background: none; border: 1px solid transparent; color: var(--muted); padding: 6px 10px;
+               border-radius: 6px; cursor: pointer; font: inherit; }
+  nav button.on { color: var(--text); border-color: var(--line); background: var(--panel); }
+  main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .headline .v { font-size: 30px; }
+  .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  .scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; cursor: pointer; position: sticky; top: 0; background: var(--panel); }
+  td.num, th.num { text-align: right; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  h2 { font-size: 15px; margin: 20px 0 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  input, select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .bar { height: 10px; background: var(--accent); border-radius: 3px; }
+  .pill { display: inline-block; padding: 0 6px; border-radius: 10px; border: 1px solid var(--line); font-size: 12px; }
+  svg text { fill: var(--text); font-size: 10px; }
+  .note { color: var(--muted); font-size: 12px; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Qwenomatic</h1>
+  <span class="meta" id="meta">loading…</span>
+</header>
+<nav id="tabs"></nav>
+<main id="view"></main>
+<script>
+const TABS = ["Overview", "Population", "Scheduler", "Evolution", "Audit", "Policy"];
+let tab = "Overview";
+try { tab = localStorage.getItem("qw-tab") || tab; } catch (e) {}
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const money = (v) => v == null ? "—" : (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const num = (v, d = 2) => v == null ? "—" : Number(v).toLocaleString(undefined, {maximumFractionDigits: d});
+const short = (id) => id ? String(id).slice(0, 8) : "—";
+const cls = (v) => v > 0 ? "good" : v < 0 ? "bad" : "";
+async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+
+function renderTabs() {
+  $("#tabs").innerHTML = TABS.map((t) => `<button class="${t === tab ? "on" : ""}" data-t="${t}">${t}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => {
+    tab = b.dataset.t; try { localStorage.setItem("qw-tab", tab); } catch (e) {} renderTabs(); refresh();
+  });
+}
+
+function table(rows, cols) {
+  if (!rows.length) return `<p class="note">Nothing yet.</p>`;
+  return `<div class="scroll"><table><thead><tr>${cols.map((c) => `<th class="${c.num ? "num" : ""}">${c.label}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td class="${c.num ? "num" : ""} ${c.cls ? c.cls(r) : ""}">${c.fmt ? c.fmt(r) : esc(r[c.key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+const views = {
+  async Overview() {
+    const o = await api("/api/overview");
+    const tiles = [
+      ["Generation", o.generation], ["Time remaining (h)", num(o.time_remaining_hours, 1)],
+      ["Population", o.population], ["Queue depth", o.queue_depth],
+      ["GPU utilization", o.gpu_utilization == null ? "—" : (o.gpu_utilization * 100).toFixed(1) + "%"],
+      ["External spend", money(o.external_spend)], ["Unrealized (pending)", money(o.unrealized)],
+      ["Inference tokens", num(o.inference_tokens, 0)], ["GPU seconds", num(o.gpu_seconds, 0)],
+      ["Human interventions", o.human_interventions], ["Policy violations", o.policy_violations],
+      ["Ledger events", num(o.events, 0)],
+    ];
+    const days = o.daily_pnl.slice(-14);
+    const maxAbs = Math.max(1, ...days.map((d) => Math.abs(d.net)));
+    return `
+      ${o.halted ? `<div class="tile bad" style="margin-bottom:10px">Farm halted: ${esc(o.halt_reason)}</div>` : ""}
+      <div class="headline">
+        <div class="tile"><div class="k">Gross revenue (reconciled)</div><div class="v">${money(o.gross_revenue)}</div></div>
+        <div class="tile"><div class="k">Net realized profit</div><div class="v ${cls(o.net_realized_profit)}">${money(o.net_realized_profit)}</div>
+          <div class="note">after refunds, fees, ad spend, imputed compute and labor</div></div>
+      </div>
+      <div class="grid">${tiles.map(([k, v]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>
+      <h2>Daily net realized P&amp;L</h2>
+      ${days.length ? `<div class="scroll" style="padding:10px">${days.map((d) => `<div class="row"><span class="mono" style="width:90px">${d.day}</span>
+        <div class="bar" style="width:${Math.abs(d.net) / maxAbs * 60}%;background:${d.net < 0 ? "var(--bad)" : "var(--good)"}"></div>
+        <span class="mono">${money(d.net)}</span></div>`).join("")}</div>` : `<p class="note">No realized events yet.</p>`}
+      <p class="note">Status: ${Object.entries(o.status_counts).map(([k, v]) => `${esc(k)} ${v}`).join(" · ")}</p>`;
+  },
+  async Population() {
+    const rows = await api("/api/population");
+    return table(rows, [
+      {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
+      {label: "Lineage", fmt: (r) => `<span class="mono">${short(r.lineage_id)}</span>`},
+      {label: "Status", fmt: (r) => `${esc(r.status)}${r.status_reason ? ` <span class="note">${esc(r.status_reason)}</span>` : ""}`},
+      {label: "Cohort", key: "cohort"},
+      {label: "Segment", key: "segment"}, {label: "Price", num: 1, fmt: (r) => money(r.price)},
+      {label: "Net (gen)", num: 1, fmt: (r) => money(r.net_realized), cls: (r) => cls(r.net_realized)},
+      {label: "Gross", num: 1, fmt: (r) => money(r.gross_revenue)},
+      {label: "Last fitness ± sd", num: 1, fmt: (r) => r.last_fitness == null ? "—" : `${num(r.last_fitness)} ± ${num(r.last_fitness_sd)}`},
+      {label: "Steps", num: 1, key: "steps"}, {label: "Opps", num: 1, key: "opportunities"},
+      {label: "Conv", num: 1, key: "conversions"}, {label: "GPU s", num: 1, fmt: (r) => num(r.gpu_seconds, 0)},
+      {label: "Age", num: 1, key: "age"},
+      {label: "Latest mutation", fmt: (r) => r.latest_mutation ? `<span class="mono">${esc(r.latest_mutation.type)}: ${esc(JSON.stringify(r.latest_mutation.before))} → ${esc(JSON.stringify(r.latest_mutation.after))}</span>` : "—"},
+    ]);
+  },
+  async Scheduler() {
+    const s = await api("/api/scheduler");
+    const l = s.latest;
+    const shares = Object.entries(s.lineage_shares);
+    return `
+      <div class="grid">
+        <div class="tile"><div class="k">Method</div><div class="v">${esc(l?.method)}</div></div>
+        <div class="tile"><div class="k">Slots / tick</div><div class="v">${l?.slots ?? "—"}</div></div>
+        <div class="tile"><div class="k">Pools (last ${s.window_ticks} ticks)</div><div class="v" style="font-size:15px">${Object.entries(s.pool_totals).map(([k, v]) => `${k} ${v}`).join(" · ")}</div></div>
+        <div class="tile"><div class="k">Starving</div><div class="v ${s.starvation_warnings.length ? "warn" : ""}">${s.starvation_warnings.length}</div></div>
+        <div class="tile"><div class="k">Cap-blocked (last tick)</div><div class="v">${s.cap_blocked.length}</div></div>
+      </div>
+      ${l?.reason ? `<p class="warn">Allocation held: ${esc(l.reason)}</p>` : ""}
+      <h2>Last allocation — reasons for priority</h2>
+      ${table((l?.selected || []), [
+        {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
+        {label: "Pool", fmt: (r) => `<span class="pill" style="${r.pool === "control" ? "color:var(--control)" : ""}">${r.pool}</span>`},
+        {label: "Priority", num: 1, fmt: (r) => num(r.priority, 3)},
+        ...["exploitation_score", "exploration_bonus", "starvation_bonus", "lineage_concentration_penalty", "marginal_resource_cost"]
+          .map((k) => ({label: k.replace(/_/g, " "), num: 1, fmt: (r) => num(r.components[k], 3)})),
+      ])}
+      <h2>Lineage share of compute (window)</h2>
+      <div class="scroll" style="padding:10px">${shares.map(([k, v]) => `<div class="row"><span class="mono" style="width:80px">${short(k)}</span>
+        <div class="bar" style="width:${v * 100}%"></div><span class="mono">${(v * 100).toFixed(1)}%</span></div>`).join("") || `<p class="note">No allocations yet.</p>`}</div>`;
+  },
+  async Evolution() {
+    const e = await api("/api/evolution");
+    const nodes = e.tree.nodes;
+    const gens = [...new Set(nodes.map((n) => n.generation_born))].sort((a, b) => a - b);
+    const colW = 150, rowH = 16, pad = 20;
+    const pos = {}; let maxRows = 0;
+    gens.forEach((g, gi) => {
+      const col = nodes.filter((n) => n.generation_born === g);
+      col.forEach((n, i) => pos[n.id] = [pad + gi * colW, pad + 14 + i * rowH]);
+      maxRows = Math.max(maxRows, col.length);
+    });
+    const w = pad * 2 + Math.max(1, gens.length) * colW, h = pad * 2 + 14 + maxRows * rowH;
+    const color = (n) => n.status === "disqualified" || (n.status_reason || "").startsWith("disqualified") ? "var(--bad)"
+      : n.status === "retired" ? "var(--muted)" : "var(--good)";
+    const svg = `<svg width="${w}" height="${h}" role="img" aria-label="Ancestry tree">
+      ${gens.map((g, gi) => `<text x="${pad + gi * colW}" y="${pad}">gen ${g}</text>`).join("")}
+      ${e.tree.edges.filter((x) => pos[x.from] && pos[x.to]).map((x) => `<line x1="${pos[x.from][0] + 6}" y1="${pos[x.from][1]}" x2="${pos[x.to][0] - 4}" y2="${pos[x.to][1]}" stroke="var(--line)"/>`).join("")}
+      ${nodes.map((n) => `<g><title>${esc(n.id)}\n${esc(n.origin)} · ${esc(n.segment)} @ ${n.price}\nstatus ${esc(n.status)} ${esc(n.status_reason || "")}\nfitness ${esc(n.fitness)}\n${(n.mutations || []).map((m) => `${m.type}: ${JSON.stringify(m.before)} → ${JSON.stringify(m.after)}`).join("\n")}</title>
+        <circle cx="${pos[n.id][0]}" cy="${pos[n.id][1]}" r="4" fill="${color(n)}"/>
+        <text x="${pos[n.id][0] + 8}" y="${pos[n.id][1] + 3}">${short(n.id)} ${esc(n.segment.split("-")[0])}</text></g>`).join("")}
+    </svg>`;
+    const sel = Object.entries(e.selections);
+    return `<h2>Ancestry</h2><div class="scroll" style="padding:8px">${svg}</div>
+      <p class="note">green active · grey retired · red disqualified. Hover a node for its mutation diff.</p>
+      <h2>Generation closes</h2>
+      ${table(sel.map(([g, p]) => ({g, ...p})), [
+        {label: "Gen", key: "g"}, {label: "Elites", fmt: (r) => r.elites.map(short).join(", ")},
+        {label: "Retired", num: 1, fmt: (r) => r.retirements.length},
+        {label: "Offspring", num: 1, fmt: (r) => r.offspring.filter((o) => o.origin === "offspring").length},
+        {label: "Immigrants", num: 1, fmt: (r) => r.offspring.filter((o) => o.origin === "immigrant").length},
+        {label: "Lineage cap", num: 1, key: "lineage_cap"}, {label: "Strong evidence", fmt: (r) => r.strong_evidence ? "yes" : "no"},
+      ])}
+      <h2>Retirement / disqualification reasons</h2>
+      ${table(sel.flatMap(([g, p]) => p.retirements.map((r) => ({g, ...r}))), [
+        {label: "Gen", key: "g"}, {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`}, {label: "Reason", key: "reason"}])}
+      <h2>Is priority producing incremental return? (control vs treatment)</h2>
+      ${table(Object.values(e.attribution), [
+        {label: "Gen", key: "generation"},
+        {label: "Control $/step", num: 1, fmt: (r) => num(r.control_net_per_step, 3)},
+        {label: "Treatment $/step", num: 1, fmt: (r) => num(r.treatment_net_per_step, 3)},
+        {label: "Incremental", num: 1, fmt: (r) => num(r.incremental_net_per_step, 3), cls: (r) => cls(r.incremental_net_per_step)},
+        {label: "ρ(allocation, efficiency)", num: 1, fmt: (r) => num(r.allocation_efficiency_spearman, 3)},
+      ])}`;
+  },
+  async Audit() {
+    const params = new URLSearchParams({limit: 200});
+    const t = $("#f-type")?.value, a = $("#f-agent")?.value;
+    if (t) params.set("type", t); if (a) params.set("agent", a);
+    const rows = await api("/api/audit?" + params);
+    const types = ["", "financial_event", "policy_decision", "policy_violation", "tool_invoked", "scheduler_allocation",
+      "fitness_evaluated", "selection_decided", "mutation_applied", "agent_created", "agent_retired", "agent_status_changed",
+      "agent_claim", "generation_started", "generation_close_step", "human_intervention", "health_event", "emergency_stop"];
+    return `<div class="row"><select id="f-type">${types.map((x) => `<option ${x === t ? "selected" : ""} value="${x}">${x || "all types"}</option>`).join("")}</select>
+      <input id="f-agent" placeholder="agent id" value="${esc(a || "")}"><button onclick="refresh()">Filter</button>
+      <span class="note">Newest first. Every row is hash-chained to the previous one.</span></div>
+      ${table(rows, [
+        {label: "Seq", num: 1, key: "seq"}, {label: "Recorded", fmt: (r) => `<span class="mono">${esc(r.recorded_at.slice(0, 19))}</span>`},
+        {label: "Type", key: "type"}, {label: "Author", key: "author"},
+        {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`}, {label: "Gen", key: "generation_id"},
+        {label: "Payload", fmt: (r) => `<pre class="mono">${esc(JSON.stringify(r.payload).slice(0, 220))}</pre>`},
+        {label: "Hash", fmt: (r) => `<span class="mono">${r.hash.slice(0, 10)}</span>`},
+      ])}`;
+  },
+  async Policy() {
+    const p = await api("/api/policy");
+    return `<div class="grid">${Object.entries(p.decision_counts).map(([k, v]) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${num(v, 0)}</div></div>`).join("")}</div>
+      <h2>Hard violations</h2>
+      ${table(p.violations, [{label: "Seq", key: "seq"}, {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
+        {label: "Class", fmt: (r) => esc(r.payload.action_class)}, {label: "Tool", fmt: (r) => esc(r.payload.tool)},
+        {label: "Source", fmt: (r) => esc(r.payload.source)}, {label: "Reason", fmt: (r) => esc(r.payload.reason)}])}
+      <h2>Approvals</h2>
+      ${table(p.approvals, [{label: "Approval", fmt: (r) => `<span class="mono">${esc(r.approval_id)}</span>`}, {label: "Status", key: "status"},
+        {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`}, {label: "Tool", fmt: (r) => esc(r.request.tool)},
+        {label: "Reason", key: "reason"}])}
+      <p class="note">Approve or deny with <code>qwenomatic approve &lt;id&gt;</code> / <code>qwenomatic deny &lt;id&gt;</code>.</p>
+      <h2>Recent denials and escalations</h2>
+      ${table(p.recent_non_allow, [{label: "Seq", key: "seq"}, {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
+        {label: "Tool", fmt: (r) => esc(r.payload.tool)}, {label: "Decision", fmt: (r) => esc(r.payload.decision)}, {label: "Reason", fmt: (r) => esc(r.payload.reason)}])}
+      <h2>Budget state (current generation)</h2>
+      ${table(p.budgets, [{label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
+        {label: "Tokens", num: 1, fmt: (r) => `${num(r.tokens, 0)} / ${num(r.token_budget, 0)}`},
+        {label: "GPU s", num: 1, fmt: (r) => `${num(r.gpu_seconds, 0)} / ${num(r.gpu_budget, 0)}`},
+        {label: "Spend", num: 1, fmt: (r) => `${money(r.external_spend)} / ${money(r.spend_budget)}`},
+        {label: "Tool calls", num: 1, fmt: (r) => `${r.tool_calls} / ${r.tool_call_budget}`}])}`;
+  },
+};
+
+async function refresh() {
+  try {
+    const o = await api("/api/overview");
+    $("#meta").textContent = `generation ${o.generation ?? "—"} · tick ${o.tick} · ${o.events} events${o.halted ? " · HALTED" : ""}`;
+    $("#view").innerHTML = await views[tab]();
+  } catch (err) {
+    $("#view").innerHTML = `<p class="bad">Could not load: ${esc(err.message)}</p>`;
+  }
+}
+renderTabs();
+refresh();
+setInterval(() => { if (tab !== "Audit") refresh(); }, 5000);
+</script>
+</body>
+</html>
