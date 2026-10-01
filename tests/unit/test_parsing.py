@@ -32,7 +32,7 @@ def test_malformed(text):
         parse_output(text, max_actions=3)
 
 
-def test_qwen_agent_prompt_disables_thinking():
+def test_qwen_agent_prompt_allows_thinking_but_requires_final_json():
     from runtime.agent.prompts import build_messages
 
     genotype = {
@@ -41,7 +41,10 @@ def test_qwen_agent_prompt_disables_thinking():
         "target": {"segment": "local-services"},
         "pricing_parameters": {"price": 19.0},
         "tool_preferences": ["market.offer"],
-        "planning_parameters": {"temperature": 0.2, "max_tokens": 512, "survey_every": 4},
+        "planning_parameters": {"temperature": 0.2, "max_tokens": 4096, "survey_every": 4},
     }
     messages = build_messages(genotype, [], [], [], 0, 3)
-    assert messages[0]["content"].rstrip().endswith("/no_think")
+    system = messages[0]["content"]
+    assert "/no_think" not in system
+    assert "Think carefully before acting" in system
+    assert "finish with the required JSON object" in system
