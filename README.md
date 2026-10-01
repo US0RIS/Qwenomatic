@@ -1,5 +1,7 @@
 # Qwenomatic
 
+> Experimental changes are governed by [`EXPERIMENTS.md`](EXPERIMENTS.md). A feature is not considered done until its required comparison, audit, rollback, and promotion criteria pass.
+
 Qwenomatic is an experimental local-first evolutionary agent farm: a population of AI agents competes on measurable economic outcomes, receives compute according to demonstrated performance, and evolves through selection, cloning, and controlled mutation.
 
 The project is designed around a simple question:
