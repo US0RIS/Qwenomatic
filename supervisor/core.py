@@ -36,6 +36,7 @@ from .accounting import (
 from .clock import SimulatedClock, WallClock, parse_ts
 from .config import FarmConfig, config_hash
 from .evolution import GenerationManager, MutationEngine
+from .thinking import ThinkingController
 from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
@@ -135,6 +136,7 @@ class Supervisor:
         )
         self.runtime = AgentRuntime(store=self.store, registry=self.registry, gateway=self.gateway,
                                     config=farm["runtime"])
+        self.thinking = ThinkingController(self.store, self.state, farm["runtime"].get("thinking"))
         self.mutations = MutationEngine(
             farm["mutation"], segments=segments, granted_tools=sorted(self.config.policy.get("capabilities", {})),
             max_mutations=int(farm["evolution"].get("max_mutations", 2)),
@@ -192,6 +194,8 @@ class Supervisor:
     def _rebuild_state(self) -> None:
         self.state.reset()
         self.state.replay(self.store.iter_events())
+        if hasattr(self, "thinking"):
+            self.thinking.reset()  # rolled-back anchors must not survive in memory
 
     # ======================================================= configuration
     def generation_config(self, generation: int | None = None) -> dict[str, Any]:
@@ -411,10 +415,13 @@ class Supervisor:
                     self.store.append(EventType.HEALTH_EVENT,
                                       {"component": "agent_state", "kind": "state_corrupted", "detail": "reset"},
                                       agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
-                request = self.runtime.build_request(agent, st, self.config.seed)
+                step_id = self.ids.new("step")
+                # Supervisor decision from ledger state; it shapes only the request. The
+                # resulting text takes the same execute -> gateway path in every mode.
+                think = self.thinking.decide(agent, gen, tick, step_id, st["step_index"])
+                request = self.runtime.build_request(agent, st, self.config.seed, thinking=think.thinking)
                 counters = self.state.counter(gen, agent.id)
                 remaining_tokens = float(agent.budgets.get("inference_tokens", 1e12)) - counters.tokens
-                step_id = self.ids.new("step")
                 job_id = self.inference.submit(agent.id, request, sel.priority,
                                                {"max_tokens": max(1, int(remaining_tokens))}, job_id=self.ids.new("job"))
                 self.store.append(
@@ -484,6 +491,8 @@ class Supervisor:
             self.store.append(EventType.HEALTH_EVENT,
                               {"component": "agent", "kind": "malformed_output", "detail": outcome.error},
                               agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
+        if job.request.thinking:
+            self.thinking.validate(agent, gen, tick, step_id, malformed=outcome.malformed)
 
     def _candidates(self, gen: int, tick: int) -> list[Candidate]:
         gv = self.state.generations[gen]

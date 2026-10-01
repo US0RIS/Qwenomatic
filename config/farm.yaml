@@ -74,11 +74,21 @@ runtime:
   memory_items: 12
   workspace_quota_bytes: 262144
   malformed_output_threshold: 8  # consecutive malformed outputs before a health pause
-  thinking:                    # who decides whether a reasoning model thinks: the supervisor, per step
+  # Who decides whether a reasoning model thinks: the supervisor, per step
+  # (supervisor/thinking.py, EXPERIMENTS.md E13). Unlisted knobs use the
+  # defaults in supervisor/thinking.py.
+  thinking:
     mode: adaptive             # server (no control sent) | on | off | adaptive
-    first_steps: 1             # adaptive: think on an agent's first N steps
-    deep_every: 8              # adaptive: and on every Nth step (0 disables)
-    after_trouble: true        # adaptive: and after a malformed output, denied action or tool error
+    deep_every: 8              # HARD CADENCE: a deep review at least every 8 steps (<= 7 thinking-off
+                               # steps in a row). Detectors can force earlier reviews, never later ones.
+    first_steps: 1             # known-event triggers (supplemental): first steps, every deep_every-th
+    after_trouble: true        #   step, malformed prior output, blocked action, tool error
+    anchor_window_steps: 8     # observations summarized into the fixed validation anchor
+    current_window_steps: 4    # recent observations measured against that anchor
+    min_actions: 6             # offers needed before outcome components count
+    ood: {threshold: 1.0}      # fixed-anchor state distance; components scaled so 1.0 = tolerance
+    uncertainty: {threshold: 1.0, min_anchor_actions: 6, budget_boundary: 0.2}
+    drift: {cusum_k: 0.25, cusum_h: 4.0}   # one-sided CUSUM vs the anchor; score = S / h
 
 evolution:
   elite_count: 2

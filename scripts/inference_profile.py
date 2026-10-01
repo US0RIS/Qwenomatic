@@ -7,6 +7,7 @@ import argparse
 import math
 import statistics
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -22,6 +23,35 @@ def pct(values, p):
     return xs[i]
 
 
+def print_escalations(decisions) -> None:
+    """Why steps thought, from THINKING_DECISION events (supervisor/thinking.py)."""
+    on = [e.payload for e in decisions if e.payload.get("thinking")]
+    off = [e.payload for e in decisions if e.payload.get("thinking") is False]
+    reasons = Counter(r for p in on for r in p["reasons"])
+    classes = Counter(p["trigger_class"] for p in on)
+    print()
+    print(f"Thinking decisions       {len(decisions)}  on {len(on)} ({100*len(on)/len(decisions):.1f}%)  "
+          f"off {len(off)} ({100*len(off)/len(decisions):.1f}%)")
+    print(f"  forced by              hard cadence {classes['hard_cadence']}  early warning {classes['early_warning']}  "
+          f"known event {classes['known_event']}")
+    print(f"  OOD-triggered          {reasons['ood']}")
+    print(f"  drift-triggered        {sum(1 for p in on if any(r.startswith('drift:') for r in p['reasons']))}")
+    print(f"  uncertainty-triggered  {reasons['uncertainty']}")
+    print("  escalations by reason  " + ", ".join(f"{r} {c}" for r, c in reasons.most_common()))
+    # Runs of thinking-off steps that ended in a deep step, per agent, in ledger order.
+    runs, open_run = [], defaultdict(int)
+    for e in decisions:
+        if e.payload.get("thinking") is None:
+            continue
+        if e.payload["thinking"]:
+            runs.append(open_run.pop(e.agent_id, 0))
+        else:
+            open_run[e.agent_id] += 1
+    if runs:
+        print(f"  cheap steps between deep validations: avg {statistics.mean(runs):.2f}  max {max(runs)}  "
+              f"(deep_every {decisions[-1].payload.get('deep_every')})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default="var/real-smart")
@@ -34,6 +64,7 @@ def main() -> int:
             for e in store.iter_events(types=[EventType.INFERENCE_JOB_SUBMITTED])
         }
         completed = store.iter_events(types=[EventType.INFERENCE_JOB_COMPLETED])
+        decisions = store.iter_events(types=[EventType.THINKING_DECISION])
     finally:
         store.close()
 
@@ -86,11 +117,15 @@ def main() -> int:
     print(f"calls at >=95% max       {max_hits}/{n} ({100*max_hits/n:.2f}%)")
     if len(by_thinking) > 1 or "server default" not in by_thinking:
         print()
-        print("By thinking decision:")
+        print("By thinking decision (completed calls):")
         for mode, rows in sorted(by_thinking.items()):
             cts, wss = [r[0] for r in rows], [r[1] for r in rows]
-            print(f"  {mode:<15} calls {len(rows):>6}  avg completion {statistics.mean(cts):>7.1f}  "
-                  f"p50 wall {pct(wss, .50):>6.2f}s  share of wall {100*sum(wss)/max(sum(wall), 1e-9):5.1f}%")
+            print(f"  {mode:<15} calls {len(rows):>6} ({100*len(rows)/n:5.1f}%)  "
+                  f"completion total {sum(cts):>10,}  avg {statistics.mean(cts):>7.1f}  "
+                  f"wall total {sum(wss):>9.1f}s  p50 {pct(wss, .50):>6.2f}s  "
+                  f"share of wall {100*sum(wss)/max(sum(wall), 1e-9):5.1f}%")
+    if decisions:
+        print_escalations(decisions)
     print()
     print("Interpretation:")
     if statistics.median(queue) > 1.0:

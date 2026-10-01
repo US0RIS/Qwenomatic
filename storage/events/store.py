@@ -152,7 +152,10 @@ class EventStore:
         generation_id: int | None = None,
         occurred_at: str | None = None,
         idempotency_key: str | None = None,
+        event_id: str | None = None,
     ) -> Event:
+        """`event_id` lets pure telemetry derive its id from its subject instead of
+        drawing from the shared deterministic id stream (see supervisor/thinking.py)."""
         if self.read_only:
             raise EventStoreError("store opened read-only")
         check_authorship(type, author)
@@ -167,7 +170,7 @@ class EventStore:
             recorded_at = self._now()
             fields = {
                 "seq": self._head_seq + 1,
-                "event_id": self._new_id(),
+                "event_id": event_id or self._new_id(),
                 "type": type.value,
                 "author": author,
                 "agent_id": agent_id,

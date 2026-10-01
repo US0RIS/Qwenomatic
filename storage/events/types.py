@@ -30,6 +30,8 @@ class EventType(str, Enum):
     INFERENCE_JOB_COMPLETED = "inference_job_completed"
     INFERENCE_JOB_FAILED = "inference_job_failed"
     INFERENCE_JOB_CANCELLED = "inference_job_cancelled"
+    THINKING_DECISION = "thinking_decision"  # supervisor: per-step thinking decision and its reasons
+    THINKING_ANCHOR = "thinking_anchor"      # supervisor: fixed validation anchor after a deep step
 
     # Scheduler
     SCHEDULER_ALLOCATION = "scheduler_allocation"

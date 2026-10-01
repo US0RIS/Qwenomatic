@@ -18,10 +18,6 @@ from .parsing import MalformedOutput, parse_output
 from .prompts import build_messages
 
 
-# server: send no thinking control; on/off: every step; adaptive: decided per step.
-THINKING_MODES = ("server", "on", "off", "adaptive")
-
-
 @dataclass
 class StepOutcome:
     malformed: bool
@@ -39,13 +35,6 @@ class AgentRuntime:
         self.gateway = gateway
         self.max_actions = int(config.get("max_actions_per_step", 3))
         self.memory_items = int(config.get("memory_items", 12))
-        thinking = config.get("thinking", {}) or {}
-        self.thinking_mode = thinking.get("mode", "server")
-        if self.thinking_mode not in THINKING_MODES:
-            raise ValueError(f"runtime.thinking.mode must be one of {', '.join(THINKING_MODES)}")
-        self.think_first_steps = int(thinking.get("first_steps", 1))
-        self.think_every = int(thinking.get("deep_every", 8))
-        self.think_after_trouble = bool(thinking.get("after_trouble", True))
 
     def load_state(self, agent_id: str) -> tuple[int, dict[str, Any], bool]:
         """Returns (version, state, recovered). Corrupt state is replaced, never trusted."""
@@ -61,23 +50,9 @@ class AgentRuntime:
         state.setdefault("notes", [])
         return version, state, recovered
 
-    def wants_thinking(self, state: dict[str, Any]) -> bool | None:
-        """Whether this step may think. Decided here, from persisted state, never by the model.
-
-        Adaptive mode thinks on an agent's first steps, on every `deep_every`-th
-        step, and on the step after a malformed output, a denied action or a
-        tool error. Every other step is routine continuation and answers directly.
-        """
-        if self.thinking_mode == "server":
-            return None
-        if self.thinking_mode != "adaptive":
-            return self.thinking_mode == "on"
-        step = state["step_index"]
-        return (step < self.think_first_steps
-                or (self.think_every > 0 and step % self.think_every == 0)
-                or (self.think_after_trouble and state.get("deliberate_next") is True))
-
-    def build_request(self, agent: Any, state: dict[str, Any], seed: int) -> InferenceRequest:
+    def build_request(self, agent: Any, state: dict[str, Any], seed: int,
+                      thinking: bool | None = None) -> InferenceRequest:
+        """`thinking` is the supervisor's decision (supervisor/thinking.py); it only shapes the request."""
         g = agent.genotype
         tools = self.registry.describe(g["tool_preferences"])
         messages = build_messages(g, tools, state["memory"], state["notes"], state["step_index"], self.max_actions)
@@ -86,7 +61,7 @@ class AgentRuntime:
             messages=messages,
             max_tokens=int(g["planning_parameters"]["max_tokens"]),
             temperature=float(g["planning_parameters"]["temperature"]),
-            thinking=self.wants_thinking(state),
+            thinking=thinking,
             metadata={"agent_id": agent.id, "step_index": state["step_index"], "genotype": g,
                       "memory": state["memory"], "seed": request_seed},
         )
@@ -95,7 +70,7 @@ class AgentRuntime:
         state = {**state, "memory": list(state["memory"]), "notes": list(state["notes"])}
         state["step_index"] += 1
         error: str | None = None
-        actions = denied = errors = 0
+        actions = denied = 0
         try:
             parsed = parse_output(text, max_actions=self.max_actions)
         except MalformedOutput as exc:
@@ -120,14 +95,11 @@ class AgentRuntime:
                 actions += 1
                 if result.status == "denied":
                     denied += 1
-                elif result.status == "error":
-                    errors += 1
                 state["memory"].append({"tool": action["tool"], "args": _short(action["args"]), **result.observation()})
                 if result.status == "denied" and agent.id and self._agent_stopped(agent.id):
                     break  # disqualified mid-step: nothing further executes
             if parsed.memory:
                 state["notes"].append(parsed.memory)
-        state["deliberate_next"] = parsed is None or denied > 0 or errors > 0
         state["memory"] = state["memory"][-self.memory_items:]
         state["notes"] = state["notes"][-self.memory_items:]
         new_version = self.store.save_agent_state(agent.id, state, version)
