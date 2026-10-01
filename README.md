@@ -405,6 +405,20 @@ python scripts\inference_profile.py --data-dir var\real-smart
 
 This reports prompt/completion token distributions, per-call latency, queue latency, output throughput, and how often responses reach the token ceiling.
 
+### Control thinking per step
+
+With hybrid reasoning models such as `qwen3:14b`, thinking tokens can dominate wall time. The supervisor decides, per step and from the agent's persisted state, whether a step may think; the model does not decide. `runtime.thinking` in `config/farm.yaml`:
+
+| `mode` | Behavior |
+|---|---|
+| `adaptive` (default) | Think on an agent's first `first_steps` steps, every `deep_every`-th step, and the step after a malformed output, denied action or tool error. All other steps answer directly. |
+| `on` / `off` | Every step thinks / no step thinks. |
+| `server` | Send no control; the server's default applies (the previous behavior). |
+
+`inference.openai_compatible.thinking_control` sets how the decision reaches the server: `soft_switch` appends Qwen3's `/think` or `/no_think` to the last user message (works on Ollama, llama.cpp and vLLM for hybrid Qwen3 models), `template_kwargs` sends `chat_template_kwargs.enable_thinking` (llama.cpp with `--jinja`, vLLM), and `both` (default) sends both. Each decision is recorded in `INFERENCE_JOB_SUBMITTED`, and `scripts/inference_profile.py` reports calls, completion tokens and wall-time share for thinking-on and thinking-off steps separately.
+
+Fewer thinking steps buys more steps per hour at some cost in decision quality. Whether that trade pays is measurable: run two farms with the same seed and number of generations, one with `mode: adaptive` and one with `mode: on`, and compare net profit per GPU-hour.
+
 ### Optimized Ollama launcher
 
 Quit the Ollama desktop/background server first, then:

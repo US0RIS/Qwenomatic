@@ -420,7 +420,8 @@ class Supervisor:
                 self.store.append(
                     EventType.INFERENCE_JOB_SUBMITTED,
                     {"job_id": job_id, "step_id": step_id, "tick": tick, "priority": round(sel.priority, 6),
-                     "pool": sel.pool, "max_tokens": request.max_tokens, "input_digest": digest(request.messages)},
+                     "pool": sel.pool, "max_tokens": request.max_tokens, "thinking": request.thinking,
+                     "input_digest": digest(request.messages)},
                     agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
                     idempotency_key=f"jobsubmit:{job_id}",
                 )

@@ -48,6 +48,7 @@ def main() -> int:
     gpu = []
     toks_per_sec = []
     max_hits = 0
+    by_thinking: dict[str, list[tuple[int, float]]] = {}
     for e in completed:
         u = e.payload["usage"]
         pt = int(u["prompt_tokens"])
@@ -63,6 +64,8 @@ def main() -> int:
         if ws > 0:
             toks_per_sec.append(ct / ws)
         sub = submitted.get(e.payload["job_id"])
+        mode = {True: "thinking on", False: "thinking off"}.get((sub or {}).get("thinking"), "server default")
+        by_thinking.setdefault(mode, []).append((ct, ws))
         if sub and int(sub.get("max_tokens", 0)) > 0 and ct >= 0.95 * int(sub["max_tokens"]):
             max_hits += 1
 
@@ -81,6 +84,13 @@ def main() -> int:
     print(f"median output tok/s      {statistics.median(toks_per_sec):.2f}")
     print(f"recorded GPU seconds     {sum(gpu):,.1f}")
     print(f"calls at >=95% max       {max_hits}/{n} ({100*max_hits/n:.2f}%)")
+    if len(by_thinking) > 1 or "server default" not in by_thinking:
+        print()
+        print("By thinking decision:")
+        for mode, rows in sorted(by_thinking.items()):
+            cts, wss = [r[0] for r in rows], [r[1] for r in rows]
+            print(f"  {mode:<15} calls {len(rows):>6}  avg completion {statistics.mean(cts):>7.1f}  "
+                  f"p50 wall {pct(wss, .50):>6.2f}s  share of wall {100*sum(wss)/max(sum(wall), 1e-9):5.1f}%")
     print()
     print("Interpretation:")
     if statistics.median(queue) > 1.0:

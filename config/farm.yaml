@@ -38,6 +38,7 @@ inference:
     max_concurrency: 4         # match llama-server --parallel
     timeout_seconds: 120
     json_mode: true
+    thinking_control: both     # soft_switch (/think, /no_think) | template_kwargs | both | none
   escalation:
     enabled: false             # cloud escalation is off unless an operator enables it
     ceiling_usd: 0.0
@@ -73,6 +74,11 @@ runtime:
   memory_items: 12
   workspace_quota_bytes: 262144
   malformed_output_threshold: 8  # consecutive malformed outputs before a health pause
+  thinking:                    # who decides whether a reasoning model thinks: the supervisor, per step
+    mode: adaptive             # server (no control sent) | on | off | adaptive
+    first_steps: 1             # adaptive: think on an agent's first N steps
+    deep_every: 8              # adaptive: and on every Nth step (0 disables)
+    after_trouble: true        # adaptive: and after a malformed output, denied action or tool error
 
 evolution:
   elite_count: 2
