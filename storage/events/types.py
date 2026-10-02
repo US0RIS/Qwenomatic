@@ -53,6 +53,7 @@ class EventType(str, Enum):
     FINANCIAL_REJECTED = "financial_rejected"
     MILESTONE_VALIDATED = "milestone_validated"
     EXTERNAL_ACTION_REQUESTED = "external_action_requested"
+    EXTERNAL_ACTION_DISPATCHING = "external_action_dispatching"
     EXTERNAL_ACTION_RESULT = "external_action_result"
     EXTERNAL_ACTION_RECONCILED = "external_action_reconciled"
 
