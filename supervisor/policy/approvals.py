@@ -16,12 +16,14 @@ def pending(state: FarmState) -> list[dict[str, Any]]:
 
 
 def resolve(store: EventStore, state: FarmState, approval_id: str, *, granted: bool, operator: str,
-            note: str = "") -> None:
+            note: str = "", policy_fingerprint: str | None = None) -> None:
     approval = state.approvals.get(approval_id)
     if approval is None:
         raise ApprovalError(f"no approval {approval_id}")
     if approval["status"] != "pending":
         raise ApprovalError(f"approval {approval_id} already {approval['status']}")
+    if policy_fingerprint is not None and approval.get("policy_fingerprint") != policy_fingerprint:
+        raise ApprovalError("approval belongs to a different safety-policy fingerprint")
     agent = state.agents.get(approval["agent_id"])
     with store.transaction():
         store.append(
