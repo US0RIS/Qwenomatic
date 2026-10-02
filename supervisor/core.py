@@ -673,6 +673,75 @@ class Supervisor:
                     idempotency_key=f"external-result:{action_id}",
                 )
 
+    def reconcile_external_action(
+        self,
+        action_id: str,
+        *,
+        confirmed: bool,
+        operator: str,
+        reference: str = "",
+        note: str = "",
+    ) -> None:
+        """Resolve a dispatching/uncertain real-world action after human verification.
+
+        Ambiguous effects are never retried automatically. If the operator
+        confirms that money left, the trusted ledger records it exactly once;
+        if the operator confirms no effect, the reservation is released.
+        """
+        action = self.state.external_actions.get(action_id)
+        if action is None:
+            raise ValueError(f"no external action {action_id}")
+        if action.get("status") not in ("dispatching", "uncertain"):
+            raise ValueError(f"external action {action_id} is {action.get('status')}, not unresolved")
+        status = "confirmed" if confirmed else "rejected"
+        agent_id = action.get("agent_id")
+        lineage_id = action.get("lineage_id")
+        generation = action.get("generation")
+        with self.store.transaction():
+            self.store.append(
+                EventType.EXTERNAL_ACTION_RECONCILED,
+                {
+                    "action_id": action_id,
+                    "status": status,
+                    "operator": operator,
+                    "result_reference": reference[:200],
+                    "note": note[:500],
+                },
+                author=f"operator:{operator}",
+                agent_id=agent_id,
+                lineage_id=lineage_id,
+                generation_id=generation,
+                idempotency_key=f"external-reconcile:{action_id}",
+            )
+            if confirmed and float(action.get("spend") or 0.0) > 0:
+                attr = Attribution(
+                    agent_id=agent_id,
+                    lineage_id=lineage_id,
+                    generation_id=generation,
+                    step_id=action.get("step_id"),
+                    tick=self.clock.tick,
+                    now=self.clock.now_dt(),
+                )
+                self.external_spend.charge(
+                    attr,
+                    float(action["spend"]),
+                    reference or f"reconciled:{action_id}",
+                    adapter_id=str(action.get("adapter_id") or "unknown"),
+                )
+            self.store.append(
+                EventType.HUMAN_INTERVENTION,
+                {
+                    "kind": "external_reconciliation",
+                    "action_id": action_id,
+                    "operator": operator,
+                    "confirmed": confirmed,
+                },
+                author=f"operator:{operator}",
+                agent_id=agent_id,
+                lineage_id=lineage_id,
+                generation_id=generation,
+            )
+
     # ===================================================== emergency stop
     def emergency_stop(self, reason: str, *, operator: str = "operator") -> None:
         """Halt population work and revoke every issued capability."""
@@ -733,6 +802,11 @@ class Supervisor:
                 elif kind in ("approve", "deny"):
                     self.resolve_approval(cmd["approval_id"], granted=kind == "approve", operator=operator,
                                           note=cmd.get("note", ""))
+                elif kind in ("external_confirm", "external_reject"):
+                    self.reconcile_external_action(
+                        cmd["action_id"], confirmed=kind == "external_confirm", operator=operator,
+                        reference=cmd.get("reference", ""), note=cmd.get("note", ""),
+                    )
                 else:
                     raise ValueError(f"unknown command {kind!r}")
                 outcome = "ok"
