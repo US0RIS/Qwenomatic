@@ -101,40 +101,55 @@ class ConfiguredExternalTool(ToolAdapter):
         if state not in ("confirmed", "rejected", "uncertain"):
             state = "uncertain"
         reference = str(response.get("reference") or action_id)[:200]
-        self.store.append(
-            EventType.EXTERNAL_ACTION_RESULT,
-            {
-                "action_id": action_id,
-                "adapter_id": self.external_adapter_id,
-                "status": state,
-                "result_reference": reference,
-                "error": str(response.get("error") or "")[:300],
-            },
-            agent_id=ctx.agent_id,
-            lineage_id=ctx.lineage_id,
-            generation_id=ctx.generation_id,
-            idempotency_key=f"external-result:{action_id}",
-        )
+        event_payload = {
+            "action_id": action_id,
+            "adapter_id": self.external_adapter_id,
+            "status": state,
+            "result_reference": reference,
+            "error": str(response.get("error") or "")[:300],
+        }
 
         if state == "confirmed":
-            if spend > 0:
-                attr = Attribution(
+            # Once the outside world says the effect happened, release the
+            # reservation and record settled spend in one local transaction.
+            # A crash before this transaction leaves "dispatching", which is
+            # intentionally a manual-reconciliation state.
+            with self.store.transaction():
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    event_payload,
                     agent_id=ctx.agent_id,
                     lineage_id=ctx.lineage_id,
                     generation_id=ctx.generation_id,
-                    step_id=ctx.step_id,
-                    tick=ctx.tick,
-                    now=ctx.now,
+                    idempotency_key=f"external-result:{action_id}",
                 )
-                self.spend_recorder.charge(
-                    attr, spend, reference, adapter_id=self.external_adapter_id
-                )
+                if spend > 0:
+                    attr = Attribution(
+                        agent_id=ctx.agent_id,
+                        lineage_id=ctx.lineage_id,
+                        generation_id=ctx.generation_id,
+                        step_id=ctx.step_id,
+                        tick=ctx.tick,
+                        now=ctx.now,
+                    )
+                    self.spend_recorder.charge(
+                        attr, spend, reference, adapter_id=self.external_adapter_id
+                    )
             result = response.get("result")
             return {
                 "state": "confirmed",
                 "reference": reference,
                 **({"result": result} if isinstance(result, dict) else {}),
             }
+
+        self.store.append(
+            EventType.EXTERNAL_ACTION_RESULT,
+            event_payload,
+            agent_id=ctx.agent_id,
+            lineage_id=ctx.lineage_id,
+            generation_id=ctx.generation_id,
+            idempotency_key=f"external-result:{action_id}",
+        )
         if state == "rejected":
             raise ToolError(str(response.get("error") or "external request rejected"))
         raise ToolError("external outcome is uncertain; spend remains reserved until an operator reconciles it")
