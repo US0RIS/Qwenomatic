@@ -148,6 +148,7 @@ class ExternalGatewayClient:
             "tool": tool,
             "args": args,
             "invocation_id": ctx.invocation_id,
+            "action_id": ctx.external_action_id or ctx.invocation_id,
             "agent_id": ctx.agent_id,
             "generation_id": ctx.generation_id,
             "capability_epoch": ctx.capability_epoch,
