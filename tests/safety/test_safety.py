@@ -15,7 +15,7 @@ from supervisor.safety.boundary import NetworkBoundary as RealBoundary, SafetyEr
 
 
 SPEC = {"name": "real.pay", "kind": "fixed_payment", "endpoint": "https://192.0.2.10/pay",
-        "credential_file": "/etc/qwenomatic/token.json", "payee": "operator-fixed-payee",
+        "credential_file": str(Path("/etc/qwenomatic/token.json").resolve()), "payee": "operator-fixed-payee",
         "hard_cap_cents": 5000, "approval_threshold_cents": 1000}
 
 
