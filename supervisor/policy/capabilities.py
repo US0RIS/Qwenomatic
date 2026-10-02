@@ -61,7 +61,7 @@ class TokenAuthority:
         if not hmac.compare_digest(sig, self._sign(body.encode())):
             raise InvalidToken("bad signature")
         claims = json.loads(base64.urlsafe_b64decode(body.encode()))
-        if claims["ep"] < current_epoch:
+        if claims["ep"] != current_epoch:
             raise InvalidToken("revoked")
         if claims["gen"] != generation_id:
             raise InvalidToken("expired (generation)")
@@ -69,3 +69,4 @@ class TokenAuthority:
             token_id=claims["tid"], agent_id=claims["aid"], generation_id=claims["gen"],
             capabilities=frozenset(claims["caps"]), epoch=claims["ep"],
         )
+

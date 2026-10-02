@@ -76,7 +76,9 @@ def test_unreachable_server_is_unavailable():
 def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     backend = OpenAICompatibleBackend({"base_url": server, "model": "Qwen3-14B-Instruct",
                                        "quantization": "Q4_K_M", "max_concurrency": 4})
-    sup = make_supervisor(tmp_path, backend=backend)
+    sup = make_supervisor(tmp_path, {"farm": {"inference": {"backend": "openai_compatible",
+                             "openai_compatible": {"base_url": server, "model": "Qwen3-14B-Instruct",
+                                                   "quantization": "Q4_K_M", "max_concurrency": 4}}}})
     run_ticks(sup, 3)
     steps = sup.store.iter_events(types=[EventType.AGENT_STEP_COMPLETED])
     assert len(steps) == 3 * sup.config.farm["inference"]["slots_per_tick"]
@@ -90,3 +92,4 @@ def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     assert "Tools:" in prompt and "market.offer" in prompt
     for secret in ("supervisor.key", "fitness.yaml", "risk_aversion", sup.token_for(steps[0].agent_id, 0)):
         assert secret not in prompt
+

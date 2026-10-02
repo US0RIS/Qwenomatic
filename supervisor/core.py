@@ -67,6 +67,10 @@ class Supervisor:
         market: SimulatedMarket | None = None,
         lock: bool = True,
     ) -> None:
+        from .safety.boundary import NetworkBoundary
+        self.boundary = NetworkBoundary(config)
+        if backend is not None and backend.name != "simulated":
+            raise ValueError("injected network backends are prohibited")
         self.config = config
         self.data_dir = Path(config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -88,6 +92,7 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
+        self.boundary.record(self.store)
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
         self.clock.set_tick(self.state.last_tick + 1)
@@ -120,6 +125,9 @@ class Supervisor:
         self.registry.register(WorkspaceWriteTool(quota))
         self.registry.register(WorkspaceReadTool())
 
+        from .safety.adapters import register_adapters
+        register_adapters(self.boundary, self.registry, self.ledger)
+        self.registry.freeze()
         self._policy_cache: dict[int, PolicyEngine] = {}
         self.gateway = ToolGateway(
             store=self.store, state=self.state, registry=self.registry, authority=self.authority,
@@ -358,7 +366,9 @@ class Supervisor:
         return results
 
     def tick(self) -> TickResult:
+        self.boundary.check()
         self._process_inbox()
+        self.gateway.dispatch_outbound(self.boundary)
         tick = self.clock.tick
         gen = self.state.current_generation
         result = TickResult(tick=tick, generation=gen)
@@ -447,7 +457,10 @@ class Supervisor:
                         continue
                     self._complete_step(agent, gen, tick, job, step_id, version, st)
                     result.completed += 1
-            except Exception as exc:  # a bug in one step must not take down the farm
+            except Exception as exc:  # ordinary step failures are isolated
+                from .safety.boundary import SafetyError
+                if isinstance(exc, SafetyError):
+                    raise
                 self.store.append(EventType.HEALTH_EVENT,
                                   {"component": "supervisor", "kind": "step_exception", "detail": repr(exc)[:500]},
                                   agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
@@ -650,3 +663,4 @@ def submit_command(data_dir: Path, command: dict[str, Any]) -> Path:
     tmp.write_text(json.dumps(command))
     tmp.rename(path)
     return path
+
