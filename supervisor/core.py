@@ -39,6 +39,7 @@ from .evolution import GenerationManager, MutationEngine
 from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
+from .safety import SafetyBoundaryError, attest_network_boundary
 from .scheduler import Candidate, Scheduler
 
 
@@ -88,11 +89,26 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
+        try:
+            self.safety_attestation = attest_network_boundary(config, self.store)
+        except Exception as exc:
+            try:
+                self.store.append(
+                    EventType.SAFETY_ATTESTATION_FAILED,
+                    {"error": str(exc)[:500], "fingerprint": config.safety_fingerprint()},
+                )
+            finally:
+                self.close()
+            if isinstance(exc, SafetyBoundaryError):
+                raise
+            raise SafetyBoundaryError(f"safety attestation errored: {exc}") from exc
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
         self.clock.set_tick(self.state.last_tick + 1)
 
-        self.authority = TokenAuthority(load_or_create_secret(self.data_dir / "secrets" / "supervisor.key"))
+        capability_secret = os.environ.get("QWENOMATIC_CAPABILITY_SECRET_FILE")
+        secret_path = Path(capability_secret) if capability_secret else self.data_dir / "secrets" / "supervisor.key"
+        self.authority = TokenAuthority(load_or_create_secret(secret_path))
         econ = farm["economy"]
         self.ledger = Ledger(self.store, farm_controlled_accounts=econ.get("farm_controlled_accounts", []),
                              currency=econ.get("currency", "USD"))
@@ -123,7 +139,8 @@ class Supervisor:
         self._policy_cache: dict[int, PolicyEngine] = {}
         self.gateway = ToolGateway(
             store=self.store, state=self.state, registry=self.registry, authority=self.authority,
-            policy=self.policy_engine, new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
+            policy=self.policy_engine, policy_fingerprint=self.current_policy_fingerprint,
+            new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
             on_hard_violation=self._on_hard_violation,
         )
         self.backend = backend or build_backend(farm["inference"], config.seed)
@@ -212,6 +229,7 @@ class Supervisor:
                          "gpu_count": int(farm["inference"].get("gpu_count", 1))}
         cfg["hashes"] = {k: config_hash(v) for k, v in cfg.items()}
         cfg["hashes"]["farm"] = config_hash(farm)
+        cfg["hashes"]["safety"] = self.config.safety_fingerprint()
         return cfg
 
     def fitness_config(self) -> dict[str, Any]:
@@ -222,6 +240,13 @@ class Supervisor:
         if g not in self._policy_cache:
             self._policy_cache[g] = PolicyEngine(self.generation_config()["policy"])
         return self._policy_cache[g]
+
+    def current_policy_fingerprint(self) -> str:
+        g = self.state.current_generation
+        if g is not None and g in self.state.generations:
+            return str(self.state.generations[g].config.get("hashes", {}).get("safety")
+                       or self.config.safety_fingerprint())
+        return self.config.safety_fingerprint()
 
     def scheduler_for(self, generation: int) -> Scheduler:
         cfg = self.generation_config(generation)
@@ -297,7 +322,7 @@ class Supervisor:
             self.store.append(
                 EventType.CAPABILITY_ISSUED,
                 {"token_id": self._token_id(agent_id, number), "capabilities": caps,
-                 "epoch": self.state.capability_epoch},
+                 "epoch": self.state.capability_epoch, "policy_fingerprint": self.current_policy_fingerprint()},
                 agent_id=agent_id, lineage_id=self.state.agents[agent_id].lineage_id, generation_id=number,
                 idempotency_key=f"cap:{number}:{agent_id}:{self.state.capability_epoch}",
             )
@@ -313,6 +338,7 @@ class Supervisor:
         return self.authority.issue(
             token_id=self._token_id(agent_id, generation), agent_id=agent_id, generation_id=generation,
             capabilities=self._capabilities_for(agent_id, self.policy_engine()), epoch=self.state.capability_epoch,
+            policy_fingerprint=self.current_policy_fingerprint(),
         )
 
     def workspace_for(self, agent_id: str) -> Path:
@@ -548,7 +574,10 @@ class Supervisor:
     def resolve_approval(self, approval_id: str, *, granted: bool, operator: str, note: str = "") -> None:
         approval = self.state.approvals.get(approval_id)
         with self.store.transaction():
-            approvals_mod.resolve(self.store, self.state, approval_id, granted=granted, operator=operator, note=note)
+            approvals_mod.resolve(
+                self.store, self.state, approval_id, granted=granted, operator=operator, note=note,
+                policy_fingerprint=self.current_policy_fingerprint(),
+            )
             agent = self.state.agents.get(approval["agent_id"]) if approval else None
             if agent:
                 self.labor.charge(Attribution(agent.id, agent.lineage_id, approval["generation"], None,
@@ -600,7 +629,8 @@ class Supervisor:
                     self.store.append(
                         EventType.CAPABILITY_ISSUED,
                         {"token_id": self._token_id(a.id, gen), "capabilities": self._capabilities_for(a.id, engine),
-                         "epoch": self.state.capability_epoch},
+                         "epoch": self.state.capability_epoch,
+                         "policy_fingerprint": self.current_policy_fingerprint()},
                         agent_id=a.id, lineage_id=a.lineage_id, generation_id=gen,
                         idempotency_key=f"cap:{gen}:{a.id}:{self.state.capability_epoch}",
                     )
