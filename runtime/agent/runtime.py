@@ -50,7 +50,9 @@ class AgentRuntime:
         state.setdefault("notes", [])
         return version, state, recovered
 
-    def build_request(self, agent: Any, state: dict[str, Any], seed: int) -> InferenceRequest:
+    def build_request(self, agent: Any, state: dict[str, Any], seed: int,
+                      thinking: bool | None = None) -> InferenceRequest:
+        """`thinking` is the supervisor's decision (supervisor/thinking.py); it only shapes the request."""
         g = agent.genotype
         tools = self.registry.describe(g["tool_preferences"])
         messages = build_messages(g, tools, state["memory"], state["notes"], state["step_index"], self.max_actions)
@@ -59,6 +61,7 @@ class AgentRuntime:
             messages=messages,
             max_tokens=int(g["planning_parameters"]["max_tokens"]),
             temperature=float(g["planning_parameters"]["temperature"]),
+            thinking=thinking,
             metadata={"agent_id": agent.id, "step_index": state["step_index"], "genotype": g,
                       "memory": state["memory"], "seed": request_seed},
         )

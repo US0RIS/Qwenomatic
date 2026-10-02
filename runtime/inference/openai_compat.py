@@ -14,6 +14,14 @@ from typing import Any
 
 from .base import BackendUnavailable, Generation, Health, InferenceBackend, InferenceRequest
 
+# How a per-step thinking decision reaches the server:
+#   soft_switch      append Qwen3's /think or /no_think to the last user message
+#                    (honoured by hybrid Qwen3 models on any server, incl. Ollama)
+#   template_kwargs  chat_template_kwargs.enable_thinking (llama.cpp --jinja, vLLM)
+#   both             send both; servers ignore the form they do not understand
+#   none             never send a thinking control
+THINKING_CONTROLS = ("soft_switch", "template_kwargs", "both", "none")
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -34,6 +42,9 @@ class OpenAICompatibleBackend(InferenceBackend):
         self.api_key = config.get("api_key")
         self.cost_per_1k_tokens = float(config.get("cost_per_1k_tokens", 0.0))
         self.local = bool(config.get("local", True))
+        self.thinking_control = config.get("thinking_control", "both")
+        if self.thinking_control not in THINKING_CONTROLS:
+            raise ValueError(f"thinking_control must be one of {', '.join(THINKING_CONTROLS)}")
 
     def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"}
@@ -57,6 +68,11 @@ class OpenAICompatibleBackend(InferenceBackend):
             body["response_format"] = {"type": "json_object"}
         if "seed" in request.metadata:
             body["seed"] = int(request.metadata["seed"])
+        if request.thinking is not None and self.thinking_control != "none":
+            if self.thinking_control in ("soft_switch", "both"):
+                body["messages"] = _with_soft_switch(request.messages, request.thinking)
+            if self.thinking_control in ("template_kwargs", "both"):
+                body["chat_template_kwargs"] = {"enable_thinking": request.thinking}
         started = time.perf_counter()
         data = self._post("/chat/completions", body)
         wall = time.perf_counter() - started
@@ -79,3 +95,14 @@ class OpenAICompatibleBackend(InferenceBackend):
             return Health(False, self.name, self.model, str(exc))
         return Health(ok, self.name, self.model, "ok" if ok else "unhealthy")
 
+
+def _with_soft_switch(messages: list[dict[str, str]], thinking: bool) -> list[dict[str, str]]:
+    """Copy of `messages` with Qwen3's soft switch on the last user turn."""
+    switch = "/think" if thinking else "/no_think"
+    out = [dict(m) for m in messages]
+    for m in reversed(out):
+        if m.get("role") == "user":
+            m["content"] = f"{m['content']}\n{switch}"
+            return out
+    out.append({"role": "user", "content": switch})
+    return out

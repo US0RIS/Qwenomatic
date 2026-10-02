@@ -16,6 +16,9 @@ class InferenceRequest:
     messages: list[dict[str, str]]
     max_tokens: int = 512
     temperature: float = 0.7
+    # Whether a reasoning model should think before answering. None leaves the
+    # server's default; True/False is the supervisor's per-step decision.
+    thinking: bool | None = None
     # Opaque to real models; the simulated backend reads the agent's genotype
     # and memory from here instead of parsing prose.
     metadata: dict[str, Any] = field(default_factory=dict)

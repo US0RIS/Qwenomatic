@@ -355,6 +355,7 @@ Using the status vocabulary of DESIGN §18:
 | Phase 4 — archetype evaluation windows (long-cycle strategies) | **VERIFIED IN SIMULATION** |
 | Phase 5 — failure handling (DESIGN §15) | **VERIFIED IN SIMULATION** for supervisor restart, interrupted close, inference outage, failing jobs, malformed output, corrupted agent state, duplicate/delayed settlement |
 | Phase 1 — 24-hour generation driven by a real local Qwen model | **IMPLEMENTED, UNVERIFIED** (the client is tested against a fake OpenAI-compatible server only) |
+| Adaptive thinking (EXPERIMENTS.md E13) | **IMPLEMENTED, UNVERIFIED**: no real Qwen3 benchmark, no economic A/B yet |
 | Phase 2 — real-world economic adapter | Not implemented, by design: no external adapter is approved yet |
 | Revenue or profit of any kind | None claimed. All revenue in this repository is simulated. |
 
@@ -410,6 +411,38 @@ python scripts\inference_profile.py --data-dir var\real-smart
 ```
 
 This reports prompt/completion token distributions, per-call latency, queue latency, output throughput, and how often responses reach the token ceiling.
+
+### Control thinking per step
+
+With hybrid reasoning models such as `qwen3:14b`, thinking tokens can dominate wall time. The supervisor decides each step whether the model may think (`supervisor/thinking.py`, set by `runtime.thinking` in `config/farm.yaml`). The decision uses only ledger state: model text and self-reported confidence are never read.
+
+| `mode` | Behavior |
+|---|---|
+| `server` (default) | Send no control; the server's default applies. |
+| `adaptive` (opt-in) | A step may skip thinking only while the agent stays inside the operating region validated at its last deep step (see below). |
+| `on` / `off` | Every step thinks / no step thinks. |
+
+In `adaptive` mode, in order of authority:
+
+1. **Hard cadence:** a deep review at least every `deep_every` steps (8), so at most 7 thinking-off steps in a row. Nothing can lengthen this.
+2. **Fixed validation anchor:** after each valid deep step the supervisor freezes a snapshot of observable state: segment mix, offered price, workflow, tool mix, conversion, value per action, spend per action, spend efficiency, refund rate.
+3. **Early-warning detectors**, measured against that anchor (never a trailing window), which can only force thinking earlier: state distance (OOD), supervisor-computed uncertainty, and CUSUM outcome drift.
+4. **Known-event signatures:** first step, every `deep_every`-th step, malformed prior output, blocked action, tool error.
+
+Every step writes a `THINKING_DECISION` event with its reasons and every detector component. `scripts/inference_profile.py` reports:
+- thinking-on/off share, tokens and wall time by mode
+- escalations by reason and by trigger class
+- OOD, drift and uncertainty trigger counts
+- average thinking-off run length
+
+The decision changes only the inference request. Every mode reaches the world through the same gateway, policy, budget and attribution path (`tests/adversarial/test_thinking_enforcement.py`).
+
+`inference.openai_compatible.thinking_control` sets how the decision reaches the server:
+- `soft_switch`: Qwen3's `/think` or `/no_think` on the last user message (Ollama, llama.cpp, vLLM)
+- `template_kwargs`: `chat_template_kwargs.enable_thinking` (llama.cpp with `--jinja`, vLLM)
+- `both` (default)
+
+**Status: implemented-but-unverified.** It has not run against a real Qwen3 server, and the economic A/B (adaptive vs always-on) defined in [EXPERIMENTS.md E13](EXPERIMENTS.md) has not been run. Until E13 is promoted, `adaptive` is opt-in: set `runtime.thinking.mode: adaptive` or pass `run --thinking-mode adaptive`. `run --thinking-mode adaptive|on` selects an A/B arm.
 
 ### Optimized Ollama launcher
 

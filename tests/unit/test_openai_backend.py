@@ -93,3 +93,23 @@ def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     for secret in ("supervisor.key", "fitness.yaml", "risk_aversion", sup.token_for(steps[0].agent_id, 0)):
         assert secret not in prompt
 
+
+def _send(server, thinking, control="both"):
+    b = OpenAICompatibleBackend({"base_url": server, "model": "m", "thinking_control": control})
+    messages = [{"role": "system", "content": "Target segment: s\n"}, {"role": "user", "content": "Step 3."}]
+    b.generate(InferenceRequest(messages=messages, thinking=thinking))
+    assert messages[1]["content"] == "Step 3."  # the caller's request is not mutated
+    return FakeQwen.requests[-1]
+
+
+def test_thinking_switch_wire_format(server):
+    off = _send(server, False)
+    assert off["messages"][-1]["content"].endswith("\n/no_think")
+    assert off["chat_template_kwargs"] == {"enable_thinking": False}
+    on = _send(server, True, "soft_switch")
+    assert on["messages"][-1]["content"].endswith("\n/think") and "chat_template_kwargs" not in on
+    kwargs_only = _send(server, False, "template_kwargs")
+    assert kwargs_only["messages"][-1]["content"] == "Step 3."
+    assert kwargs_only["chat_template_kwargs"] == {"enable_thinking": False}
+    for sent in (_send(server, None), _send(server, False, "none")):
+        assert sent["messages"][-1]["content"] == "Step 3." and "chat_template_kwargs" not in sent

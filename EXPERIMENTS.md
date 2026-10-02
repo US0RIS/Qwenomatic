@@ -572,6 +572,86 @@ Moving schemas, tool definitions, instructions, or task-specific context relativ
 
 ---
 
+## E13 — Adaptive thinking (supervisor-gated Qwen thinking)
+
+**Status:** implemented-but-unverified. Unit, adversarial and simulation tests pass; it has not run against a real Qwen3 server and no economic A/B exists. The simulated backend ignores the thinking switch, so simulated runs say nothing about its efficiency or decision quality.
+
+**Hypothesis:** Letting routine steps skip Qwen3 thinking, but only while the agent stays inside a supervisor-validated operating region, raises profit per GPU-hour without materially harming net realized profit.
+
+**Default until promoted:** the shipped `config/farm.yaml` uses `mode: server` (no thinking control sent). `adaptive` is opt-in and becomes the default only after this experiment is promoted (`tests/unit/test_thinking_controller.py` checks this).
+
+**Treatment:** `runtime.thinking.mode: adaptive` (`supervisor/thinking.py`). Each step, the supervisor decides from ledger state alone; model text, confidence and claims are never read. In order of authority:
+
+1. **Hard cadence (primary bound):** a deep (thinking-on) review at least every `deep_every` steps (8), i.e. at most 7 thinking-off steps in a row. A failed or malformed deep step does not reset it. No detector reading can lengthen it.
+2. **Fixed validation anchor:** after each valid deep step the supervisor freezes a snapshot of observable state (segment and offer-segment mix, offered price and band, workflow, tool mix, conversion, value per action, external spend per action, spend efficiency, refund rate, sample size). It stays the reference until the next deep step; it is never a trailing window.
+3. **Early-warning detectors (can only force thinking):** fixed-anchor state distance (OOD); supervisor-computed uncertainty (anchor sample size, outcome noise, realized-vs-anchor surprise, novel segment/price regime, proximity to budget limits); one-sided CUSUM drift on value per action, conversion, spend efficiency and refund rate against the anchor.
+4. **Known-event signatures (supplemental):** first step, every `deep_every`-th step, malformed prior output, blocked action, tool error.
+
+Every step writes a `THINKING_DECISION` event (decision, reasons, trigger class, steps since validation, anchor id/version, every OOD/uncertainty/drift component); every anchor writes a `THINKING_ANCHOR` event.
+
+**Control:** `runtime.thinking.mode: on`, so every step thinks.
+
+**Design:** class C farm-level paired campaign. This experiment is not bundled with evolution-vs-control: both arms use the same evolution setting.
+
+Identical in both arms:
+- seed population and farm/market seed
+- scheduler and its configuration
+- capital and budget rules
+- model, quantization, server, `thinking_control` and concurrency
+- number of generations and generation length
+- every other config value; record the config hash of each arm
+
+Pairs run sequentially on one GPU, so alternate which arm runs first. Use at least 2 independent seeds before calling the result promising, and at least 3 before any real-money use.
+
+Running an arm (no automated campaign runner exists for E13 yet; `scripts/evolution_ab*.py` are evolution-specific):
+
+```powershell
+qwenomatic --data-dir var\e13-seed1-adaptive run --backend openai_compatible --base-url http://127.0.0.1:11434/v1 `
+  --model qwen3:14b --max-concurrency 2 --generations 2 --thinking-mode adaptive
+qwenomatic --data-dir var\e13-seed1-on run --backend openai_compatible --base-url http://127.0.0.1:11434/v1 `
+  --model qwen3:14b --max-concurrency 2 --generations 2 --thinking-mode on
+python scripts\inference_profile.py --data-dir var\e13-seed1-adaptive
+```
+
+Both arms of a pair use the same `farm.seed`. Each further pair uses a new seed in a separate config directory (`--config-dir`), and runs its arms in the opposite order.
+
+**Primary metrics:**
+- net realized profit
+- net realized profit per GPU-hour
+
+**Secondary metrics:**
+- profit per action (offer)
+- completion tokens per step
+- wall time per step
+- malformed-output rate
+- tool-error and policy-denial rate
+- thinking-on percentage
+- escalation reason distribution and trigger class (hard cadence / early warning / known event)
+- average thinking-off run length
+- slow-drift detection delay: steps from a known onset of gradual degradation to the first escalation. It is measured in the scripted slow-drift scenario (`tests/unit/test_thinking_controller.py`: currently 7 steps, inside the 8-step cadence) and, for real runs, only where a known regime change was injected.
+
+**Guardrails:**
+- the invariant-12 tests pass (`tests/adversarial/test_thinking_enforcement.py`): every mode yields identical gateway, policy, budget and attribution records, and no tool runs outside the gateway
+- malformed rate no more than 1 percentage point above control
+- no increase in policy violations
+- ledger replay (`qwenomatic verify`) passes in both arms
+- the cadence is never observed above `deep_every - 1` thinking-off steps (the profiler reports the maximum)
+
+**Promotion (frozen before the run):**
+1. profit per GPU-hour at least 20% better than control in a majority of paired trials;
+2. net realized profit non-inferior: treatment at least control minus 5% of control's absolute net, per trial;
+3. guardrails pass;
+4. measured on a real Qwen3 server.
+
+**Status ladder:**
+- implementation only, or tests pass without a real Qwen benchmark: **implemented-but-unverified**
+- real Qwen benchmark completed but no economic A/B: **benchmarked, not promoted**
+- predefined A/B criteria pass: **verified/promotable**
+
+**Rollback:** set `runtime.thinking.mode: on` (or `--thinking-mode on`); every step thinks again. The control arm runs exactly this configuration.
+
+---
+
 # R&D cohort
 
 ## R01 — Permanent R&D cohort
@@ -692,18 +772,19 @@ Capital allocation should be evaluated on **incremental return on allocated capi
 Current intended sequence:
 
 1. E06 — shared prompt prefix
-2. E05 — autopilot
-3. E04 — small-model routing
-4. E01 — shared farm knowledge
-5. E02 — retirement archive
-6. R01/U01 — R&D cohort and upgrade registry
-7. E07 — segment crowding
-8. E11 — fraud/anomaly watch
-9. E08 — predictions
-10. E03 — two-parent recombination
-11. E09 — regime-shift response
-12. E10 — red-team specialization
-13. E12 — self-tuning farm settings
+2. E13 — adaptive thinking (moved ahead: thinking tokens dominate measured wall time, and its fixed-anchor drift detector is the prerequisite E05 and E04 also require)
+3. E05 — autopilot
+4. E04 — small-model routing
+5. E01 — shared farm knowledge
+6. E02 — retirement archive
+7. R01/U01 — R&D cohort and upgrade registry
+8. E07 — segment crowding
+9. E11 — fraud/anomaly watch
+10. E08 — predictions
+11. E03 — two-parent recombination
+12. E09 — regime-shift response
+13. E10 — red-team specialization
+14. E12 — self-tuning farm settings
 
 This order may be changed only for a documented reason. Safety prerequisites for real-money operation take priority over convenience.
 
