@@ -19,9 +19,11 @@ cannot call it, change its configuration, or see credentials.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,6 +32,45 @@ from storage.events import EventStore, EventType, digest
 
 class SafetyBoundaryError(RuntimeError):
     """Strict operation cannot prove the required safety boundary."""
+
+
+@contextmanager
+def exclusive_operator_lock(data_dir: Any):
+    """Take the same OS lock as Supervisor without starting population code."""
+    path = data_dir / "supervisor.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch(exist_ok=True)
+    fh = open(path, "r+", encoding="utf-8")
+    if os.name == "nt":
+        import msvcrt
+        fh.seek(0, os.SEEK_END)
+        if fh.tell() == 0:
+            fh.write(" ")
+            fh.flush()
+        fh.seek(0)
+        try:
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            fh.close()
+            raise SafetyBoundaryError("stop the running supervisor before approving safety configuration") from exc
+        try:
+            yield
+        finally:
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            fh.close()
+    else:
+        import fcntl
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            fh.close()
+            raise SafetyBoundaryError("stop the running supervisor before approving safety configuration") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+            fh.close()
 
 
 CONTROL_PLANE_KEYS = frozenset(
