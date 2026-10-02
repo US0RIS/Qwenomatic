@@ -28,8 +28,8 @@ from typing import Any
 
 from .config import FarmConfig
 from .policy.capabilities import InvalidToken, TokenAuthority
-from .policy.external import AdapterConfigError, validate_adapter_specs
-from .safety import adapter_config_hash, control_plane_paths
+from .policy.external import AdapterConfigError, validate_adapter_specs, validate_policy_bindings
+from .safety import adapter_config_hash, control_plane_paths, strict_mode
 
 
 class GatewayError(RuntimeError):
@@ -93,7 +93,10 @@ def _validate_args(spec: dict[str, Any], args: Any) -> list[str]:
 class Gateway:
     def __init__(self, config_dir: str | Path | None = None) -> None:
         self.config = FarmConfig.load(config_dir)
+        if not strict_mode(self.config):
+            raise GatewayError("safety gateway only runs for safety.mode=strict")
         self.specs = validate_adapter_specs(self.config.adapters)
+        validate_policy_bindings(self.specs, self.config.policy)
         self.fingerprint = self.config.safety_fingerprint()
         self.adapter_hash = adapter_config_hash(self.config.adapters)
         safety = self.config.farm.get("safety") or {}
