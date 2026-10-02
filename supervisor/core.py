@@ -40,7 +40,7 @@ from .evolution import GenerationManager, MutationEngine
 from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
-from .policy.external import ExternalGatewayClient, validate_adapter_specs, validate_policy_bindings
+from .policy.external import AdapterConfigError, ExternalGatewayClient, validate_adapter_specs, validate_policy_bindings
 from .safety import SafetyBoundaryError, attest_network_boundary, strict_mode
 from .scheduler import Candidate, Scheduler
 
@@ -71,6 +71,13 @@ class Supervisor:
         lock: bool = True,
     ) -> None:
         self.config = config
+        try:
+            self.external_specs = validate_adapter_specs(config.adapters)
+            validate_policy_bindings(self.external_specs, config.policy)
+        except AdapterConfigError as exc:
+            raise SafetyBoundaryError(f"invalid sealed adapter configuration: {exc}") from exc
+        if self.external_specs and not strict_mode(config):
+            raise SafetyBoundaryError("real-world adapters are configured but safety.mode is not strict")
         self.data_dir = Path(config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._lock_fh = self._acquire_lock() if lock else None
@@ -148,18 +155,14 @@ class Supervisor:
         self.registry.register(WorkspaceWriteTool(quota))
         self.registry.register(WorkspaceReadTool())
 
-        external_specs = validate_adapter_specs(config.adapters)
-        validate_policy_bindings(external_specs, config.policy)
-        if external_specs and not strict_mode(config):
-            raise SafetyBoundaryError("real-world adapters are configured but safety.mode is not strict")
         self.external_tools: dict[str, ConfiguredExternalTool] = {}
-        if external_specs:
+        if self.external_specs:
             safety_cfg = farm.get("safety") or {}
             client = ExternalGatewayClient(
                 str(safety_cfg.get("gateway_url") or ""),
                 timeout=float(safety_cfg.get("adapter_timeout_seconds", 30)),
             )
-            for adapter_id, spec in sorted(external_specs.items()):
+            for adapter_id, spec in sorted(self.external_specs.items()):
                 tool_adapter = ConfiguredExternalTool(
                     adapter_id=adapter_id,
                     spec=spec,
