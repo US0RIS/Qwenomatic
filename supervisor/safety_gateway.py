@@ -177,7 +177,16 @@ class Gateway:
             outgoing["currency"] = str(payment["currency"])
 
         destination = spec["destination"]
-        request_headers = {"Content-Type": "application/json", "User-Agent": "qwenomatic-safety-gateway"}
+        action_id = str(body.get("action_id") or "")
+        if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", action_id):
+            return 400, {"ok": False, "state": "rejected", "error": "invalid durable action id"}
+        request_headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "qwenomatic-safety-gateway",
+            # Approved payment/provider APIs should honor this. The supervisor
+            # also never automatically re-dispatches an ambiguous action.
+            str(spec.get("idempotency_header") or "Idempotency-Key"): action_id,
+        }
         credential = _read_credential(spec)
         if credential:
             request_headers[credential[0]] = credential[1]
@@ -187,7 +196,7 @@ class Gateway:
             headers=request_headers,
             method=str(destination.get("method") or "POST").upper(),
         )
-        invocation_id = str(body.get("invocation_id") or "")
+        invocation_id = action_id
         try:
             with self.opener.open(req, timeout=float(destination.get("timeout_seconds") or 30)) as response:
                 raw = response.read(1 << 20)
