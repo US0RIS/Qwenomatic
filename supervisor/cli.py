@@ -72,6 +72,14 @@ def _operator_command(cfg: FarmConfig, command: dict[str, Any]) -> int:
             sup.emergency_stop(command["reason"], operator=command["operator"])
         elif command["command"] == "resume":
             sup.resume(operator=command["operator"])
+        elif command["command"] in ("external_confirm", "external_reject"):
+            sup.reconcile_external_action(
+                command["action_id"],
+                confirmed=command["command"] == "external_confirm",
+                operator=command["operator"],
+                reference=command.get("reference", ""),
+                note=command.get("note", ""),
+            )
         else:
             sup.resolve_approval(command["approval_id"], granted=command["command"] == "approve",
                                  operator=command["operator"], note=command.get("note", ""))
@@ -217,6 +225,42 @@ def cmd_resolve(args: argparse.Namespace) -> int:
                                              "operator": args.operator, "note": args.note or ""})
 
 
+def cmd_external_actions(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    if not _db(cfg).exists():
+        print("no ledger yet")
+        return 1
+    store = EventStore(_db(cfg), read_only=True)
+    try:
+        state = FarmState().replay(store.iter_events())
+    finally:
+        store.close()
+    rows = [
+        a for a in state.external_actions.values()
+        if a.get("status") in ("pending", "dispatching", "uncertain")
+    ]
+    for a in sorted(rows, key=lambda x: str(x.get("action_id"))):
+        print(
+            f"{a['action_id']}  {a.get('status')}  {a.get('tool')}  "
+            f"spend={float(a.get('spend') or 0):.2f}  agent={str(a.get('agent_id') or '')[:8]}"
+        )
+    return 0
+
+
+def cmd_external_resolve(args: argparse.Namespace) -> int:
+    command = "external_confirm" if args.command == "external-confirm" else "external_reject"
+    return _operator_command(
+        _config(args),
+        {
+            "command": command,
+            "action_id": args.action_id,
+            "operator": args.operator,
+            "reference": args.reference or "",
+            "note": args.note or "",
+        },
+    )
+
+
 def cmd_stop(args: argparse.Namespace) -> int:
     return _operator_command(_config(args), {"command": "stop", "reason": args.reason, "operator": args.operator})
 
@@ -297,6 +341,16 @@ def build_parser() -> argparse.ArgumentParser:
         a.add_argument("approval_id")
         a.add_argument("--note")
         a.add_argument("--operator", default=getpass.getuser())
+    add("external-actions", cmd_external_actions,
+        help="list pending/ambiguous real-world actions and reserved spend")
+    for name in ("external-confirm", "external-reject"):
+        x = add(name, cmd_external_resolve,
+                help=("confirm an ambiguous real-world effect occurred" if name == "external-confirm"
+                      else "confirm an ambiguous real-world effect did not occur"))
+        x.add_argument("action_id")
+        x.add_argument("--reference")
+        x.add_argument("--note")
+        x.add_argument("--operator", default=getpass.getuser())
     s = add("stop", cmd_stop, help="emergency stop")
     s.add_argument("--reason", required=True)
     s.add_argument("--operator", default=getpass.getuser())
