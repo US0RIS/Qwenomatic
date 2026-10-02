@@ -43,12 +43,18 @@ class EventType(str, Enum):
     HUMAN_APPROVAL_REQUESTED = "human_approval_requested"
     HUMAN_APPROVAL_RESOLVED = "human_approval_resolved"
     HUMAN_INTERVENTION = "human_intervention"
+    SAFETY_CONFIG_APPROVED = "safety_config_approved"
+    SAFETY_ATTESTED = "safety_attested"
+    SAFETY_ATTESTATION_FAILED = "safety_attestation_failed"
 
     # Economy
     OPPORTUNITY = "opportunity"
     FINANCIAL_EVENT = "financial_event"
     FINANCIAL_REJECTED = "financial_rejected"
     MILESTONE_VALIDATED = "milestone_validated"
+    EXTERNAL_ACTION_REQUESTED = "external_action_requested"
+    EXTERNAL_ACTION_RESULT = "external_action_result"
+    EXTERNAL_ACTION_RECONCILED = "external_action_reconciled"
 
     # Operations
     ARTIFACT_RECORDED = "artifact_recorded"
