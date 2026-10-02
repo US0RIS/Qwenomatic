@@ -10,6 +10,7 @@ COPY supervisor /app/supervisor
 COPY runtime /app/runtime
 COPY storage /app/storage
 COPY dashboard /app/dashboard
+COPY deploy /app/deploy
 RUN pip install --no-cache-dir .
 
 RUN mkdir -p /data && chown -R qwenomatic:qwenomatic /data /home/qwenomatic
