@@ -33,14 +33,9 @@ class FixedAdapter(ToolAdapter, TrustedAdapter):
         self.args_schema = {"amount_cents": "int"} if self.payment else {"text": "str"}
         self.description = ("Request a capped payment through an operator-fixed channel."
                             if self.payment else "Submit plain text to an operator-fixed channel.")
-        secret = protected_json(Path(spec["credential_file"]))
-        if digest(secret) != boundary.evidence["credential_fingerprints"][self.name]:
-            raise SafetyError("credential changed; operator approval and relaunch required")
-        if set(secret) != {"token"} or not isinstance(secret["token"], str) or not secret["token"]:
-            raise SafetyError("invalid credential file")
-        self._token = secret["token"]
-        if "\r" in self._token or "\n" in self._token:
-            raise SafetyError("invalid credential token")
+        # No provider token/file is read or held in this process. Tests may use
+        # historical contracts, but production registration requires manifest v2.
+        self.broker_receipt = None
 
     def validate(self, args):
         errors = super().validate(args)
@@ -85,25 +80,17 @@ class FixedAdapter(ToolAdapter, TrustedAdapter):
         return {"queued": True, "receipt": ctx.invocation_id}
 
     def _send(self, args, invocation_id):
-        """Trusted dispatcher only; fixed HTTPS endpoint, no proxies/redirects/DNS."""
-        host, port = endpoint(self.spec["endpoint"], https=True)
-        path = urlsplit(self.spec["endpoint"]).path or "/"
-        body = ({"amount_cents": args["amount_cents"], "payee": self.spec["payee"], "currency": "USD"}
-                if self.payment else {"text": args["text"]})
-        connection = http.client.HTTPSConnection(host, port, timeout=10, context=ssl.create_default_context())
-        try:
-            connection.request("POST", path, body=json.dumps(body).encode("utf-8"),
-                               headers={"Content-Type": "application/json",
-                                        "Authorization": "Bearer " + self._token,
-                                        "Idempotency-Key": invocation_id})
-            response = connection.getresponse()
-            # Never follow redirects or expose provider content/headers.
-            return 200 <= response.status < 300
-        finally:
-            connection.close()
+        from broker.client import Client
+        if self.boundary.manifest.get("version") != 2:
+            raise SafetyError("direct provider transport is prohibited")
+        accepted, receipt = Client(self.boundary.manifest["broker"]).submit(self.spec["service"], args, invocation_id)
+        self.broker_receipt = receipt
+        return accepted
 
 
 def register_adapters(boundary, registry, ledger):
+    if boundary.manifest["adapters"] and boundary.manifest.get("version") != 2:
+        raise SafetyError("legacy adapters require independent broker")
     for spec in boundary.manifest["adapters"]:
         tool = FixedAdapter(spec, boundary, ledger)
         registry.register(tool)
