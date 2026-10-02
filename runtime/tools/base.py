@@ -23,6 +23,8 @@ class ToolContext:
     policy_fingerprint: str = ""
     capability_epoch: int = 0
     approval_id: str | None = None
+    request_digest: str = ""
+    external_action_id: str | None = None
 
 
 @dataclass
