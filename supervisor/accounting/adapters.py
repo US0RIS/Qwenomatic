@@ -118,6 +118,35 @@ class AdSpendMeter(TrustedAdapter):
         )
 
 
+class ExternalSpendAdapter(TrustedAdapter):
+    """Settled real-world spend observed by the sealed external gateway."""
+
+    name = "external_gateway"
+
+    def __init__(self, ledger: Ledger) -> None:
+        self.ledger = ledger
+
+    def charge(self, attr: Attribution, amount: float, reference: str, *, adapter_id: str) -> None:
+        if amount <= 0:
+            return
+        self.ledger.record(
+            self,
+            agent_id=attr.agent_id,
+            lineage_id=attr.lineage_id,
+            generation_id=attr.generation_id,
+            type="expense",
+            category="external_spend",
+            amount=amount,
+            external_reference=f"external:{adapter_id}:{reference}",
+            occurred_at=attr.now.isoformat(),
+            observed_at=attr.now.isoformat(),
+            step_id=attr.step_id,
+            step_generation=attr.generation_id,
+            tick=attr.tick,
+            extra={"adapter_id": adapter_id},
+        )
+
+
 class ComputeMeter(TrustedAdapter):
     """Imputed local compute cost and metered cloud cost per inference job."""
 

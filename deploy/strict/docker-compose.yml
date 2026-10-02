@@ -1,0 +1,95 @@
+name: qwenomatic-strict
+
+x-qwenomatic-env: &qwenomatic-env
+  QWENOMATIC_CONFIG_DIR: /etc/qwenomatic
+  QWENOMATIC_SAFETY_MODE: strict
+  QWENOMATIC_SAFETY_GATEWAY_URL: http://safety-gateway:8787
+  QWENOMATIC_INFERENCE_BACKEND: openai_compatible
+  QWENOMATIC_INFERENCE_BASE_URL: http://safety-gateway:8787/model/v1
+  QWENOMATIC_CLOCK_MODE: wall
+  QWENOMATIC_CAPABILITY_SECRET_FILE: /run/qwenomatic-control/capability.key
+  QWENOMATIC_MODEL: ${QWENOMATIC_MODEL:-qwen3:14b}
+  QWENOMATIC_MAX_CONCURRENCY: ${QWENOMATIC_MAX_CONCURRENCY:-2}
+
+services:
+  safety-init:
+    build:
+      context: ../..
+    user: "0:0"
+    entrypoint: ["python", "/app/deploy/strict/init_secrets.py"]
+    volumes:
+      - control:/run/qwenomatic-control
+    restart: "no"
+
+  safety-gateway:
+    build:
+      context: ../..
+    user: "0:0"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["python", "-m", "supervisor.safety_gateway"]
+    command: ["--config-dir", "/etc/qwenomatic", "--host", "0.0.0.0", "--port", "8787"]
+    environment:
+      <<: *qwenomatic-env
+    depends_on:
+      safety-init:
+        condition: service_completed_successfully
+    volumes:
+      - ../../config:/etc/qwenomatic:ro
+      - control:/run/qwenomatic-control:ro
+      - ./provider-secrets:/run/qwenomatic-secrets:ro
+    networks:
+      - farm_internal
+      - broker_egress
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/healthz', timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  qwenomatic:
+    build:
+      context: ../..
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      <<: *qwenomatic-env
+    depends_on:
+      safety-init:
+        condition: service_completed_successfully
+      safety-gateway:
+        condition: service_healthy
+    volumes:
+      - ../../config:/etc/qwenomatic:ro
+      - data:/data
+      - control:/run/qwenomatic-control:ro
+    networks:
+      - farm_internal
+    command: ["--data-dir", "/data", "run"]
+    restart: unless-stopped
+
+networks:
+  # Docker removes external connectivity/default egress from containers that
+  # are attached only to an internal network. The population container is
+  # attached ONLY here.
+  farm_internal:
+    internal: true
+  # Only the trusted broker is attached here.
+  broker_egress: {}
+
+volumes:
+  data:
+  control:

@@ -1,0 +1,8 @@
+# Sealed real-world adapter registry.
+#
+# Empty by default: Qwenomatic has no real-world authority until an operator
+# adds an adapter, configures its fixed destination/credential fingerprint,
+# adds the matching tool capability to policy.yaml, and records a new
+# qwenomatic safety-approve receipt. Population agents cannot edit this file.
+version: 1
+adapters: {}

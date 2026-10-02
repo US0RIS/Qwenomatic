@@ -24,13 +24,14 @@ from typing import Any
 from runtime.agent import GENOTYPE_VERSION, AgentRuntime, random_genotype, validate_genotype
 from runtime.inference import InferenceBackend, InferenceService, build_backend
 from runtime.tools.base import ToolRegistry
+from runtime.tools.external import ConfiguredExternalTool
 from runtime.tools.market import MarketOfferTool, MarketSurveyTool, MemoryNoteTool
 from runtime.tools.sim_market import SimulatedMarket
 from runtime.tools.workspace import WorkspaceReadTool, WorkspaceWriteTool
 from storage.events import EventStore, EventType, FarmState, digest
 
 from .accounting import (
-    AdSpendMeter, Attribution, ComplianceMonitor, ComputeMeter, HumanLaborMeter, Ledger, MarketObserver,
+    AdSpendMeter, Attribution, ComplianceMonitor, ComputeMeter, ExternalSpendAdapter, HumanLaborMeter, Ledger, MarketObserver,
     MilestoneValidator, PaymentProcessorAdapter, check_agent_budget, farm_gpu_last_day, farm_spend_last_day,
 )
 from .clock import SimulatedClock, WallClock, parse_ts
@@ -39,6 +40,8 @@ from .evolution import GenerationManager, MutationEngine
 from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
+from .policy.external import AdapterConfigError, ExternalGatewayClient, validate_adapter_specs, validate_policy_bindings
+from .safety import SafetyBoundaryError, attest_network_boundary, strict_mode
 from .scheduler import Candidate, Scheduler
 
 
@@ -68,6 +71,13 @@ class Supervisor:
         lock: bool = True,
     ) -> None:
         self.config = config
+        try:
+            self.external_specs = validate_adapter_specs(config.adapters)
+            validate_policy_bindings(self.external_specs, config.policy)
+        except AdapterConfigError as exc:
+            raise SafetyBoundaryError(f"invalid sealed adapter configuration: {exc}") from exc
+        if self.external_specs and not strict_mode(config):
+            raise SafetyBoundaryError("real-world adapters are configured but safety.mode is not strict")
         self.data_dir = Path(config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._lock_fh = self._acquire_lock() if lock else None
@@ -88,16 +98,41 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
+        if strict_mode(config) and self.state.current_generation is not None:
+            frozen = self.state.generations[self.state.current_generation].config.get("hashes", {}).get("safety")
+            current = config.safety_fingerprint()
+            if frozen != current:
+                self.close()
+                raise SafetyBoundaryError(
+                    "strict safety authority differs from the active generation's frozen authority; "
+                    "restore the generation's approved config or start a new strict generation"
+                )
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
         self.clock.set_tick(self.state.last_tick + 1)
+        try:
+            self.safety_attestation = attest_network_boundary(config, self.store)
+        except Exception as exc:
+            try:
+                self.store.append(
+                    EventType.SAFETY_ATTESTATION_FAILED,
+                    {"error": str(exc)[:500], "fingerprint": config.safety_fingerprint()},
+                )
+            finally:
+                self.close()
+            if isinstance(exc, SafetyBoundaryError):
+                raise
+            raise SafetyBoundaryError(f"safety attestation errored: {exc}") from exc
 
-        self.authority = TokenAuthority(load_or_create_secret(self.data_dir / "secrets" / "supervisor.key"))
+        capability_secret = os.environ.get("QWENOMATIC_CAPABILITY_SECRET_FILE")
+        secret_path = Path(capability_secret) if capability_secret else self.data_dir / "secrets" / "supervisor.key"
+        self.authority = TokenAuthority(load_or_create_secret(secret_path))
         econ = farm["economy"]
         self.ledger = Ledger(self.store, farm_controlled_accounts=econ.get("farm_controlled_accounts", []),
                              currency=econ.get("currency", "USD"))
         self.payments = PaymentProcessorAdapter(self.ledger, self.state)
         self.ads = AdSpendMeter(self.ledger)
+        self.external_spend = ExternalSpendAdapter(self.ledger)
         self.compute = ComputeMeter(
             self.ledger, lambda: float(self.fitness_config()["imputed_costs"]["local_compute_usd_per_gpu_hour"]))
         self.labor = HumanLaborMeter(
@@ -105,8 +140,8 @@ class Supervisor:
         self.observer = MarketObserver(self.store)
         self.milestones = MilestoneValidator(self.store)
         self.compliance = ComplianceMonitor(self.store)
-        for adapter in (self.payments, self.ads, self.compute, self.labor, self.observer, self.milestones,
-                        self.compliance):
+        for adapter in (self.payments, self.ads, self.external_spend, self.compute, self.labor, self.observer,
+                        self.milestones, self.compliance):
             self.ledger.register_adapter(adapter)
 
         start = self.clock.start if isinstance(self.clock, SimulatedClock) else parse_ts(clock_cfg.get("start", self.clock.now()))
@@ -120,10 +155,29 @@ class Supervisor:
         self.registry.register(WorkspaceWriteTool(quota))
         self.registry.register(WorkspaceReadTool())
 
+        self.external_tools: dict[str, ConfiguredExternalTool] = {}
+        if self.external_specs:
+            safety_cfg = farm.get("safety") or {}
+            client = ExternalGatewayClient(
+                str(safety_cfg.get("gateway_url") or ""),
+                timeout=float(safety_cfg.get("adapter_timeout_seconds", 30)),
+            )
+            for adapter_id, spec in sorted(self.external_specs.items()):
+                tool_adapter = ConfiguredExternalTool(
+                    adapter_id=adapter_id,
+                    spec=spec,
+                    client=client,
+                    store=self.store,
+                    spend_recorder=self.external_spend,
+                )
+                self.registry.register(tool_adapter)
+                self.external_tools[tool_adapter.name] = tool_adapter
+
         self._policy_cache: dict[int, PolicyEngine] = {}
         self.gateway = ToolGateway(
             store=self.store, state=self.state, registry=self.registry, authority=self.authority,
-            policy=self.policy_engine, new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
+            policy=self.policy_engine, policy_fingerprint=self.current_policy_fingerprint,
+            new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
             on_hard_violation=self._on_hard_violation,
         )
         self.backend = backend or build_backend(farm["inference"], config.seed)
@@ -212,6 +266,7 @@ class Supervisor:
                          "gpu_count": int(farm["inference"].get("gpu_count", 1))}
         cfg["hashes"] = {k: config_hash(v) for k, v in cfg.items()}
         cfg["hashes"]["farm"] = config_hash(farm)
+        cfg["hashes"]["safety"] = self.config.safety_fingerprint()
         return cfg
 
     def fitness_config(self) -> dict[str, Any]:
@@ -222,6 +277,13 @@ class Supervisor:
         if g not in self._policy_cache:
             self._policy_cache[g] = PolicyEngine(self.generation_config()["policy"])
         return self._policy_cache[g]
+
+    def current_policy_fingerprint(self) -> str:
+        g = self.state.current_generation
+        if g is not None and g in self.state.generations:
+            return str(self.state.generations[g].config.get("hashes", {}).get("safety")
+                       or self.config.safety_fingerprint())
+        return self.config.safety_fingerprint()
 
     def scheduler_for(self, generation: int) -> Scheduler:
         cfg = self.generation_config(generation)
@@ -297,7 +359,7 @@ class Supervisor:
             self.store.append(
                 EventType.CAPABILITY_ISSUED,
                 {"token_id": self._token_id(agent_id, number), "capabilities": caps,
-                 "epoch": self.state.capability_epoch},
+                 "epoch": self.state.capability_epoch, "policy_fingerprint": self.current_policy_fingerprint()},
                 agent_id=agent_id, lineage_id=self.state.agents[agent_id].lineage_id, generation_id=number,
                 idempotency_key=f"cap:{number}:{agent_id}:{self.state.capability_epoch}",
             )
@@ -313,6 +375,7 @@ class Supervisor:
         return self.authority.issue(
             token_id=self._token_id(agent_id, generation), agent_id=agent_id, generation_id=generation,
             capabilities=self._capabilities_for(agent_id, self.policy_engine()), epoch=self.state.capability_epoch,
+            policy_fingerprint=self.current_policy_fingerprint(),
         )
 
     def workspace_for(self, agent_id: str) -> Path:
@@ -383,6 +446,10 @@ class Supervisor:
             self.payments.reconcile(now, gen, tick)
             self._execute_granted_approvals(gen, tick)
             self._enforce_status(gen)
+        # Real-world effects are dispatched only after their request event has
+        # committed. A crash after the dispatch marker never causes an
+        # automatic retry; it becomes an operator reconciliation case.
+        self._execute_pending_external(gen, tick)
 
         reason = None
         health = self.inference.health()
@@ -548,7 +615,10 @@ class Supervisor:
     def resolve_approval(self, approval_id: str, *, granted: bool, operator: str, note: str = "") -> None:
         approval = self.state.approvals.get(approval_id)
         with self.store.transaction():
-            approvals_mod.resolve(self.store, self.state, approval_id, granted=granted, operator=operator, note=note)
+            approvals_mod.resolve(
+                self.store, self.state, approval_id, granted=granted, operator=operator, note=note,
+                policy_fingerprint=self.current_policy_fingerprint(),
+            )
             agent = self.state.agents.get(approval["agent_id"]) if approval else None
             if agent:
                 self.labor.charge(Attribution(agent.id, agent.lineage_id, approval["generation"], None,
@@ -567,6 +637,122 @@ class Supervisor:
                                workspace=self.workspace_for(agent.id))
             self.gateway.invoke(self.token_for(agent.id, gen), req["tool"], req["args"], step,
                                 approval_id=a["approval_id"])
+
+    def _execute_pending_external(self, gen: int, tick: int) -> None:
+        for action_id, action in list(self.state.external_actions.items()):
+            if action.get("status") != "pending" or action.get("generation") != gen:
+                continue
+            agent = self.state.agents.get(action.get("agent_id"))
+            if agent is None or agent.status != "running":
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected", "error": "agent is no longer active"},
+                    agent_id=action.get("agent_id"), lineage_id=action.get("lineage_id"), generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
+                continue
+            if action.get("policy_fingerprint") != self.current_policy_fingerprint():
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected", "error": "safety policy changed"},
+                    agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
+                continue
+            step = StepContext(
+                agent_id=agent.id,
+                lineage_id=agent.lineage_id,
+                generation_id=gen,
+                step_id=action.get("step_id"),
+                tick=tick,
+                now=self.clock.now_dt(),
+                workspace=self.workspace_for(agent.id),
+            )
+            result = self.gateway.invoke(
+                self.token_for(agent.id, gen),
+                action["tool"],
+                action["args"],
+                step,
+                approval_id=action.get("approval_id"),
+                external_action_id=action_id,
+            )
+            if (self.state.external_actions.get(action_id) or {}).get("status") == "pending":
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected",
+                     "error": result.error or "dispatch authorization failed"},
+                    agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
+
+    def reconcile_external_action(
+        self,
+        action_id: str,
+        *,
+        confirmed: bool,
+        operator: str,
+        reference: str = "",
+        note: str = "",
+    ) -> None:
+        """Resolve a dispatching/uncertain real-world action after human verification.
+
+        Ambiguous effects are never retried automatically. If the operator
+        confirms that money left, the trusted ledger records it exactly once;
+        if the operator confirms no effect, the reservation is released.
+        """
+        action = self.state.external_actions.get(action_id)
+        if action is None:
+            raise ValueError(f"no external action {action_id}")
+        if action.get("status") not in ("dispatching", "uncertain"):
+            raise ValueError(f"external action {action_id} is {action.get('status')}, not unresolved")
+        status = "confirmed" if confirmed else "rejected"
+        agent_id = action.get("agent_id")
+        lineage_id = action.get("lineage_id")
+        generation = action.get("generation")
+        with self.store.transaction():
+            self.store.append(
+                EventType.EXTERNAL_ACTION_RECONCILED,
+                {
+                    "action_id": action_id,
+                    "status": status,
+                    "operator": operator,
+                    "result_reference": reference[:200],
+                    "note": note[:500],
+                },
+                author=f"operator:{operator}",
+                agent_id=agent_id,
+                lineage_id=lineage_id,
+                generation_id=generation,
+                idempotency_key=f"external-reconcile:{action_id}",
+            )
+            if confirmed and float(action.get("spend") or 0.0) > 0:
+                attr = Attribution(
+                    agent_id=agent_id,
+                    lineage_id=lineage_id,
+                    generation_id=generation,
+                    step_id=action.get("step_id"),
+                    tick=self.clock.tick,
+                    now=self.clock.now_dt(),
+                )
+                self.external_spend.charge(
+                    attr,
+                    float(action["spend"]),
+                    reference or f"reconciled:{action_id}",
+                    adapter_id=str(action.get("adapter_id") or "unknown"),
+                )
+            self.store.append(
+                EventType.HUMAN_INTERVENTION,
+                {
+                    "kind": "external_reconciliation",
+                    "action_id": action_id,
+                    "operator": operator,
+                    "confirmed": confirmed,
+                },
+                author=f"operator:{operator}",
+                agent_id=agent_id,
+                lineage_id=lineage_id,
+                generation_id=generation,
+            )
 
     # ===================================================== emergency stop
     def emergency_stop(self, reason: str, *, operator: str = "operator") -> None:
@@ -600,7 +786,8 @@ class Supervisor:
                     self.store.append(
                         EventType.CAPABILITY_ISSUED,
                         {"token_id": self._token_id(a.id, gen), "capabilities": self._capabilities_for(a.id, engine),
-                         "epoch": self.state.capability_epoch},
+                         "epoch": self.state.capability_epoch,
+                         "policy_fingerprint": self.current_policy_fingerprint()},
                         agent_id=a.id, lineage_id=a.lineage_id, generation_id=gen,
                         idempotency_key=f"cap:{gen}:{a.id}:{self.state.capability_epoch}",
                     )
@@ -627,6 +814,11 @@ class Supervisor:
                 elif kind in ("approve", "deny"):
                     self.resolve_approval(cmd["approval_id"], granted=kind == "approve", operator=operator,
                                           note=cmd.get("note", ""))
+                elif kind in ("external_confirm", "external_reject"):
+                    self.reconcile_external_action(
+                        cmd["action_id"], confirmed=kind == "external_confirm", operator=operator,
+                        reference=cmd.get("reference", ""), note=cmd.get("note", ""),
+                    )
                 else:
                     raise ValueError(f"unknown command {kind!r}")
                 outcome = "ok"

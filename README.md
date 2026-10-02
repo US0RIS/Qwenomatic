@@ -124,6 +124,8 @@ An ineligible agent cannot compensate for a violation by producing more revenue.
 
 The supervisor—not the population—owns credentials, network permissions, spending limits, reproduction, process lifetime, scoring, and scheduler configuration. Agents cannot grant themselves additional permissions or modify the enforcement layer.
 
+For real-world operation this is now an enforced deployment boundary, not only an architectural rule: Qwenomatic runs on an internal-only Docker network, real-world actions use fixed declarative adapters through a separate safety gateway, and strict startup requires a human-approved safety fingerprint plus an actual failed forbidden-egress socket probe. See [SAFETY.md](SAFETY.md) and [deploy/strict](deploy/strict/README.md).
+
 ## Scheduler
 
 The scheduler is the economic allocator for the farm. It queues requests against one or more shared inference backends and assigns capacity according to evidence-adjusted fitness.
@@ -305,9 +307,11 @@ Initial rules:
 - no financial transfer outside explicitly approved interfaces
 - external actions are attributable to a specific agent and logged
 
-Human approval gates should cover new external accounts, material spending, contracts, new credential scopes, new classes of external action, and permission expansion.
+In strict real-world mode, the population container has no WAN route. Every external adapter has a fixed destination in supervisor-owned configuration; payment adapters also have a fixed payee/currency and hard per-action cap. Agent arguments cannot contain a URL, host, destination, account/payee, credential, command, script, code, SQL/query, or executable. Material spend is held for exact-request human approval, and pending or ambiguous spend stays reserved against budgets. Provider credentials exist only in the separate safety gateway.
 
-The purpose is not to ask agents to "be ethical" and hope they comply. The enforcement boundary must sit outside the optimization population.
+Human approval gates cover new external accounts, material spending, contracts, new credential scopes, new classes of external action, and permission expansion. Changing an adapter, destination, payee, credential fingerprint, policy capability, or model route changes the sealed safety fingerprint and requires a new operator-authored ledger receipt before strict mode will start.
+
+The purpose is not to ask agents to "be ethical" and hope they comply. The enforcement boundary sits outside the optimization population. See [SAFETY.md](SAFETY.md).
 
 ## Development phases
 
@@ -351,12 +355,12 @@ Using the status vocabulary of DESIGN §18:
 | Phase 4 — archetype evaluation windows (long-cycle strategies) | **VERIFIED IN SIMULATION** |
 | Phase 5 — failure handling (DESIGN §15) | **VERIFIED IN SIMULATION** for supervisor restart, interrupted close, inference outage, failing jobs, malformed output, corrupted agent state, duplicate/delayed settlement |
 | Phase 1 — 24-hour generation driven by a real local Qwen model | **IMPLEMENTED, UNVERIFIED** (the client is tested against a fake OpenAI-compatible server only) |
-| Phase 2 — real-world economic adapter | Not implemented, by design: no external adapter is approved yet |
+| Phase 2 — sealed real-world adapter framework | **IMPLEMENTED; host verification pending.** No external adapter is enabled by default. Strict mode requires fixed routes/payees, the existing capability gateway, human safety sealing, and the Docker egress proof in [SAFETY.md](SAFETY.md). |
 | Revenue or profit of any kind | None claimed. All revenue in this repository is simulated. |
 
 "Verified in simulation" means the tests under `tests/` pass against the deterministic simulated market (`python -m pytest`, 118 tests). The §17 checklist is exercised by `tests/acceptance/test_generation_zero.py` on a farm using the shipped configuration (20 agents, 24-hour generations of 144 ticks) with one deliberately adversarial agent; interrupted-close recovery is tested after each of seven close steps in `tests/acceptance/test_restart_and_chaos.py`.
 
-Not yet covered: container/OS isolation of population workloads (DESIGN §12) — agents currently have no tool that executes code, so the capability gateway is the whole boundary; a PostgreSQL store for multiple concurrent writers; and cloud escalation beyond the configuration switch and ceiling check.
+Still not claimed as verified until run on the target host: the strict Docker network receipt (`deploy/strict/acceptance.py`) must demonstrate that public egress and direct model bypass actually fail from inside the population container while the brokered local model succeeds. A PostgreSQL store for multiple concurrent writers and cloud escalation beyond the existing configuration switch/ceiling remain out of scope.
 
 
 ## Evolution A/B experiment

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: qwenomatic-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -18,3 +22,29 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: python -m pytest
+
+  strict-network:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Start fixed local model fixture
+        run: |
+          python deploy/strict/fake_model.py >/tmp/qwenomatic-fake-model.log 2>&1 &
+          echo $! >/tmp/qwenomatic-fake-model.pid
+          sleep 1
+      - name: Build strict containers
+        working-directory: deploy/strict
+        run: docker compose build
+      - name: Seal exact strict authority
+        working-directory: deploy/strict
+        run: docker compose run --rm --no-deps qwenomatic safety-approve --operator ci --note "strict network CI"
+      - name: Prove strict startup and network barrier from inside population container
+        working-directory: deploy/strict
+        run: sh acceptance.sh
+      - name: Tear down strict stack
+        if: always()
+        working-directory: deploy/strict
+        run: docker compose down -v --remove-orphans

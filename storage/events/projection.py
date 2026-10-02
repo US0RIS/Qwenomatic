@@ -141,6 +141,7 @@ class FarmState:
         self.spend_by_tick: dict[int, float] = defaultdict(float)
         self.pending_settlements: dict[str, dict[str, Any]] = {}
         self.approvals: dict[str, dict[str, Any]] = {}
+        self.external_actions: dict[str, dict[str, Any]] = {}
         self.capability_epoch: int = 0
         self.halted: bool = False
         self.halt_reason: str | None = None
@@ -169,6 +170,30 @@ class FarmState:
 
     def lineage_members(self, lineage_id: str) -> list[AgentView]:
         return [a for a in self.agents.values() if a.lineage_id == lineage_id]
+
+    def reserved_spend(self, *, agent_id: str | None = None, generation: int | None = None,
+                       exclude_approval_id: str | None = None, exclude_action_id: str | None = None) -> float:
+        """Money committed by pending/granted approvals or ambiguous external actions."""
+        total = 0.0
+        for approval in self.approvals.values():
+            if approval.get("approval_id") == exclude_approval_id or approval.get("status") not in ("pending", "granted"):
+                continue
+            if agent_id is not None and approval.get("agent_id") != agent_id:
+                continue
+            if generation is not None and approval.get("generation") != generation:
+                continue
+            total += max(0.0, float((approval.get("request") or {}).get("spend") or 0.0))
+        for action in self.external_actions.values():
+            if action.get("action_id") == exclude_action_id:
+                continue
+            if action.get("status") not in ("pending", "dispatching", "uncertain"):
+                continue
+            if agent_id is not None and action.get("agent_id") != agent_id:
+                continue
+            if generation is not None and action.get("generation") != generation:
+                continue
+            total += max(0.0, float(action.get("spend") or 0.0))
+        return total
 
     def window_counters(self, agent_id: str, generations: Iterable[int]) -> AgentCounters:
         total = AgentCounters()
@@ -331,8 +356,9 @@ class FarmState:
     def _on_human_approval_requested(self, e: Event) -> None:
         self.approvals[e.payload["approval_id"]] = {
             "approval_id": e.payload["approval_id"], "agent_id": e.agent_id, "generation": e.generation_id,
-            "request": e.payload["request"], "reason": e.payload.get("reason"), "status": "pending",
-            "requested_at": e.recorded_at,
+            "request": e.payload["request"], "request_digest": e.payload.get("request_digest"),
+            "policy_fingerprint": e.payload.get("policy_fingerprint"),
+            "reason": e.payload.get("reason"), "status": "pending", "requested_at": e.recorded_at,
         }
 
     def _on_human_approval_resolved(self, e: Event) -> None:
@@ -346,6 +372,31 @@ class FarmState:
         c = self._c(e)
         if c:
             c.human_interventions += 1
+
+    def _on_external_action_requested(self, e: Event) -> None:
+        p = e.payload
+        self.external_actions[p["action_id"]] = {
+            **p, "agent_id": e.agent_id, "lineage_id": e.lineage_id,
+            "generation": e.generation_id, "status": "pending",
+        }
+
+    def _on_external_action_dispatching(self, e: Event) -> None:
+        action = self.external_actions.get(e.payload.get("action_id"))
+        if action:
+            action["status"] = "dispatching"
+            action["dispatch_attempt"] = e.payload.get("attempt")
+
+    def _on_external_action_result(self, e: Event) -> None:
+        action = self.external_actions.get(e.payload.get("action_id"))
+        if action:
+            action["status"] = e.payload.get("status", "uncertain")
+            action["result_reference"] = e.payload.get("result_reference")
+
+    def _on_external_action_reconciled(self, e: Event) -> None:
+        action = self.external_actions.get(e.payload.get("action_id"))
+        if action:
+            action["status"] = e.payload.get("status", action.get("status"))
+            action["reconciled_by"] = e.payload.get("operator")
 
     def _on_opportunity(self, e: Event) -> None:
         c = self._c(e)
