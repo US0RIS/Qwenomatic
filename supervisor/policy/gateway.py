@@ -59,7 +59,8 @@ class ToolGateway:
         self._calls: dict[tuple[str, str, int], int] = defaultdict(int)
         self._calls_tick: int | None = None
 
-    def invoke(self, token: str, tool: str, args: Any, step: StepContext, *, approval_id: str | None = None) -> ToolResult:
+    def invoke(self, token: str, tool: str, args: Any, step: StepContext, *, approval_id: str | None = None,
+               external_action_id: str | None = None) -> ToolResult:
         request_id = self.new_id("request")
         if step.tick != self._calls_tick:
             self._calls.clear()
@@ -108,7 +109,14 @@ class ToolGateway:
             approval = self.state.approvals.get(approval_id)
             approved = bool(
                 approval
-                and approval.get("status") == "granted"
+                and (
+                    approval.get("status") == "granted"
+                    or (
+                        external_action_id is not None
+                        and approval.get("status") == "executed"
+                        and (self.state.external_actions.get(external_action_id) or {}).get("approval_id") == approval_id
+                    )
+                )
                 and approval.get("agent_id") == step.agent_id
                 and approval.get("generation") == step.generation_id
                 and approval.get("request_digest") == request_digest
@@ -142,9 +150,12 @@ class ToolGateway:
             agent_budget_remaining=remaining_spend(agent.budgets, counters),
             farm_spend_day=self.farm_spend_day(),
             agent_reserved_spend=self.state.reserved_spend(
-                agent_id=step.agent_id, generation=step.generation_id, exclude_approval_id=approval_id
+                agent_id=step.agent_id, generation=step.generation_id, exclude_approval_id=approval_id,
+                exclude_action_id=external_action_id,
             ),
-            farm_reserved_spend=self.state.reserved_spend(exclude_approval_id=approval_id),
+            farm_reserved_spend=self.state.reserved_spend(
+                exclude_approval_id=approval_id, exclude_action_id=external_action_id
+            ),
         )
         result = engine.evaluate(req, ctx)
         if forbidden_fields and result.hard_violation:
@@ -202,7 +213,10 @@ class ToolGateway:
             return ToolResult(False, "denied", error=result.reason)
         if adapter is None:
             return ToolResult(False, "denied", error="capability has no registered adapter")
-        return self._execute(adapter, str(tool), safe_args, step, request_id, result, approval_id, token, fp)
+        return self._execute(
+            adapter, str(tool), safe_args, step, request_id, result, approval_id, token, fp,
+            request_digest, external_action_id,
+        )
 
     def _execute(
         self,
@@ -215,6 +229,8 @@ class ToolGateway:
         approval_id: str | None,
         token: str,
         policy_fingerprint: str,
+        request_digest: str,
+        external_action_id: str | None,
     ) -> ToolResult:
         self._calls[(step.agent_id, tool, step.tick)] += 1
         errors = adapter.validate(args)
@@ -236,6 +252,8 @@ class ToolGateway:
                 policy_fingerprint=policy_fingerprint,
                 capability_epoch=self.state.capability_epoch,
                 approval_id=approval_id,
+                request_digest=request_digest,
+                external_action_id=external_action_id,
             )
             try:
                 out = ToolResult(True, "ok", output=adapter.invoke(args, ctx))
