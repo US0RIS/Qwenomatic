@@ -164,18 +164,11 @@ class ToolGateway:
         from ..safety.boundary import SafetyError
         if self.store._depth:
             raise SafetyError("outbound dispatch cannot run inside a ledger transaction")
-        events = self.store.iter_events()
-        invoked = {e.payload["invocation_id"]: e for e in events if e.type is EventType.TOOL_INVOKED}
-        attempted = {e.payload["invocation_id"] for e in events if e.type is EventType.OUTBOUND_ATTEMPTED}
-        for queued in events:
-            if queued.type is not EventType.OUTBOUND_QUEUED:
-                continue
+        for queued in list(self.state.outbound_pending.values()):
             p = queued.payload
             iid = p["invocation_id"]
-            if iid in attempted:
-                continue  # crash/timeout after send is ambiguous: never retry
             tool = self.registry.get(p["tool"])
-            receipt = invoked.get(iid)
+            receipt = self.store.get_by_idempotency("tool:" + iid)
             agent = self.state.agents.get(queued.agent_id)
             eligible = (
                 tool is not None and getattr(tool, "real_world", False)
