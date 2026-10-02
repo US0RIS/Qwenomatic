@@ -27,6 +27,8 @@ clock:
 safety:
   mode: simulation             # simulation | strict
   gateway_url: http://safety-gateway:8787
+  # The broker, not the agent process, is allowed to reach this fixed local model endpoint.
+  model_upstream: http://host.docker.internal:11434/v1
   attestation_timeout_seconds: 2
   forbidden_probe:
     host: 1.1.1.1
