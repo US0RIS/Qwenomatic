@@ -2,7 +2,9 @@
 
 The supervisor signs a token per agent per generation listing the tools it
 may invoke. Tokens never enter agent context: the runtime holds them on the
-agent's behalf. An emergency stop bumps the epoch, invalidating every token.
+agent's behalf. Tokens are also bound to the exact approved safety-policy
+fingerprint, so a policy/destination/payee change invalidates old authority.
+An emergency stop bumps the epoch, invalidating every token.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ class Claims:
     generation_id: int
     capabilities: frozenset[str]
     epoch: int
+    policy_fingerprint: str = ""
 
 
 def load_or_create_secret(path: Path) -> bytes:
@@ -48,24 +51,57 @@ class TokenAuthority:
     def _sign(self, body: bytes) -> str:
         return hmac.new(self._secret, body, hashlib.sha256).hexdigest()
 
-    def issue(self, *, token_id: str, agent_id: str, generation_id: int, capabilities: list[str], epoch: int) -> str:
-        claims = {"tid": token_id, "aid": agent_id, "gen": generation_id, "caps": sorted(capabilities), "ep": epoch}
+    def issue(
+        self,
+        *,
+        token_id: str,
+        agent_id: str,
+        generation_id: int,
+        capabilities: list[str],
+        epoch: int,
+        policy_fingerprint: str = "",
+    ) -> str:
+        claims = {
+            "tid": token_id,
+            "aid": agent_id,
+            "gen": generation_id,
+            "caps": sorted(capabilities),
+            "ep": epoch,
+            "pf": policy_fingerprint,
+        }
         body = base64.urlsafe_b64encode(json.dumps(claims, sort_keys=True).encode()).decode()
         return f"{body}.{self._sign(body.encode())}"
 
-    def verify(self, token: str, *, current_epoch: int, generation_id: int) -> Claims:
+    def verify(
+        self,
+        token: str,
+        *,
+        current_epoch: int,
+        generation_id: int,
+        policy_fingerprint: str | None = None,
+    ) -> Claims:
         try:
             body, sig = token.rsplit(".", 1)
         except (ValueError, AttributeError) as exc:
             raise InvalidToken("malformed token") from exc
         if not hmac.compare_digest(sig, self._sign(body.encode())):
             raise InvalidToken("bad signature")
-        claims = json.loads(base64.urlsafe_b64decode(body.encode()))
+        try:
+            claims = json.loads(base64.urlsafe_b64decode(body.encode()))
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise InvalidToken("malformed claims") from exc
         if claims["ep"] < current_epoch:
             raise InvalidToken("revoked")
         if claims["gen"] != generation_id:
             raise InvalidToken("expired (generation)")
+        token_fp = str(claims.get("pf") or "")
+        if policy_fingerprint is not None and token_fp != policy_fingerprint:
+            raise InvalidToken("policy changed")
         return Claims(
-            token_id=claims["tid"], agent_id=claims["aid"], generation_id=claims["gen"],
-            capabilities=frozenset(claims["caps"]), epoch=claims["ep"],
+            token_id=claims["tid"],
+            agent_id=claims["aid"],
+            generation_id=claims["gen"],
+            capabilities=frozenset(claims["caps"]),
+            epoch=claims["ep"],
+            policy_fingerprint=token_fp,
         )
