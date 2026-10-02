@@ -40,3 +40,23 @@ No live payment provider, credential, payee or external adapter was enabled.
 Payment transport behavior was tested with controlled doubles. Provider-specific
 settlement must be verified when an operator enables an integration. Deployment
 startup repeats the live network proof on the actual deployment host.
+
+## Follow-up review verification — 2026-10-02 UTC
+
+The updated kernel_smoke.py passed against the exact production source hashes
+in followup-source-sha256.json, in the same QEMU/Linux environment with 2 GiB
+RAM and a protected venv. See kernel-followup-2026-10-02.txt. It additionally
+runs Generation Zero, the evolved/control A/B and the campaign through their
+fixed protected launcher operations, rejects a writable planted .pth without
+executing it, SIGKILLs a launcher after host mutation and verifies independent
+idempotent cleanup of namespace, NAT table, evidence and forwarding state.
+The full local suite passed 177 tests. Text approval tests check exact-content
+binding and single use. Unit tests still use the explicit boundary fixture.
+
+The launcher is now invoked with /usr/bin/python3 -I -S. It checks the entire
+explicit venv before any privileged use, and privileged probes also disable
+site loading. The farm starts site loading only after dropping privileges.
+An earlier VM attempt with insufficient memory exhausted its initramfs space;
+the successful 2 GiB run is the receipt above. No live payment relay or Windows
+model connection was enabled or tested. The short experiment generations test
+entry-point compatibility, not the scientific efficacy of evolution.

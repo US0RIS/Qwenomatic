@@ -104,7 +104,7 @@ class PolicyEngine:
         if rate is not None and ctx.calls_this_tick >= int(rate):
             return PolicyResult(Decision.DENY, "rate limit", ac)
         if not req.approved:
-            if ac == "payments.material" or self.needs_approval(ac):
+            if ac in {"payments.material", "external.fixed_write"} or self.needs_approval(ac):
                 return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, f"{ac} requires operator approval", ac)
             if req.spend > 0 and req.spend >= self.material_threshold:
                 return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, "material spend requires approval", ac)

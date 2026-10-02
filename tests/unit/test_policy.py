@@ -76,3 +76,11 @@ def test_tokens_sign_expire_and_revoke():
         auth.verify(t, current_epoch=1, generation_id=3)  # revoked by emergency stop
     with pytest.raises(InvalidToken):
         auth.verify(t, current_epoch=0, generation_id=4)  # expired with its generation
+
+
+def test_external_text_requires_operator_approval_without_config_class(engine):
+    engine.approval_classes = []
+    request = req(engine, action_class="external.fixed_write", spend=0)
+    assert engine.evaluate(request, PolicyContext()).decision is Decision.REQUIRE_HUMAN_APPROVAL
+    approved = req(engine, action_class="external.fixed_write", spend=0, approved=True)
+    assert engine.evaluate(approved, PolicyContext()).decision is Decision.ALLOW

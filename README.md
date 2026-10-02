@@ -367,14 +367,16 @@ Not yet covered: container/OS isolation of population workloads (DESIGN ยง12) โ€
 
 Before attributing improved profit to evolution, Qwenomatic can run a matched treatment/control experiment. Both arms start from the same seed population, simulated market, scheduler, model, and call budget. The treatment evolves normally; the control carries the same agents forward with retirement, cloning, mutation, and immigration disabled. Generation 0 is the pre-treatment baseline, so the primary comparison uses Generations 1+.
 
+Farm and experiment execution requires the protected Linux launcher described in [SAFETY.md](SAFETY.md). Direct Python/PowerShell farm commands refuse outside isolation. Use `--operation evolution-ab --generations 2`, `--operation campaign --pairs 2 --generations 2`, or `--operation run --generations 1` with the protected operator configuration. Windows remains suitable for hosting/tuning Ollama with restricted private inbound access.
+
 For a local Ollama server configured with `OLLAMA_NUM_PARALLEL=2`:
 
-```powershell
-python scripts/evolution_ab.py --reset --generations 2 `
-  --backend openai_compatible `
-  --base-url http://127.0.0.1:11434/v1 `
-  --model qwen3:14b `
-  --max-concurrency 2
+```bash
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/launch.py \
+  --manifest /etc/qwenomatic/manifest.json --user qwenomatic \
+  --python /opt/qwenomatic-runtime/bin/python \
+  --config-dir /opt/qwenomatic/config --data-dir /var/lib/qwenomatic/ab \
+  --operation evolution-ab --generations 2
 ```
 
 The experiment is resumable after Ctrl+C. It writes `var/evolution-ab/report.md` and `report.json`, including per-generation net profit, call-count parity, the raw post-baseline treatment-control difference, and a baseline-adjusted difference-in-differences estimate per model call.
@@ -386,17 +388,17 @@ A single paired run is evidence, not a statistical conclusion. Repeat with addit
 
 A single treatment/control pair can still be lucky. For a stronger unattended experiment, run multiple independent pairs. Pair seeds are distinct and arm order alternates automatically to reduce order/cache/thermal bias.
 
-```powershell
-python scripts/evolution_ab_campaign.py --reset --pairs 2 --generations 2 `
-  --backend openai_compatible `
-  --base-url http://127.0.0.1:11434/v1 `
-  --model qwen3:14b `
-  --max-concurrency 2
+```bash
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/launch.py \
+  --manifest /etc/qwenomatic/manifest.json --user qwenomatic \
+  --python /opt/qwenomatic-runtime/bin/python \
+  --config-dir /opt/qwenomatic/config --data-dir /var/lib/qwenomatic/campaign \
+  --operation campaign --pairs 2 --generations 2
 ```
 
 The campaign prints live per-arm progress and ETA, is resumable after Ctrl+C, and writes both per-pair reports and an aggregate `campaign-report.md` / `campaign-report.json`. The aggregate reports sign consistency, mean/median raw treatment effects, and baseline-adjusted difference-in-differences per model call.
 
-For an interrupted campaign, rerun the same command **without** `--reset`.
+For an interrupted campaign, recover the launcher if needed, then rerun the same command; existing ledgers are reused.
 
 
 ## Performance tuning
@@ -431,13 +433,12 @@ python scripts\benchmark_ollama.py --model qwen3:14b --concurrency 1,2,3,4
 
 Use the fastest measured value for both Ollama's `OLLAMA_NUM_PARALLEL` and Qwenomatic's client concurrency:
 
-```powershell
-qwenomatic --data-dir var\farm run `
-  --backend openai_compatible `
-  --base-url http://127.0.0.1:11434/v1 `
-  --model qwen3:14b `
-  --max-concurrency 2 `
-  --generations 1
+```bash
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/launch.py \
+  --manifest /etc/qwenomatic/manifest.json --user qwenomatic \
+  --python /opt/qwenomatic-runtime/bin/python \
+  --config-dir /opt/qwenomatic/config --data-dir /var/lib/qwenomatic/farm \
+  --operation run --generations 1
 ```
 
 Matching these values prevents hidden server-side queueing and keeps GPU-time attribution consistent.

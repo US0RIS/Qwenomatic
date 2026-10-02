@@ -37,17 +37,17 @@ from supervisor.experiments.evolution_ab import (  # noqa: E402
 
 
 def main() -> int:
-    default_seed = FarmConfig.load().seed
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("--config-dir", default=None)
     p.add_argument("--root", default="var/evolution-ab-campaign")
     p.add_argument("--pairs", type=int, default=2)
     p.add_argument("--generations", type=int, default=2,
                    help="closed generations per arm; Generation 0 is baseline")
-    p.add_argument("--backend", choices=["simulated", "openai_compatible"], default="simulated")
+    p.add_argument("--backend", choices=["simulated", "openai_compatible"], default=None)
     p.add_argument("--base-url", default=None)
     p.add_argument("--model", default=None)
-    p.add_argument("--max-concurrency", type=int, default=2)
-    p.add_argument("--seed", type=int, default=default_seed,
+    p.add_argument("--max-concurrency", type=int, default=None)
+    p.add_argument("--seed", type=int, default=None,
                    help="base seed; each pair derives a deterministic distinct seed")
     p.add_argument("--seed-stride", type=int, default=1009)
     p.add_argument("--reset", action="store_true")
@@ -58,6 +58,10 @@ def main() -> int:
     if args.generations < 2:
         p.error("--generations must be >= 2")
 
+    cfg = FarmConfig.load(args.config_dir)
+    args.seed = cfg.seed if args.seed is None else args.seed
+    args.backend = args.backend or cfg.farm["inference"]["backend"]
+    args.max_concurrency = args.max_concurrency or cfg.farm["inference"].get("openai_compatible", {}).get("max_concurrency", 2)
     root = Path(args.root).resolve()
     if args.reset and root.exists():
         shutil.rmtree(root)
@@ -77,6 +81,7 @@ def main() -> int:
 
         summaries = {}
         common = dict(
+            config_dir=args.config_dir,
             generations=args.generations,
             backend=args.backend,
             base_url=args.base_url,

@@ -282,3 +282,30 @@ def test_model_code_remains_text_and_cannot_run(tmp_path):
         assert not marker.exists()
     finally:
         sup.close()
+
+
+@pytest.fixture
+def text_farm(monkeypatch, request):
+    text_spec = {"name": "real.pay", "kind": "fixed_json", "endpoint": "https://192.0.2.10/submit",
+                 "credential_file": "/etc/qwenomatic/token.json"}
+    monkeypatch.setattr(__import__(__name__, fromlist=["SPEC"]), "SPEC", text_spec)
+    return request.getfixturevalue("farm")
+
+
+def test_external_text_approval_is_bound_to_exact_content(text_farm):
+    sup, sent = text_farm
+    agent = sup.state.active_agents()[0]
+    gen = sup.state.current_generation
+    step = StepContext(agent.id, agent.lineage_id, gen, "text-step", sup.clock.tick,
+                       sup.clock.now_dt(), sup.workspace_for(agent.id))
+    token = sup.token_for(agent.id, gen)
+    args = {"text": "operator-reviewed content"}
+    pending = sup.gateway.invoke(token, "real.pay", args, step)
+    assert pending.status == "pending_approval" and not sent
+    approval = pending.output["approval_id"]
+    sup.resolve_approval(approval, granted=True, operator="Alice")
+    assert not sup.gateway.invoke(token, "real.pay", {"text": "changed content"}, step, approval_id=approval).ok
+    assert sup.gateway.invoke(token, "real.pay", args, step, approval_id=approval).ok
+    sup.gateway.dispatch_outbound(sup.boundary)
+    assert sent == [(args, sent[0][1])]
+    assert not sup.gateway.invoke(token, "real.pay", args, step, approval_id=approval).ok
