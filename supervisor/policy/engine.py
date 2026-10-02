@@ -106,13 +106,7 @@ class PolicyEngine:
             if hard_cap is not None and req.spend > float(hard_cap):
                 return PolicyResult(Decision.DENY, "per-action spend hard cap", ac)
 
-        if not req.approved:
-            if self.needs_approval(ac):
-                return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, f"{ac} requires operator approval", ac)
-            threshold = float(cap.get("material_spend_threshold", self.material_threshold))
-            if req.spend > threshold:
-                return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, "material spend requires approval", ac)
-
+        spend_limit: dict[str, Any] = {}
         if req.spend > 0:
             farm_committed = ctx.farm_spend_day + ctx.farm_reserved_spend
             if farm_committed + req.spend > self.farm_daily_limit:
@@ -124,11 +118,24 @@ class PolicyEngine:
             remaining = max(0.0, remaining)
             if req.spend > remaining:
                 if req.supports_spend_limit and remaining > 0:
-                    return PolicyResult(
-                        Decision.ALLOW_WITH_LIMIT,
-                        "spend limited to remaining budget",
-                        ac,
-                        limit={"max_spend": round(remaining, 6)},
-                    )
-                return PolicyResult(Decision.DENY, "agent spend limit", ac)
+                    spend_limit = {"max_spend": round(remaining, 6)}
+                else:
+                    return PolicyResult(Decision.DENY, "agent spend limit", ac)
+
+        # Approval is meaningful only after hard budget ceilings are known to
+        # permit the request. Otherwise repeated material requests could pile
+        # up pending approvals and reserve more money than the farm may spend.
+        if not req.approved:
+            if self.needs_approval(ac):
+                return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, f"{ac} requires operator approval", ac,
+                                    limit=spend_limit)
+            threshold = float(cap.get("material_spend_threshold", self.material_threshold))
+            effective_spend = float(spend_limit.get("max_spend", req.spend))
+            if effective_spend > threshold:
+                return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, "material spend requires approval", ac,
+                                    limit=spend_limit)
+
+        if spend_limit:
+            return PolicyResult(Decision.ALLOW_WITH_LIMIT, "spend limited to remaining budget", ac,
+                                limit=spend_limit)
         return PolicyResult(Decision.ALLOW, "allowed", ac)
