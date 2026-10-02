@@ -27,6 +27,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y nftables iproute2 python3-venv
       - name: Prepare root-owned trusted checkout and runtime
         run: |
+          sudo chmod 755 /opt
           sudo cp -a . /opt/qwenomatic
           sudo chown -R root:root /opt/qwenomatic
           sudo chmod -R go-w /opt/qwenomatic
