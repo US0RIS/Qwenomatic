@@ -41,14 +41,9 @@ jobs:
       - name: Seal exact strict authority
         working-directory: deploy/strict
         run: docker compose run --rm --no-deps qwenomatic safety-approve --operator ci --note "strict network CI"
-      - name: Prove network barrier from inside population container
+      - name: Prove strict startup and network barrier from inside population container
         working-directory: deploy/strict
-        run: |
-          docker compose up -d safety-gateway
-          docker compose run --rm --no-deps --entrypoint python qwenomatic /app/deploy/strict/acceptance.py
-      - name: Prove strict supervisor startup
-        working-directory: deploy/strict
-        run: docker compose run --rm --no-deps qwenomatic --data-dir /data run --ticks 0
+        run: sh acceptance.sh
       - name: Tear down strict stack
         if: always()
         working-directory: deploy/strict
