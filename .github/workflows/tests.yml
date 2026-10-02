@@ -18,3 +18,34 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: python -m pytest
+
+  strict-network:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Start fixed local model fixture
+        run: |
+          python deploy/strict/fake_model.py >/tmp/qwenomatic-fake-model.log 2>&1 &
+          echo $! >/tmp/qwenomatic-fake-model.pid
+          sleep 1
+      - name: Build strict containers
+        working-directory: deploy/strict
+        run: docker compose build
+      - name: Seal exact strict authority
+        working-directory: deploy/strict
+        run: docker compose run --rm --no-deps qwenomatic safety-approve --operator ci --note "strict network CI"
+      - name: Prove network barrier from inside population container
+        working-directory: deploy/strict
+        run: |
+          docker compose up -d safety-gateway
+          docker compose run --rm --no-deps --entrypoint python qwenomatic /app/deploy/strict/acceptance.py
+      - name: Prove strict supervisor startup
+        working-directory: deploy/strict
+        run: docker compose run --rm --no-deps qwenomatic --data-dir /data run --ticks 0
+      - name: Tear down strict stack
+        if: always()
+        working-directory: deploy/strict
+        run: docker compose down -v --remove-orphans
