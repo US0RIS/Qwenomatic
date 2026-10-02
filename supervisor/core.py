@@ -91,6 +91,15 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
+        if strict_mode(config) and self.state.current_generation is not None:
+            frozen = self.state.generations[self.state.current_generation].config.get("hashes", {}).get("safety")
+            current = config.safety_fingerprint()
+            if frozen != current:
+                self.close()
+                raise SafetyBoundaryError(
+                    "strict safety authority differs from the active generation's frozen authority; "
+                    "restore the generation's approved config or start a new strict generation"
+                )
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
         self.clock.set_tick(self.state.last_tick + 1)
