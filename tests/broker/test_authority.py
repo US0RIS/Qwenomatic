@@ -1,4 +1,5 @@
 import copy
+from pathlib import Path
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 import pytest
@@ -14,7 +15,7 @@ def policy():
                 farms={'farm': {'limits': dict(bounds), 'certificates': ['1' * 64]},
                        'other': {'limits': dict(bounds), 'certificates': ['2' * 64]}},
                 services={'text': dict(kind='fixed_json', endpoint='https://example.com/send', account='shared',
-                    credential_file='/etc/broker/token', payee=None, hard_cap_cents=0,
+                    credential_file=str(Path('/etc/broker/token').resolve()), payee=None, hard_cap_cents=0,
                     limits=dict(bounds), farms=['farm', 'other'])})
 
 
