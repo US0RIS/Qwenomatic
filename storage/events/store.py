@@ -45,6 +45,12 @@ def _event_hash(fields: dict[str, Any]) -> str:
 
 
 def check_authorship(event_type: EventType, author: str) -> None:
+    if event_type is EventType.ACCESS_APPROVED and (not author.startswith("operator:") or not author[9:].strip()):
+        raise AuthorshipError("access changes require an identified operator")
+    if event_type in (EventType.NETWORK_BARRIER_VERIFIED, EventType.OUTBOUND_ATTEMPTED, EventType.OUTBOUND_RESULT) and author != AUTHOR_SUPERVISOR:
+        raise AuthorshipError("safety dispatch events require the supervisor")
+    if event_type is EventType.OUTBOUND_QUEUED and not author.startswith("adapter:real."):
+        raise AuthorshipError("outbound intents require a fixed real adapter")
     if author.startswith("agent:"):
         if event_type not in AGENT_AUTHORABLE:
             raise AuthorshipError(f"agent-authored {event_type.value} events are not permitted")
@@ -360,3 +366,4 @@ def _split_sql(script: str) -> list[str]:
     if buf:
         statements.append("\n".join(buf))
     return statements
+

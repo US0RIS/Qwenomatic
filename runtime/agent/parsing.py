@@ -30,22 +30,37 @@ class ParsedOutput:
     raw_keys: list[str] = field(default_factory=list)
 
 
+def _strict_json(text: str) -> Any:
+    def pairs(items):
+        out = {}
+        for key, value in items:
+            if key in out:
+                raise MalformedOutput("duplicate JSON key")
+            out[key] = value
+        return out
+    def constant(value):
+        raise MalformedOutput("non-finite JSON number")
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=constant)
+
+
 def _extract_json(text: str) -> Any:
+    if not isinstance(text, str) or len(text) > 1_000_000:
+        raise MalformedOutput("model output exceeds limit or is not text")
     text = _THINK.sub("", text).strip()
     try:
-        return json.loads(text)
+        return _strict_json(text)
     except json.JSONDecodeError:
         pass
     m = _FENCE.search(text)
     if m:
         try:
-            return json.loads(m.group(1))
+            return _strict_json(m.group(1))
         except json.JSONDecodeError:
             pass
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end > start:
         try:
-            return json.loads(text[start : end + 1])
+            return _strict_json(text[start : end + 1])
         except json.JSONDecodeError:
             pass
     raise MalformedOutput("no JSON object found")
@@ -84,3 +99,4 @@ def parse_output(text: str, *, max_actions: int) -> ParsedOutput:
         dropped_actions=max(0, len(clean) - max_actions),
         raw_keys=sorted(data.keys()),
     )
+

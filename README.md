@@ -1,3 +1,7 @@
+> **Safety startup requirement:** Farm execution now requires the Linux kernel
+> isolation launcher. Direct/native Windows execution fails closed. See
+> [SAFETY.md](SAFETY.md) for deployment, fixed adapters and verification receipts.
+
 # Qwenomatic
 
 > Experimental changes are governed by [`EXPERIMENTS.md`](EXPERIMENTS.md). A feature is not considered done until its required comparison, audit, rollback, and promotion criteria pass.
@@ -483,3 +487,4 @@ powershell -ExecutionPolicy Bypass -File scripts\autotune_ollama.ps1
 It restarts Ollama at parallelism 1, 2, 3, and 4 with Flash Attention enabled and q8_0 KV cache, benchmarks representative Qwenomatic structured-reasoning calls, and prints the fastest aggregate completion-token throughput. Use the winning value for both `OLLAMA_NUM_PARALLEL` and Qwenomatic's `--max-concurrency`.
 
 This is preferable to choosing the highest concurrency blindly: once the GPU is saturated, more parallel contexts can reduce per-request speed or cause memory pressure.
+

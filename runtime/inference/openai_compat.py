@@ -23,10 +23,16 @@ from .base import BackendUnavailable, Generation, Health, InferenceBackend, Infe
 THINKING_CONTROLS = ("soft_switch", "template_kwargs", "both", "none")
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, "model redirects are prohibited", headers, fp)
+
+
 class OpenAICompatibleBackend(InferenceBackend):
     name = "openai_compatible"
 
     def __init__(self, config: dict[str, Any]) -> None:
+        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         self.base_url = config["base_url"].rstrip("/")
         self.model = config["model"]
         self.quantization = config.get("quantization", "unknown")
@@ -46,7 +52,7 @@ class OpenAICompatibleBackend(InferenceBackend):
             headers["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(f"{self.base_url}{path}", data=json.dumps(body).encode(), headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with self._opener.open(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read())
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             raise BackendUnavailable(str(exc)) from exc
@@ -83,7 +89,7 @@ class OpenAICompatibleBackend(InferenceBackend):
     def health(self) -> Health:
         req = urllib.request.Request(f"{self.base_url}/models")
         try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with self._opener.open(req, timeout=5) as resp:
                 ok = resp.status == 200
         except Exception as exc:
             return Health(False, self.name, self.model, str(exc))
