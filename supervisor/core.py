@@ -91,6 +91,9 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
+        sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
+        self.ids.start_session(sessions + 1)
+        self.clock.set_tick(self.state.last_tick + 1)
         try:
             self.safety_attestation = attest_network_boundary(config, self.store)
         except Exception as exc:
@@ -104,9 +107,6 @@ class Supervisor:
             if isinstance(exc, SafetyBoundaryError):
                 raise
             raise SafetyBoundaryError(f"safety attestation errored: {exc}") from exc
-        sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
-        self.ids.start_session(sessions + 1)
-        self.clock.set_tick(self.state.last_tick + 1)
 
         capability_secret = os.environ.get("QWENOMATIC_CAPABILITY_SECRET_FILE")
         secret_path = Path(capability_secret) if capability_secret else self.data_dir / "secrets" / "supervisor.key"
