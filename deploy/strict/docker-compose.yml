@@ -24,11 +24,18 @@ services:
   safety-gateway:
     build:
       context: ../..
+    user: "0:0"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     entrypoint: ["python", "-m", "supervisor.safety_gateway"]
     command: ["--config-dir", "/etc/qwenomatic", "--host", "0.0.0.0", "--port", "8787"]
     environment:
       <<: *qwenomatic-env
-      QWENOMATIC_MODEL_UPSTREAM: http://host.docker.internal:11434/v1
     depends_on:
       safety-init:
         condition: service_completed_successfully
@@ -51,6 +58,13 @@ services:
   qwenomatic:
     build:
       context: ../..
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       <<: *qwenomatic-env
     depends_on:
