@@ -42,7 +42,10 @@ def main():
     ca_path.parent.mkdir(parents=True,exist_ok=True)
     old_ca=ca_path.read_bytes() if ca_path.exists() else None
     processes=[];sockets=[]
-    def run(*cmd, **kw): return subprocess.run(cmd,check=True,capture_output=True,text=True,**kw).stdout
+    def run(*cmd, **kw):
+        try:return subprocess.run(cmd,check=True,capture_output=True,text=True,**kw).stdout
+        except subprocess.CalledProcessError as exc:
+            print('COMMAND FAILED:',exc.cmd[-1][:300] if exc.cmd else exc.cmd,'\nSTDOUT:',exc.stdout,'\nSTDERR:',exc.stderr,file=sys.stderr);raise
     def wait(test, seconds=20):
         deadline=time.monotonic()+seconds
         while time.monotonic()<deadline:
