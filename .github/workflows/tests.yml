@@ -44,5 +44,12 @@ jobs:
         run: |
           sudo useradd --system --user-group --no-create-home qbroker
           sudo useradd --system --user-group --no-create-home qinfer
+      - name: Allow namespace routing on the hosted runner
+        run: |
+          sudo iptables -S FORWARD || true
+          sudo iptables -P FORWARD ACCEPT
+          sudo iptables -I FORWARD 1 -j ACCEPT
+          sudo sysctl -w net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0
+          sudo iptables -S FORWARD
       - name: Prove broker and inference kernel boundaries with controlled TLS
         run: sudo /opt/qwenomatic-runtime/bin/python -I /opt/qwenomatic/deploy/broker_kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python
