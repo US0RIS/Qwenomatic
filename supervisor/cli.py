@@ -41,6 +41,8 @@ def _config(args: argparse.Namespace) -> FarmConfig:
         overrides["farm"].setdefault("inference", {}).setdefault("openai_compatible", {})["max_concurrency"] = int(args.max_concurrency)
     if getattr(args, "wall_clock", False):
         overrides["farm"]["clock"] = {"mode": "wall"}
+    if getattr(args, "strict_real_world", False):
+        overrides["farm"]["safety"] = {"mode": "strict"}
     return FarmConfig.load(args.config_dir, data_dir=args.data_dir, overrides=overrides)
 
 
@@ -223,6 +225,43 @@ def cmd_resume(args: argparse.Namespace) -> int:
     return _operator_command(_config(args), {"command": "resume", "operator": args.operator})
 
 
+def cmd_safety_approve(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    from .safety import exclusive_operator_lock, record_operator_approval
+
+    with exclusive_operator_lock(cfg.data_dir):
+        store = EventStore(_db(cfg))
+        try:
+            fp = record_operator_approval(store, cfg, operator=args.operator, note=args.note or "")
+        finally:
+            store.close()
+    print(f"approved safety fingerprint {fp}")
+    return 0
+
+
+def cmd_safety_status(args: argparse.Namespace) -> int:
+    cfg = _config(args)
+    from .safety import latest_approved_fingerprint, safety_fingerprint, strict_mode
+
+    current = safety_fingerprint(cfg)
+    approved = None
+    if _db(cfg).exists():
+        store = EventStore(_db(cfg), read_only=True)
+        try:
+            approved = latest_approved_fingerprint(store)
+        finally:
+            store.close()
+    print(json.dumps({
+        "mode": "strict" if strict_mode(cfg) else "simulation",
+        "current_fingerprint": current,
+        "approved_fingerprint": approved,
+        "approved": approved == current,
+        "adapters": sorted((cfg.adapters.get("adapters") or {}).keys()),
+        "gateway_url": (cfg.farm.get("safety") or {}).get("gateway_url"),
+    }, indent=2))
+    return 0 if approved == current or not strict_mode(cfg) else 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="qwenomatic", description="Qwenomatic evolutionary agent farm")
     p.add_argument("--config-dir", default=None, help="directory with farm.yaml, policy.yaml, fitness.yaml")
@@ -243,6 +282,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--model")
     r.add_argument("--max-concurrency", type=int, help="client inference concurrency; match the model server")
     r.add_argument("--wall-clock", action="store_true", help="real time instead of simulated ticks")
+    r.add_argument("--strict-real-world", action="store_true",
+                   help="require the sealed OS/network boundary and operator-approved safety fingerprint")
     add("status", cmd_status, help="summary from the ledger")
     d = add("dashboard", cmd_dashboard, help="read-only web dashboard")
     d.add_argument("--host", default="127.0.0.1")
@@ -261,16 +302,22 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--operator", default=getpass.getuser())
     rs = add("resume", cmd_resume, help="resume after a stop")
     rs.add_argument("--operator", default=getpass.getuser())
+    sa = add("safety-approve", cmd_safety_approve,
+             help="approve the exact current policy/adapters/routes for strict mode (farm must be stopped)")
+    sa.add_argument("--operator", default=getpass.getuser())
+    sa.add_argument("--note")
+    add("safety-status", cmd_safety_status, help="show whether current sealed safety config is operator-approved")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     from .config import ConfigNotFound
+    from .safety import SafetyBoundaryError
 
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)
-    except ConfigNotFound as exc:
+    except (ConfigNotFound, SafetyBoundaryError) as exc:
         print(f"qwenomatic: {exc}", file=sys.stderr)
         return 2
 
