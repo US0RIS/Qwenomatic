@@ -30,6 +30,7 @@ hashes are in tested-source-sha256.json.
 
 The ordinary simulation/gateway/adversarial suite was also run locally. These
 tests inject a boundary fixture and are separate from the real kernel receipt.
+The full suite passed: 169 tests (including 47 safety tests).
 
 GitHub Actions was attempted, but all jobs failed before executing any steps and
 no job logs were available through the connector. The VM result above is the
