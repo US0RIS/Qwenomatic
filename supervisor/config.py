@@ -1,4 +1,4 @@
-"""Supervisor-owned configuration: farm.yaml, policy.yaml, fitness.yaml."""
+"""Supervisor-owned configuration: farm.yaml, policy.yaml, fitness.yaml and sealed adapters.yaml."""
 
 from __future__ import annotations
 
@@ -53,6 +53,7 @@ class FarmConfig:
     farm: dict[str, Any]
     policy: dict[str, Any]
     fitness: dict[str, Any]
+    adapters: dict[str, Any]
     config_dir: Path
     data_dir: Path
 
@@ -69,13 +70,29 @@ class FarmConfig:
         farm = deep_merge(_read_yaml(config_dir / "farm.yaml"), overrides.get("farm"))
         policy = deep_merge(_read_yaml(config_dir / "policy.yaml"), overrides.get("policy"))
         fitness = deep_merge(_read_yaml(config_dir / "fitness.yaml"), overrides.get("fitness"))
+        adapters = deep_merge(_read_yaml_optional(config_dir / "adapters.yaml"), overrides.get("adapters"))
+
+        # Deployment-only overrides are intentionally narrow. They are applied
+        # before safety fingerprinting, so changing one invalidates the prior
+        # operator approval instead of silently widening authority.
+        if os.environ.get("QWENOMATIC_SAFETY_MODE"):
+            farm.setdefault("safety", {})["mode"] = os.environ["QWENOMATIC_SAFETY_MODE"]
+        if os.environ.get("QWENOMATIC_SAFETY_GATEWAY_URL"):
+            farm.setdefault("safety", {})["gateway_url"] = os.environ["QWENOMATIC_SAFETY_GATEWAY_URL"]
+        if os.environ.get("QWENOMATIC_INFERENCE_BASE_URL"):
+            farm.setdefault("inference", {}).setdefault("openai_compatible", {})["base_url"] = (
+                os.environ["QWENOMATIC_INFERENCE_BASE_URL"]
+            )
+
         if data_dir is None:
             data_dir = Path(farm["farm"].get("data_dir", "var"))
             if not data_dir.is_absolute():
-                data_dir = config_dir.parent / data_dir  # relative to the farm root
-        return cls(farm=farm, policy=policy, fitness=fitness, config_dir=config_dir, data_dir=Path(data_dir))
+                data_dir = config_dir.parent / data_dir
+        return cls(
+            farm=farm, policy=policy, fitness=fitness, adapters=adapters,
+            config_dir=config_dir, data_dir=Path(data_dir),
+        )
 
-    # Convenience accessors -------------------------------------------------
     @property
     def seed(self) -> int:
         return int(self.farm["farm"]["seed"])
@@ -104,9 +121,21 @@ class FarmConfig:
             "farm": config_hash(self.farm),
             "policy": config_hash(self.policy),
             "fitness": config_hash(self.fitness),
+            "adapters": config_hash(self.adapters),
         }
+
+    def safety_fingerprint(self) -> str:
+        from .safety import safety_fingerprint
+
+        return safety_fingerprint(self)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
+
+
+def _read_yaml_optional(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {"version": 1, "adapters": {}}
+    return _read_yaml(path)
