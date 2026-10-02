@@ -172,7 +172,7 @@ class FarmState:
         return [a for a in self.agents.values() if a.lineage_id == lineage_id]
 
     def reserved_spend(self, *, agent_id: str | None = None, generation: int | None = None,
-                       exclude_approval_id: str | None = None) -> float:
+                       exclude_approval_id: str | None = None, exclude_action_id: str | None = None) -> float:
         """Money committed by pending/granted approvals or ambiguous external actions."""
         total = 0.0
         for approval in self.approvals.values():
@@ -184,7 +184,9 @@ class FarmState:
                 continue
             total += max(0.0, float((approval.get("request") or {}).get("spend") or 0.0))
         for action in self.external_actions.values():
-            if action.get("status") not in ("pending", "uncertain"):
+            if action.get("action_id") == exclude_action_id:
+                continue
+            if action.get("status") not in ("pending", "dispatching", "uncertain"):
                 continue
             if agent_id is not None and action.get("agent_id") != agent_id:
                 continue
@@ -374,8 +376,15 @@ class FarmState:
     def _on_external_action_requested(self, e: Event) -> None:
         p = e.payload
         self.external_actions[p["action_id"]] = {
-            **p, "agent_id": e.agent_id, "generation": e.generation_id, "status": "pending",
+            **p, "agent_id": e.agent_id, "lineage_id": e.lineage_id,
+            "generation": e.generation_id, "status": "pending",
         }
+
+    def _on_external_action_dispatching(self, e: Event) -> None:
+        action = self.external_actions.get(e.payload.get("action_id"))
+        if action:
+            action["status"] = "dispatching"
+            action["dispatch_attempt"] = e.payload.get("attempt")
 
     def _on_external_action_result(self, e: Event) -> None:
         action = self.external_actions.get(e.payload.get("action_id"))
