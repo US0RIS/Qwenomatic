@@ -162,7 +162,7 @@ def test_approval_cannot_be_reused_for_modified_args(tmp_path):
         )
         assert result.status == "denied"
         assert "exact request" in (result.error or "")
-        assert sup.market.offers == 0
+        assert not sup.store.iter_events(types=[EventType.OPPORTUNITY], agent_id=agent)
     finally:
         sup.close()
 
