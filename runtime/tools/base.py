@@ -19,6 +19,10 @@ class ToolContext:
     now: datetime
     workspace: Path
     max_spend: float | None = None
+    capability_token: str = ""
+    policy_fingerprint: str = ""
+    capability_epoch: int = 0
+    approval_id: str | None = None
 
 
 @dataclass
@@ -52,6 +56,7 @@ class ToolAdapter:
     args_schema: dict[str, str] = {}
     optional_args: frozenset[str] = frozenset()
     supports_spend_limit: bool = False
+    external_adapter_id: str | None = None
 
     def classify(self, args: dict[str, Any]) -> str:
         return self.action_class
