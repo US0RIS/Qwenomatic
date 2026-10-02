@@ -24,13 +24,14 @@ from typing import Any
 from runtime.agent import GENOTYPE_VERSION, AgentRuntime, random_genotype, validate_genotype
 from runtime.inference import InferenceBackend, InferenceService, build_backend
 from runtime.tools.base import ToolRegistry
+from runtime.tools.external import ConfiguredExternalTool
 from runtime.tools.market import MarketOfferTool, MarketSurveyTool, MemoryNoteTool
 from runtime.tools.sim_market import SimulatedMarket
 from runtime.tools.workspace import WorkspaceReadTool, WorkspaceWriteTool
 from storage.events import EventStore, EventType, FarmState, digest
 
 from .accounting import (
-    AdSpendMeter, Attribution, ComplianceMonitor, ComputeMeter, HumanLaborMeter, Ledger, MarketObserver,
+    AdSpendMeter, Attribution, ComplianceMonitor, ComputeMeter, ExternalSpendAdapter, HumanLaborMeter, Ledger, MarketObserver,
     MilestoneValidator, PaymentProcessorAdapter, check_agent_budget, farm_gpu_last_day, farm_spend_last_day,
 )
 from .clock import SimulatedClock, WallClock, parse_ts
@@ -39,7 +40,8 @@ from .evolution import GenerationManager, MutationEngine
 from .ids import IdFactory, stable_id
 from .policy import PolicyEngine, StepContext, TokenAuthority, ToolGateway, load_or_create_secret
 from .policy import approvals as approvals_mod
-from .safety import SafetyBoundaryError, attest_network_boundary
+from .policy.external import ExternalGatewayClient, validate_adapter_specs, validate_policy_bindings
+from .safety import SafetyBoundaryError, attest_network_boundary, strict_mode
 from .scheduler import Candidate, Scheduler
 
 
@@ -114,6 +116,7 @@ class Supervisor:
                              currency=econ.get("currency", "USD"))
         self.payments = PaymentProcessorAdapter(self.ledger, self.state)
         self.ads = AdSpendMeter(self.ledger)
+        self.external_spend = ExternalSpendAdapter(self.ledger)
         self.compute = ComputeMeter(
             self.ledger, lambda: float(self.fitness_config()["imputed_costs"]["local_compute_usd_per_gpu_hour"]))
         self.labor = HumanLaborMeter(
@@ -121,8 +124,8 @@ class Supervisor:
         self.observer = MarketObserver(self.store)
         self.milestones = MilestoneValidator(self.store)
         self.compliance = ComplianceMonitor(self.store)
-        for adapter in (self.payments, self.ads, self.compute, self.labor, self.observer, self.milestones,
-                        self.compliance):
+        for adapter in (self.payments, self.ads, self.external_spend, self.compute, self.labor, self.observer,
+                        self.milestones, self.compliance):
             self.ledger.register_adapter(adapter)
 
         start = self.clock.start if isinstance(self.clock, SimulatedClock) else parse_ts(clock_cfg.get("start", self.clock.now()))
@@ -135,6 +138,28 @@ class Supervisor:
         quota = int(farm["runtime"].get("workspace_quota_bytes", 262144))
         self.registry.register(WorkspaceWriteTool(quota))
         self.registry.register(WorkspaceReadTool())
+
+        external_specs = validate_adapter_specs(config.adapters)
+        validate_policy_bindings(external_specs, config.policy)
+        if external_specs and not strict_mode(config):
+            raise SafetyBoundaryError("real-world adapters are configured but safety.mode is not strict")
+        self.external_tools: dict[str, ConfiguredExternalTool] = {}
+        if external_specs:
+            safety_cfg = farm.get("safety") or {}
+            client = ExternalGatewayClient(
+                str(safety_cfg.get("gateway_url") or ""),
+                timeout=float(safety_cfg.get("adapter_timeout_seconds", 30)),
+            )
+            for adapter_id, spec in sorted(external_specs.items()):
+                tool_adapter = ConfiguredExternalTool(
+                    adapter_id=adapter_id,
+                    spec=spec,
+                    client=client,
+                    store=self.store,
+                    spend_recorder=self.external_spend,
+                )
+                self.registry.register(tool_adapter)
+                self.external_tools[tool_adapter.name] = tool_adapter
 
         self._policy_cache: dict[int, PolicyEngine] = {}
         self.gateway = ToolGateway(
@@ -409,6 +434,10 @@ class Supervisor:
             self.payments.reconcile(now, gen, tick)
             self._execute_granted_approvals(gen, tick)
             self._enforce_status(gen)
+        # Real-world effects are dispatched only after their request event has
+        # committed. A crash after the dispatch marker never causes an
+        # automatic retry; it becomes an operator reconciliation case.
+        self._execute_pending_external(gen, tick)
 
         reason = None
         health = self.inference.health()
@@ -596,6 +625,53 @@ class Supervisor:
                                workspace=self.workspace_for(agent.id))
             self.gateway.invoke(self.token_for(agent.id, gen), req["tool"], req["args"], step,
                                 approval_id=a["approval_id"])
+
+    def _execute_pending_external(self, gen: int, tick: int) -> None:
+        for action_id, action in list(self.state.external_actions.items()):
+            if action.get("status") != "pending" or action.get("generation") != gen:
+                continue
+            agent = self.state.agents.get(action.get("agent_id"))
+            if agent is None or agent.status != "running":
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected", "error": "agent is no longer active"},
+                    agent_id=action.get("agent_id"), lineage_id=action.get("lineage_id"), generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
+                continue
+            if action.get("policy_fingerprint") != self.current_policy_fingerprint():
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected", "error": "safety policy changed"},
+                    agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
+                continue
+            step = StepContext(
+                agent_id=agent.id,
+                lineage_id=agent.lineage_id,
+                generation_id=gen,
+                step_id=action.get("step_id"),
+                tick=tick,
+                now=self.clock.now_dt(),
+                workspace=self.workspace_for(agent.id),
+            )
+            result = self.gateway.invoke(
+                self.token_for(agent.id, gen),
+                action["tool"],
+                action["args"],
+                step,
+                approval_id=action.get("approval_id"),
+                external_action_id=action_id,
+            )
+            if (self.state.external_actions.get(action_id) or {}).get("status") == "pending":
+                self.store.append(
+                    EventType.EXTERNAL_ACTION_RESULT,
+                    {"action_id": action_id, "status": "rejected",
+                     "error": result.error or "dispatch authorization failed"},
+                    agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
+                    idempotency_key=f"external-result:{action_id}",
+                )
 
     # ===================================================== emergency stop
     def emergency_stop(self, reason: str, *, operator: str = "operator") -> None:
