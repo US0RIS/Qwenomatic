@@ -108,6 +108,30 @@ def validate_adapter_specs(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def validate_policy_bindings(specs: dict[str, dict[str, Any]], policy: dict[str, Any]) -> None:
+    """Every configured external tool must also be an explicit ordinary capability."""
+    capabilities = policy.get("capabilities") or {}
+    for adapter_id, spec in specs.items():
+        tool = str(spec["tool"])
+        cap = capabilities.get(tool)
+        if not isinstance(cap, dict):
+            raise AdapterConfigError(
+                f"adapter {adapter_id}: tool {tool} must be explicitly present in policy capabilities"
+            )
+        if str(spec.get("kind") or "http") == "payment":
+            payment = spec["payment"]
+            hard = cap.get("max_spend_per_call")
+            material = cap.get("material_spend_threshold")
+            if hard is None or float(hard) != float(payment["hard_cap_per_action"]):
+                raise AdapterConfigError(
+                    f"adapter {adapter_id}: policy max_spend_per_call must equal the broker payment hard cap"
+                )
+            if material is None or float(material) > float(payment["material_threshold"]):
+                raise AdapterConfigError(
+                    f"adapter {adapter_id}: policy material threshold must be no looser than the broker threshold"
+                )
+
+
 class ExternalGatewayClient:
     """Client for the only network-reachable process in the farm namespace."""
 
