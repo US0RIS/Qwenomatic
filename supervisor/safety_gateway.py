@@ -117,6 +117,10 @@ class Gateway:
         self.opener = urllib.request.build_opener(NoRedirect)
 
     def health(self) -> dict[str, Any]:
+        # Re-read every credential on every attestation. Replacing a secret
+        # without updating its sealed SHA-256 makes health fail immediately.
+        for spec in self.specs.values():
+            _read_credential(spec)
         return {
             "ok": True,
             "mode": "sealed",
@@ -265,7 +269,10 @@ def make_handler(gateway: Gateway):
 
         def do_GET(self) -> None:
             if self.path == "/healthz":
-                return self._json(200, gateway.health())
+                try:
+                    return self._json(200, gateway.health())
+                except (GatewayError, OSError, ValueError) as exc:
+                    return self._json(503, {"ok": False, "mode": "sealed", "error": str(exc)[:300]})
             if self.path == "/model/v1/models":
                 code, raw, ctype = gateway.proxy_model("GET", "/models")
                 self.send_response(code)
