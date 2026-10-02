@@ -75,6 +75,16 @@ class FarmConfig:
         # Deployment-only overrides are intentionally narrow. They are applied
         # before safety fingerprinting, so changing one invalidates the prior
         # operator approval instead of silently widening authority.
+        if os.environ.get("QWENOMATIC_INFERENCE_BACKEND"):
+            farm.setdefault("inference", {})["backend"] = os.environ["QWENOMATIC_INFERENCE_BACKEND"]
+        if os.environ.get("QWENOMATIC_CLOCK_MODE"):
+            farm.setdefault("clock", {})["mode"] = os.environ["QWENOMATIC_CLOCK_MODE"]
+        if os.environ.get("QWENOMATIC_MODEL"):
+            farm.setdefault("inference", {}).setdefault("openai_compatible", {})["model"] = os.environ["QWENOMATIC_MODEL"]
+        if os.environ.get("QWENOMATIC_MAX_CONCURRENCY"):
+            farm.setdefault("inference", {}).setdefault("openai_compatible", {})["max_concurrency"] = int(
+                os.environ["QWENOMATIC_MAX_CONCURRENCY"]
+            )
         if os.environ.get("QWENOMATIC_SAFETY_MODE"):
             farm.setdefault("safety", {})["mode"] = os.environ["QWENOMATIC_SAFETY_MODE"]
         if os.environ.get("QWENOMATIC_SAFETY_GATEWAY_URL"):
