@@ -18,6 +18,21 @@ clock:
   mode: simulated              # simulated | wall
   start: "2026-01-01T00:00:00+00:00"
 
+# Simulation needs no WAN. Strict mode is for any real-world adapter or
+# wall-clock economic run. In strict mode startup fails unless:
+#   1) the exact policy/adapters/routes were approved by a human,
+#   2) the separate safety gateway reports that exact adapter config, and
+#   3) a real outbound TCP probe from this process fails.
+# deploy/strict/docker-compose.yml provides the OS-level internal network.
+safety:
+  mode: simulation             # simulation | strict
+  gateway_url: http://safety-gateway:8787
+  attestation_timeout_seconds: 2
+  forbidden_probe:
+    host: 1.1.1.1
+    port: 443
+    timeout_seconds: 1
+
 inference:
   backend: simulated           # simulated | openai_compatible
   slots_per_tick: 8            # inference jobs admitted per scheduler round
