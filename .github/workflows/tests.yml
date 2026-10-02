@@ -18,3 +18,19 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: python -m pytest
+
+  kernel-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kernel test dependencies
+        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 python3-venv
+      - name: Prepare root-owned trusted checkout and runtime
+        run: |
+          sudo cp -a . /opt/qwenomatic
+          sudo chown -R root:root /opt/qwenomatic
+          sudo chmod -R go-w /opt/qwenomatic
+          sudo python3 -m venv /opt/qwenomatic-runtime
+          sudo /opt/qwenomatic-runtime/bin/pip install PyYAML
+      - name: Prove kernel barrier and fail-closed farm startup
+        run: sudo /opt/qwenomatic-runtime/bin/python /opt/qwenomatic/deploy/kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python

@@ -60,22 +60,10 @@ def _open_supervisor(cfg: FarmConfig):
 def _operator_command(cfg: FarmConfig, command: dict[str, Any]) -> int:
     from .core import submit_command
 
-    sup = _open_supervisor(cfg)
-    if sup is None:
-        path = submit_command(cfg.data_dir, command)
-        print(f"supervisor is running; queued {command['command']} as {path.name}")
-        return 0
-    try:
-        if command["command"] == "stop":
-            sup.emergency_stop(command["reason"], operator=command["operator"])
-        elif command["command"] == "resume":
-            sup.resume(operator=command["operator"])
-        else:
-            sup.resolve_approval(command["approval_id"], granted=command["command"] == "approve",
-                                 operator=command["operator"], note=command.get("note", ""))
-        print(f"{command['command']}: done")
-    finally:
-        sup.close()
+    # Operator control writes an inbox request, never constructs an unisolated
+    # supervisor. The protected farm resolves it on its next tick.
+    path = submit_command(cfg.data_dir, command)
+    print(f"queued {command['command']} as {path.name}; the isolated supervisor will apply it")
     return 0
 
 
@@ -266,14 +254,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     from .config import ConfigNotFound
+    from .safety.boundary import SafetyError
 
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)
-    except ConfigNotFound as exc:
+    except (ConfigNotFound, SafetyError) as exc:
         print(f"qwenomatic: {exc}", file=sys.stderr)
         return 2
 
 
 if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())
+

@@ -44,6 +44,12 @@ class EventType(str, Enum):
     HUMAN_APPROVAL_RESOLVED = "human_approval_resolved"
     HUMAN_INTERVENTION = "human_intervention"
 
+    ACCESS_APPROVED = "access_approved"
+    NETWORK_BARRIER_VERIFIED = "network_barrier_verified"
+    OUTBOUND_QUEUED = "outbound_queued"
+    OUTBOUND_ATTEMPTED = "outbound_attempted"
+    OUTBOUND_RESULT = "outbound_result"
+
     # Economy
     OPPORTUNITY = "opportunity"
     FINANCIAL_EVENT = "financial_event"
@@ -114,3 +120,4 @@ class Event:
             "prev_hash": self.prev_hash,
             "hash": self.hash,
         }
+

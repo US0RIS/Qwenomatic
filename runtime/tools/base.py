@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -71,6 +73,8 @@ class ToolAdapter:
             value = args[key]
             if isinstance(value, bool) and typ != "bool":
                 errors.append(f"argument {key!r} must be {typ}")
+            elif typ in ("number", "int") and isinstance(value, (int, float)) and not math.isfinite(value):
+                errors.append(f"argument {key!r} must be finite")
             elif not isinstance(value, _TYPES[typ]):
                 errors.append(f"argument {key!r} must be {typ}")
         for key in args:
@@ -92,8 +96,14 @@ class ToolAdapter:
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, ToolAdapter] = {}
+        self._frozen = False
+
+    def freeze(self) -> None:
+        self._frozen = True
 
     def register(self, tool: ToolAdapter) -> None:
+        if self._frozen:
+            raise ValueError("adapter registration requires operator approval and restart")
         if tool.name in self._tools:
             raise ValueError(f"tool {tool.name!r} already registered")
         self._tools[tool.name] = tool
@@ -106,3 +116,4 @@ class ToolRegistry:
 
     def describe(self, names: list[str]) -> list[dict[str, Any]]:
         return [self._tools[n].describe() for n in names if n in self._tools]
+

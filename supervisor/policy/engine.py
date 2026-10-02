@@ -9,6 +9,8 @@ the agent regardless of revenue (I5).
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from enum import Enum
 from fnmatch import fnmatchcase
@@ -90,6 +92,8 @@ class PolicyEngine:
     # ------------------------------------------------------------ evaluate
     def evaluate(self, req: CapabilityRequest, ctx: PolicyContext) -> PolicyResult:
         ac = req.action_class
+        if not math.isfinite(req.spend) or req.spend < 0:
+            return PolicyResult(Decision.DENY, "invalid spend", ac)
         if self.is_forbidden(ac):
             return PolicyResult(Decision.DENY, f"forbidden action class {ac}", ac, hard_violation=True)
         if req.tool not in req.granted or req.tool not in self.capabilities:
@@ -100,9 +104,9 @@ class PolicyEngine:
         if rate is not None and ctx.calls_this_tick >= int(rate):
             return PolicyResult(Decision.DENY, "rate limit", ac)
         if not req.approved:
-            if self.needs_approval(ac):
+            if ac == "payments.material" or self.needs_approval(ac):
                 return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, f"{ac} requires operator approval", ac)
-            if req.spend > self.material_threshold:
+            if req.spend > 0 and req.spend >= self.material_threshold:
                 return PolicyResult(Decision.REQUIRE_HUMAN_APPROVAL, "material spend requires approval", ac)
         if req.spend > 0:
             if ctx.farm_spend_day + req.spend > self.farm_daily_limit:
@@ -114,3 +118,4 @@ class PolicyEngine:
                                         limit={"max_spend": round(remaining, 6)})
                 return PolicyResult(Decision.DENY, "agent spend limit", ac)
         return PolicyResult(Decision.ALLOW, "allowed", ac)
+

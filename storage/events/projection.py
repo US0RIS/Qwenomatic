@@ -141,6 +141,7 @@ class FarmState:
         self.spend_by_tick: dict[int, float] = defaultdict(float)
         self.pending_settlements: dict[str, dict[str, Any]] = {}
         self.approvals: dict[str, dict[str, Any]] = {}
+        self.outbound_pending: dict[str, Event] = {}
         self.capability_epoch: int = 0
         self.halted: bool = False
         self.halt_reason: str | None = None
@@ -328,6 +329,12 @@ class FarmState:
         if approval_id and approval_id in self.approvals:
             self.approvals[approval_id]["status"] = "executed"
 
+    def _on_outbound_queued(self, e: Event) -> None:
+        self.outbound_pending[e.payload["invocation_id"]] = e
+
+    def _on_outbound_attempted(self, e: Event) -> None:
+        self.outbound_pending.pop(e.payload["invocation_id"], None)
+
     def _on_human_approval_requested(self, e: Event) -> None:
         self.approvals[e.payload["approval_id"]] = {
             "approval_id": e.payload["approval_id"], "agent_id": e.agent_id, "generation": e.generation_id,
@@ -416,3 +423,4 @@ class FarmState:
     def _on_farm_resumed(self, e: Event) -> None:
         self.halted = False
         self.halt_reason = None
+

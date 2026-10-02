@@ -1,0 +1,31 @@
+6.8.0-138-generic
+[   10.620913] evm: security.SMACK64EXEC
+[   10.620919] evm: security.SMACK64TRANSMUTE
+[   10.620925] evm: security.SMACK64MMAP
+[   10.620931] evm: security.apparmor
+[   10.620937] evm: security.ima
+[   10.620943] evm: security.capability
+[   10.620958] evm: HMAC attrs: 0x1
+[   10.624603] PM:   Magic number: 14:206:358
+[   10.711050] RAS: Correctable Errors collector initialized.
+[   10.713945] Unstable clock detected, switching default tracing clock to "global"
+[   10.713945] If you want to keep using the local clock, then add:
+[   10.713945]   "trace_clock=local"
+[   10.713945] on the kernel command line
+[   10.716518] clk: Disabling unused clocks
+[   10.785896] Freeing unused decrypted memory: 2028K
+[   10.914279] Freeing unused kernel image (initmem) memory: 4932K
+[   10.914557] Write protecting the kernel read-only data: 38912k
+[   10.920150] Freeing unused kernel image (rodata/data gap) memory: 1956K
+[   11.078705] x86/mm: Checked W+X mappings: passed, no W+X pages found.
+[   11.079104] Run /init as init process
+[   11.079224]   with arguments:
+[   11.079269]     /init
+[   11.079289]   with environment:
+[   11.079305]     HOME=/
+[   11.079321]     TERM=linux
+=== QWENOMATIC ACTUAL KERNEL SMOKE START ===
+kernel barrier verified
+PASS: live positive control, kernel outbound rejection, actual farm startup, ledger receipt, unsafe startup refusal
+QWENOMATIC_KERNEL_SMOKE_EXIT=0
+[   41.629785] reboot: Power down
