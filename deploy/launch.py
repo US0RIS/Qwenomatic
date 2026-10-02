@@ -24,19 +24,24 @@ from storage.events import digest
 
 
 def run(*args, input=None):
-    return subprocess.run(args, input=input, text=True, check=True, capture_output=True).stdout
+    try:
+        return subprocess.run(args, input=input, text=True, check=True, capture_output=True).stdout
+    except subprocess.CalledProcessError as exc:
+        raise SafetyError(f"network setup command {args[0]} failed: {exc.stderr[:2000]}") from exc
 
 
-def rules(destinations):
+def rules(destinations, child):
     allows = "\n".join(f"ip daddr {ip} tcp dport {port} accept" for ip, port in sorted(destinations))
     return f"""table inet qwenomatic {{
       chain output {{
         type filter hook output priority -150; policy drop;
         {allows}
+        ip daddr {child} icmp type destination-unreachable icmp code admin-prohibited accept
         reject with icmpx type admin-prohibited
       }}
       chain input {{
         type filter hook input priority -150; policy drop;
+        ip daddr {child} icmp type destination-unreachable icmp code admin-prohibited accept
         ct state established,related accept
       }}
       chain forward {{
@@ -111,7 +116,7 @@ def main():
         run("ip", "netns", "exec", ns, "ip", "link", "set", "lo", "up")
         run("ip", "netns", "exec", ns, "ip", "route", "add", "default", "via", host)
         # IPv6, UDP, raw IP, DNS, loopback side channels: no allow rules.
-        run("ip", "netns", "exec", ns, "nft", "-f", "-", input=rules(destinations))
+        run("ip", "netns", "exec", ns, "nft", "-f", "-", input=rules(destinations, child))
         actual = run("ip", "netns", "exec", ns, "nft", "list", "ruleset")
         if "policy drop" not in actual or "admin-prohibited" not in actual:
             raise SafetyError("installed firewall could not be confirmed")
@@ -143,7 +148,7 @@ def main():
         run("ip", "netns", "exec", ns, args.python, "-I", "-c", probe)
         # Reinstall the exact allowlist atomically, removing the temporary rule.
         run("ip", "netns", "exec", ns, "nft", "-f", "-",
-            input="delete table inet qwenomatic\n" + rules(destinations))
+            input="delete table inet qwenomatic\n" + rules(destinations, child))
         inode = run("ip", "netns", "exec", ns, args.python, "-I", "-c",
                     "import os; print(os.stat('/proc/self/ns/net').st_ino)").strip()
         directory = Path("/run/qwenomatic-boundaries")

@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import socket
 import stat
+import struct
 from urllib.parse import urlsplit
 
 from storage.events import EventType, digest
@@ -140,10 +141,27 @@ class NetworkBoundary:
             host, port = self.evidence["canary"]
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(2)
+                # Linux reports ICMP administratively prohibited as EHOSTUNREACH.
+                # Verify the actual ICMP code from the socket error queue rather
+                # than accepting a generic no-route error with the same errno.
+                s.setsockopt(socket.IPPROTO_IP, 11, 1)  # IP_RECVERR
                 try:
                     s.connect((host, port))
                 except OSError as exc:
-                    if exc.errno not in (errno.EACCES, errno.EPERM):
+                    if exc.errno in (errno.EACCES, errno.EPERM):
+                        self.last_rejection = {"errno": exc.errno}
+                    elif exc.errno == errno.EHOSTUNREACH:
+                        _, ancillary, _, _ = s.recvmsg(1, 256, socket.MSG_ERRQUEUE)
+                        proof = None
+                        for level, kind, data in ancillary:
+                            if level == socket.IPPROTO_IP and kind == 11 and len(data) >= 16:
+                                number, origin, typ, code, _, _, _ = struct.unpack("=IBBBBII", data[:16])
+                                if number == errno.EHOSTUNREACH and origin == 2 and typ == 3 and code == 13:
+                                    proof = {"errno": number, "icmp_type": typ, "icmp_code": code}
+                        if proof is None:
+                            raise SafetyError("canary failure has no administrative rejection proof") from exc
+                        self.last_rejection = proof
+                    else:
                         raise SafetyError("canary failed without a kernel policy rejection") from exc
                 else:
                     raise SafetyError("unapproved outbound connection succeeded")
@@ -163,4 +181,5 @@ class NetworkBoundary:
                                                          "credentials": self.evidence["credential_fingerprints"]}))
         store.append(EventType.NETWORK_BARRIER_VERIFIED,
                      {"namespace": self.evidence["namespace"], "manifest_digest": digest(self.manifest),
-                      "canary": self.evidence["canary"], "result": "kernel_rejected"})
+                      "canary": self.evidence["canary"], "result": "kernel_rejected",
+                      "kernel_error": self.last_rejection})

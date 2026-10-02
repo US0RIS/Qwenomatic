@@ -217,7 +217,7 @@ def test_production_supervisor_refuses_unconfirmed_boundary(tmp_path, monkeypatc
         make_supervisor(tmp_path)
 
 
-@pytest.mark.parametrize("error", [None, errno.ECONNREFUSED, errno.ETIMEDOUT, errno.ENETUNREACH])
+@pytest.mark.parametrize("error", [None, errno.ECONNREFUSED, errno.ETIMEDOUT, errno.ENETUNREACH, errno.EHOSTUNREACH])
 def test_canary_requires_kernel_rejection(monkeypatch, error):
     boundary = RealBoundary.__new__(RealBoundary)
     boundary.evidence = {"namespace": "net:[123]", "canary": ["192.0.2.1", 443]}
@@ -226,12 +226,38 @@ def test_canary_requires_kernel_rejection(monkeypatch, error):
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def settimeout(self, timeout): pass
+        def setsockopt(self, *args): pass
+        def recvmsg(self, *args): return b"", [], 0, None
         def connect(self, destination):
             if error is not None:
                 raise OSError(error, "test")
     monkeypatch.setattr(socket, "socket", lambda *args: Socket())
     with pytest.raises(SafetyError):
         boundary.check()
+
+
+@pytest.mark.parametrize("code,accepted", [(13, True), (1, False)])
+def test_linux_error_queue_distinguishes_firewall_from_no_route(monkeypatch, code, accepted):
+    import struct
+    boundary = RealBoundary.__new__(RealBoundary)
+    boundary.evidence = {"namespace": "net:[123]", "canary": ["192.0.2.1", 443]}
+    monkeypatch.setattr("os.readlink", lambda _: "net:[123]")
+    class Socket:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def settimeout(self, *args): pass
+        def setsockopt(self, *args): pass
+        def connect(self, destination): raise OSError(errno.EHOSTUNREACH, "no route")
+        def recvmsg(self, *args):
+            data = struct.pack("=IBBBBII", errno.EHOSTUNREACH, 2, 3, code, 0, 0, 0)
+            return b"", [(socket.IPPROTO_IP, 11, data)], 0, None
+    monkeypatch.setattr(socket, "socket", lambda *args: Socket())
+    if accepted:
+        boundary.check()
+        assert boundary.last_rejection["icmp_code"] == 13
+    else:
+        with pytest.raises(SafetyError):
+            boundary.check()
 
 
 @pytest.mark.parametrize("event", [EventType.ACCESS_APPROVED, EventType.OUTBOUND_QUEUED,

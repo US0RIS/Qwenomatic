@@ -86,7 +86,7 @@ adapter contracts and credential fingerprints. No adapter is enabled by default.
 | Payment safety | Integer-cent hard caps, mandatory material approval, existing generation/day budgets, and attributed ledger reservation before dispatch. |
 | No agent code execution | Model JSON stays data; no shell/query/code adapter or dynamic adapter loader. Strict finite numeric validation and JSON parsing. |
 | Fail closed | Supervisor initialization, each tick, queueing and dispatch require confirmed evidence and a kernel rejection; check errors propagate and abort work. |
-| Actual blocked connection | Launcher proves its controlled TCP canary reachable from the same namespace, installs final rules atomically, then startup connects again and requires EACCES/EPERM. Timeouts/refusals are rejected as insufficient proof. |
+| Actual blocked connection | Launcher proves its controlled TCP canary reachable from the same namespace, installs final rules atomically, then startup connects again and requires a local policy rejection or the exact ICMP administrative-prohibition code from the Linux socket error queue. Timeouts, refusals and generic no-route errors are insufficient proof. |
 | Existing gateway | Real adapters use the same token, policy, rate limit, budget and TOOL_INVOKED ledger path; dispatcher accepts only committed matching gateway receipts. |
 | Human access expansion | Root-owned explicit reviewed manifest, fixed compiled kinds, root-owned credentials, frozen registration, operator-attributed ACCESS_APPROVED receipt. |
 
@@ -117,6 +117,10 @@ asserts live positive control, kernel rejection, ledger integrity and operator
 approval attribution. It also proves unisolated startup and a writable manifest
 are refused. A successful kernel-safety job is required before claiming OS
 isolation has been verified on that host. Startup repeats the proof on every run.
+
+The actual acceptance test has also passed in a separate Linux VM. See
+[deploy/verification/README.md](deploy/verification/README.md) for the console
+transcript, tested source hashes and the distinction between VM proof and CI status.
 
 The barrier protects against model output and the supplied agent tools. A
 compromised root/kernel, operator-approved service that behaves outside its
