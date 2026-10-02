@@ -87,12 +87,16 @@ class ToolGateway:
         adapter = self.registry.get(tool) if isinstance(tool, str) else None
         safe_args = args if isinstance(args, dict) else {}
 
+        base_action_class = adapter.classify(safe_args) if adapter else engine.classify_tool_name(str(tool))
         forbidden_fields = control_plane_paths(safe_args)
-        if forbidden_fields:
+        # Preserve a more specific hard violation (for example host.shell) so
+        # the ledger still records what the agent actually attempted. The
+        # generic control-plane-argument class is for otherwise ordinary tools.
+        if forbidden_fields and not engine.is_forbidden(base_action_class):
             action_class = "security.control_plane_argument"
             spend = 0.0
         else:
-            action_class = adapter.classify(safe_args) if adapter else engine.classify_tool_name(str(tool))
+            action_class = base_action_class
             spend = adapter.spend(safe_args) if adapter else 0.0
 
         request = {
@@ -128,7 +132,8 @@ class ToolGateway:
                     "approval does not match this exact request and safety policy", spend, args,
                     approval_id=approval_id, policy_fingerprint=fp,
                 )
-                return ToolResult(False, "denied", error="approval invalid or stale")
+                return ToolResult(False, "denied",
+                                  error="approval invalid or stale: it does not match this exact request and policy")
 
         agent = self.state.agents[step.agent_id]
         counters = self.state.counter(step.generation_id, step.agent_id)
