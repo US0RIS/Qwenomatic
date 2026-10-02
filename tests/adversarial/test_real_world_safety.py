@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import ast
 
 import pytest
+import yaml
 
 from helpers import make_config, make_supervisor
 from runtime.tools.base import ToolContext, ToolError
@@ -376,3 +378,42 @@ def test_reserved_spend_is_counted_by_policy():
     )
     assert engine.evaluate(req, PolicyContext(agent_reserved_spend=7)).decision is Decision.DENY
     assert engine.evaluate(req, PolicyContext(farm_reserved_spend=9)).reason == "farm daily spend ceiling"
+
+
+def test_strict_compose_keeps_population_on_internal_network_only():
+    root = Path(__file__).resolve().parents[2]
+    compose = yaml.safe_load((root / "deploy" / "strict" / "docker-compose.yml").read_text())
+    services = compose["services"]
+    networks = compose["networks"]
+    assert networks["farm_internal"]["internal"] is True
+    assert services["qwenomatic"]["networks"] == ["farm_internal"]
+    assert "broker_egress" not in services["qwenomatic"]["networks"]
+    assert set(services["safety-gateway"]["networks"]) == {"farm_internal", "broker_egress"}
+    farm_mounts = "\n".join(services["qwenomatic"].get("volumes", []))
+    broker_mounts = "\n".join(services["safety-gateway"].get("volumes", []))
+    assert "provider-secrets" not in farm_mounts
+    assert "provider-secrets" in broker_mounts
+
+
+def test_agent_runtime_and_tool_surface_contains_no_code_execution_primitives():
+    """Model output may be data, never executable code in the population path."""
+    root = Path(__file__).resolve().parents[2]
+    paths = list((root / "runtime" / "agent").glob("*.py")) + list((root / "runtime" / "tools").glob("*.py"))
+    forbidden_imports = {"subprocess", "runpy"}
+    forbidden_calls = {"eval", "exec", "compile"}
+    violations = []
+    for path in paths:
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                if any(alias.name.split(".")[0] in forbidden_imports for alias in node.names):
+                    violations.append(f"{path.name}: forbidden import")
+            elif isinstance(node, ast.ImportFrom):
+                if (node.module or "").split(".")[0] in forbidden_imports:
+                    violations.append(f"{path.name}: forbidden import")
+            elif isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name) and node.func.id in forbidden_calls:
+                    violations.append(f"{path.name}: {node.func.id}")
+                if isinstance(node.func, ast.Attribute) and node.func.attr in {"system", "popen", "spawnl", "spawnv"}:
+                    violations.append(f"{path.name}: {node.func.attr}")
+    assert violations == []
