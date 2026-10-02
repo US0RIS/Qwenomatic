@@ -18,6 +18,7 @@ cannot call it, change its configuration, or see credentials.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import socket
@@ -227,6 +228,13 @@ def attest_network_boundary(config: Any, store: EventStore) -> SafetyAttestation
     want_adapters = adapter_config_hash(config.adapters)
     if health.get("adapter_config_hash") != want_adapters:
         raise SafetyBoundaryError("safety gateway adapter configuration does not match the approved supervisor config")
+    model_upstream = str(safety.get("model_upstream") or "").rstrip("/")
+    if not model_upstream:
+        raise SafetyBoundaryError("strict mode requires safety.model_upstream")
+    if health.get("model_upstream_hash") != hashlib.sha256(model_upstream.encode()).hexdigest():
+        raise SafetyBoundaryError("safety gateway model upstream differs from the approved supervisor config")
+    if health.get("safety_fingerprint") != fp or health.get("credentials_ok") is not True:
+        raise SafetyBoundaryError("safety gateway did not attest the approved policy/credentials")
 
     probe = safety.get("forbidden_probe") or {}
     host = str(probe.get("host") or "1.1.1.1")
