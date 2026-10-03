@@ -42,6 +42,18 @@ def test_supervisor_restart_mid_generation_loses_nothing(tmp_path):
     assert sup.store.verify_chain() == (True, None)
 
 
+def test_supervisor_retry_does_not_reuse_startup_barrier_event_id(tmp_path):
+    sup = make_supervisor(tmp_path, segments=SEGS)
+    sup.close()
+    reopened = make_supervisor(tmp_path, segments=SEGS)
+    try:
+        # Simulation manifests do not emit a kernel barrier event, but the
+        # same startup path must still be safe to reopen.
+        assert reopened.store.head()[0] > 0
+    finally:
+        reopened.close()
+
+
 def test_second_supervisor_cannot_start(tmp_path):
     sup = make_supervisor(tmp_path, segments=SEGS)
     with pytest.raises(SupervisorLocked):

@@ -58,7 +58,10 @@ class AgentRuntime:
                                   catalog=self.registry.describe(self.registry.names()),
                                   knowledge=self.improvements.knowledge(agent) if self.improvements else [],
                                   predictions=bool(self.improvements and self.improvements.generation_cfg()['predictions']['enabled'] and self.improvements.treated('predictions', agent.id)))
-        request_seed = int(digest([seed, agent.id, state["step_index"], "inference"])[:8], 16)
+        # The fixed inference broker accepts nonnegative signed 31-bit seeds.
+        # A full eight-hex-digit digest can exceed that scope for half the
+        # agents, turning valid jobs into HTTP 403 before model inference.
+        request_seed = int(digest([seed, agent.id, state["step_index"], "inference"])[:8], 16) & 0x7fffffff
         return InferenceRequest(
             messages=messages,
             max_tokens=int(g["planning_parameters"]["max_tokens"]),

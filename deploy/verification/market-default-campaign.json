@@ -1,0 +1,364 @@
+{
+  "plan": {
+    "schema_version": 1,
+    "seeds": [
+      20261003
+    ],
+    "generations": 2,
+    "scenarios": {
+      "baseline": {}
+    },
+    "config_hashes": {
+      "farm": "4f6c22f17999fac9f49701bf1f9f94d357a273a0cbecf89bfcffa1e6d9394a44",
+      "policy": "f53f3abcb2695133fe6dbfbeb642dbbd4b0b186609fd763382c585b59cc9df4f",
+      "fitness": "e4b69a4465545de8973c707bf1cf477b33ae87efc210851c82448bb393e0cdc9"
+    },
+    "source_sha256": {
+      "config/farm.yaml": "9acbd79f3d3ec74caca3ccc177a1a0534b92ad6ff6f50d0c2cf64c01f6823c3d",
+      "config/fitness.yaml": "30f59efdd1e5f8c3f4037b8341da3599b04958a92454f0cb0d30a3bdea37a4ba",
+      "config/policy.yaml": "70e9f6b42578070bc05d33ec70e5ad4b4b71af26648050df6eccb43acf428b28",
+      "dashboard/__init__.py": "02985800e2be1b7dfdc4dd3930820115241698ee45f4eac77c97da92c0896dda",
+      "dashboard/metrics.py": "dd4504f4f07e516675f568d22b52128ae3454eb9f39f486fa3f52db89cf9ac3a",
+      "dashboard/server.py": "ffb808261d5b0a078678ebc335d3c611e6006c50e2dd0e2eb40e58f579c9fc2d",
+      "dashboard/static/index.html": "fd4a145b92065b33bebab289d0557ab82f74fd9fb9a060fc653a23981a851cd1",
+      "deploy/broker_kernel_smoke.py": "6a1a8945c5293686c3ec5d0fe271a7430c670134d606ea2dd57a9dac4e4d820d",
+      "deploy/broker_operator.py": "9259778bd734dd0dee8ef9a8be045415750fa4208ddbe03b0ee12af5a1c50272",
+      "deploy/kernel_smoke.py": "71696ba73b263cb51df0741c139ae510538443fb8a4ca00a8b855faeca9ee4a0",
+      "deploy/launch.py": "af3a4d0ef96abcd5b5d410a790792d6c4de7baaa328ff6c6a461542aadc6f6a9",
+      "deploy/service_launch.py": "bf1fece5c806238eec6e7a34f1038ba7edf67c6f47199c1a778d9b91c8907e34",
+      "pyproject.toml": "0b3e0b73a7831abba96787d80d086d2cecf2ce0bc8d646f7d3568ba0ed2effa1",
+      "runtime/__init__.py": "483fff395e5cf004e2297385cbd62092bff8f005c1cbfb31a1b83a0dcc0cbeb7",
+      "runtime/agent/__init__.py": "c91185daf13cb263930f8d72418585feeb04ba31edba08e1a396a4969fae4d76",
+      "runtime/agent/model.py": "841ae3f0e28883571cac14fd9db1ae8a51de37d6418a45ebc31f4bb859fb6a17",
+      "runtime/agent/parsing.py": "46c8b5849a0ad5048f444f50229f4e7868ea52b5c5ce82a04506ff80a1013a96",
+      "runtime/agent/prompts.py": "64a3c762b6c1b7150e42cd24fb7fc1be04e2251ea633ceef214b3f39b25fb857",
+      "runtime/agent/runtime.py": "e4d4f21ff2fa72b7198e906b2749d3482a6323ba0249bc456ba0a2356b72eee3",
+      "runtime/inference/__init__.py": "3d034371e18ba1d78a581f63112c3cb6343f31736acb3e6c39c03cfbba5f831e",
+      "runtime/inference/base.py": "79f647e19be5ebb886b2a6e609f0da54ddb9a8188dc7dd413cbc65119f28c70f",
+      "runtime/inference/openai_compat.py": "ce10c2f8610bfba53e460f516f9e0c0d52c101c42481429aee1d8995261a2007",
+      "runtime/inference/service.py": "a1367152ab0dbeb5f742388b22e2f2216ed612db9e96e973aa3c66df310214b4",
+      "runtime/inference/simulated.py": "bbc87d5f022f43e6a0947a6e3559145ccd2185f49b6fefcc57478a396c25d9ee",
+      "runtime/tools/__init__.py": "b8237fb23ac0bcd2de30b20ea63e79f1231bc9050577542bdd39c47ea0ce4c76",
+      "runtime/tools/base.py": "ebf02d6d14f1f3534748a2b3912091841e39acbc66c2a023bb0f0a447356fdfe",
+      "runtime/tools/constrained_market.py": "de0deb553d4c7dc83be6d0a8e02f60c88062b26b94f39ddba4dfd3d6896386a2",
+      "runtime/tools/market.py": "3a55f4538ff5af73cd47b0fa26202376dbafe804eae2eef3749a90750a47a485",
+      "runtime/tools/sim_market.py": "597c175ac721983be04f10f7d2c318994185fc0d9d06588b0740722ace3b4950",
+      "runtime/tools/workspace.py": "6b53c6bb2338ac6f134e4b69d5a02290855ad047b339071f39a20a610a019641",
+      "scripts/benchmark_ollama.py": "71483500480000fd69ffd020abf56833a12db1b04d3704cd5b9c0610d818b5fd",
+      "scripts/calibrate_market.py": "810b5b80184aa0d5668ed4f0ac0e7e11392f2e1357f5707c1b065cc66065f1f5",
+      "scripts/evolution_ab.py": "d7c9cb40dec5eaca621483361469b3b8577a5616cd04b134eb7c88fc6958d9ff",
+      "scripts/evolution_ab_campaign.py": "09a966c9dabe8429f744036e2c73493137e72080c8136be69d2a9fe4be2d1ae0",
+      "scripts/generation_zero.py": "131d11937cc14fb186fcd59a996f390ec5f7572548cb8ef6d05dec4deb223c8d",
+      "scripts/improvement_campaign.py": "54c051b95b3387a6772143c53cc425b1ebc14833aa8fd5cc148f833d20753eb4",
+      "scripts/inference_profile.py": "d29d465780bce55503666b6fa43501085e0df6a283f560ec5f976060204e8d4e",
+      "scripts/market_validity.py": "1e7fc6bc8a950256354f1fd2be42f40fe8c21835e5dac2e847ef52ef894c8726",
+      "storage/__init__.py": "54a7295a2ca9b433083e6125e99cd94cb4c3de3b36e7e96066e054a6e9bef9ef",
+      "storage/events/__init__.py": "a5d2b126feb08d4b478203ca29f1c257b32114dd9f5224dfe4748ed3f5e5d02f",
+      "storage/events/canonical.py": "5932f485a849d946f9698ceb3f8745912f7461a96a1206a23b29b459d9e49bd3",
+      "storage/events/projection.py": "58b90c9c3cea45d7c01333fa8fd52bc3fab54e40ab0d229f18cd021ba5276eb8",
+      "storage/events/store.py": "1717856c426841efdacc4905c0f8219c38b9cbf75cefb7db72b4f7d1c3c781c5",
+      "storage/events/types.py": "18b01cd566d043dba76795f4377825c0e947b171fbc0dfc79b8a841facda6584",
+      "storage/migrations/001_initial.sql": "c409c21d149ee8a1b4b91760f44689f7b4c268402963b00036246b199052c515",
+      "storage/migrations/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "supervisor/__init__.py": "b4c779416670668a7b4a1a48240ee9a3113f2f84f282a1c0ba3405c05b211b07",
+      "supervisor/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+      "supervisor/accounting/__init__.py": "4721564cc87f414b50f3ee9828d235029ecae1a196cc57a67cf26f66d96977de",
+      "supervisor/accounting/adapters.py": "c5588c49cf043311692556ec8e3c8718d81dc0730d3b78c1a3a7bc79e66c996c",
+      "supervisor/accounting/ledger.py": "df21196ff6b614b4993c53f29b1515065df655ce19879d1f9a2712049b390c03",
+      "supervisor/accounting/resources.py": "a5fa86d54b87e6141f23a158ff80c21ab7b2a87e4f55bff3f9b8140fe9cd30e7",
+      "supervisor/audit.py": "77c74e92268e5cca74b7c760f79bafab8c2572ad876906f31fc910eb1009a299",
+      "supervisor/cli.py": "c93896bb5be0ca5955b120cbb601884014bbf1c4a67d4017819e902f62e4173e",
+      "supervisor/clock.py": "3922bc64273daa2769b94d143bf0def9a0b3fbcb22d165bb1426c7573e6a21a5",
+      "supervisor/config.py": "04e8a6385a534608e9513093300fa00ae1add65b0ddf1df96ffe205cc722f2f6",
+      "supervisor/core.py": "7432202b85200c12cc158a81c284f8802c87b05487f28796bf7f668ed63e9f75",
+      "supervisor/evaluator/__init__.py": "d295543cb1185defc210156def004a81430a70422e585524161336def559c5c6",
+      "supervisor/evaluator/attribution.py": "bf72832b33bcd70063a5cc15e9d1ce2959cf87ab7d743bf4fbc4bf43e220130a",
+      "supervisor/evaluator/eligibility.py": "660f0f3fd0ecd2d45611afb22ad10098a06688e52e44b43edeb832f8a23af354",
+      "supervisor/evaluator/fitness.py": "1eb9bdb1ad42b39ade69389a72b7bc6b35afaca4fdb672d95be44dd4b53bc745",
+      "supervisor/evaluator/stats.py": "8557368dbf13a035918693f755562b5c2f9fa3d81f28878a9dac762f401b5b1c",
+      "supervisor/evolution/__init__.py": "fe1a07669a1cc38031817ebed93478e3f9ccf673935b19a9bc5fad8b1d2eb7a4",
+      "supervisor/evolution/diversity.py": "432f812379d530a20ecef2aaa7c0fbab0a7c867fbbe01af6b33863d5d54255c2",
+      "supervisor/evolution/generation.py": "87d806cb0d954eb9e37720012a047796914977241b273e1def8de74d6cb2ca53",
+      "supervisor/evolution/lineage.py": "4508558ee1672512dff0cfae4d876949a11ab2e8a2dc135880b04b4e87dc030b",
+      "supervisor/evolution/mutation.py": "87bcec30227ae5daefa652f5bca352b0b5095bb78052700dd24b717b5d9df666",
+      "supervisor/evolution/selection.py": "e12b7795452a9f4782041d25f999e4c514ab9a04e062f3498756f2bf8255d410",
+      "supervisor/experiments/__init__.py": "235bf1b15545d08cc876ad7b38b2798d9af259bf643d52ff6f9fe7c1780c391c",
+      "supervisor/experiments/evolution_ab.py": "3b8ab24f53f7405651967623eab27a07b94276d1a2169fc6507d4fe31b7614f3",
+      "supervisor/experiments/improvements.py": "1812d290e2831aad75a0003574135d644ac864c4406c9255e4e4e1a6b6b4c8ef",
+      "supervisor/experiments/market_calibration.py": "be580b8b9842305ae3b5a94c3d401bfc490fc20317d9a1b11f7f1a609efd366c",
+      "supervisor/experiments/market_validity.py": "5ddc8c791b434ef1170864fa646f42a7469696a5de1a54395da24e206ff0c2bb",
+      "supervisor/ids.py": "403ccda2633e1369c1fbe9b4d994ba313b5a4e4160e6c462cae2b322e2b52960",
+      "supervisor/improvements.py": "75bd2ef59fdaa743b248d0f6d421582b06daeed9a40268a322149cf22de0a973",
+      "supervisor/policy/__init__.py": "2b11f5834c7f7e8c83b9723c8cf54dd4c169211119ad0534d7cab3ceb6822946",
+      "supervisor/policy/approvals.py": "e7880e983b73353b4a0f962c0e12f9258bfcda48f0e15f24204d71e38958ce3e",
+      "supervisor/policy/capabilities.py": "0a2bd15f933cfe0d069532a7cea479d9be4f513df1e316fca99cb0bfbf2e6f89",
+      "supervisor/policy/engine.py": "3143a7d1e399dbec7bfe2b68d852c3517004d19ca2d7dcdde3ba477595a79ca1",
+      "supervisor/policy/gateway.py": "5ab1807ce4754d3329fcacf071a2df008cad7fc2c346d983aea31d5d107263a2",
+      "supervisor/red_team.py": "b4f7efd48627a83fbc5b7cc08838ae2c1c9d6f4f0516535f6447dc86d3d767de",
+      "supervisor/roles.py": "24666005b38b3ba5939b2ea3868e06c8cbfd6d737a8a8309180835b9e956c958",
+      "supervisor/safety/__init__.py": "e4d3bed086bd72464a5c1125f160cccb291b66e716cad5e50b77c031ce5846bc",
+      "supervisor/safety/adapters.py": "0ed7f064141323a3d56dba8d795fd5417e4fad58d568b3ec62a3976330ffd325",
+      "supervisor/safety/boundary.py": "2f1c20f47ef4e20865f31b1383e4a1d35de280e8b92501a868095cb4f63ffb86",
+      "supervisor/scheduler/__init__.py": "f145f7f18266d600fd651dbc81effb6ec3a153f06f20aade86dca473565ef358",
+      "supervisor/scheduler/scheduler.py": "915dc1cd99e2331fee68db1e538be08ce8a68d9a5cdba683c0f1007bf8dc6cdd",
+      "supervisor/tuning.py": "85be2bf39419b64307680b477aec72d6e82c1132be6264900e6d1796077da603"
+    },
+    "backend": "simulated",
+    "primary_outcome": "post-baseline net after all payments and refunds; treatment minus frozen control",
+    "secondary_outcome": "total net vs doing nothing (zero incremental net)",
+    "minimum_seeds_for_screen": 10,
+    "real_world_validity": "unestablished",
+    "guardrails": {
+      "policy_violations": 0,
+      "step_exceptions": 0,
+      "max_relative_call_imbalance": 0.05,
+      "max_malformed_rate_increase": 0.01
+    }
+  },
+  "plan_digest": "775cb1b2ee064e83e859986929cbb6feb80e89479212207b538fc3f8557f193a",
+  "pairs": [
+    {
+      "scenario": "baseline",
+      "seed": 20261003,
+      "treatment": {
+        "arm": "treatment",
+        "ledger": "baseline/20261003/treatment/ledger.sqlite3",
+        "model": "qwen-policy-emulator",
+        "backend": "simulated",
+        "role_counts": {
+          "business": 17,
+          "research": 2,
+          "red_team": 1
+        },
+        "initial_population_digest": "4432a6a36c9b6555e2e23c3e934b7a478bb7d198180bc9b1341bc9326e306c64",
+        "pnl_before_tail": {
+          "other_variable": 29.474519,
+          "compute_imputed": 1.03123,
+          "external_spend": 576.26392,
+          "fees": 0.0,
+          "api_cloud": 0.0,
+          "total_costs": 606.769669,
+          "gross_revenue": 0.0,
+          "refunds": 0.0,
+          "net_realized_profit": -606.769669,
+          "unrealized": 38.03
+        },
+        "pnl_after_tail": {
+          "other_variable": 29.494538,
+          "compute_imputed": 1.03123,
+          "external_spend": 576.26392,
+          "gross_revenue": 38.03,
+          "fees": 2.60287,
+          "api_cloud": 0.0,
+          "total_costs": 609.392558,
+          "refunds": 0.0,
+          "net_realized_profit": -571.362558,
+          "unrealized": 0
+        },
+        "post_baseline_net": -133.026763,
+        "baseline_net": -438.335795,
+        "costs": {
+          "overhead": 9.997632,
+          "compute_imputed": 1.03123,
+          "external_spend": 573.76392,
+          "fulfillment": 2.5,
+          "delivery_labor": 19.466128,
+          "receivables_financing": 0.030778,
+          "payment_fee": 2.60287
+        },
+        "guardrails": {
+          "policy_violations": 0,
+          "human_interventions": 0,
+          "malformed": 24,
+          "steps": 2304,
+          "failed_tool_calls": 0,
+          "failed_inference": 0,
+          "step_exceptions": 0,
+          "gpu_seconds": 6187.8012,
+          "prompt_tokens": 2426506,
+          "completion_tokens": 285125,
+          "external_spend": 576.26392,
+          "refunds": 0.0,
+          "max_lineage_call_share": 0.13932291666666666,
+          "malformed_rate": 0.010416666666666666
+        },
+        "net_per_model_step": -0.24798722135416668,
+        "net_per_gpu_hour": -332.41294319539554,
+        "net_per_external_dollar": -0.9914945881047005,
+        "offers": 342,
+        "orders": 5,
+        "collected_orders": 5,
+        "minimum_cash": 1394.258783,
+        "ending_cash": 1429.668672,
+        "capital_exhausted": false,
+        "tail": {
+          "reconciliation_batches": 5,
+          "paid_through": "2026-01-05T08:40:00+00:00",
+          "pending": 0
+        },
+        "audit": {
+          "hash_chain": {
+            "ok": true,
+            "first_bad_seq": null
+          },
+          "accounting": {
+            "ok": true,
+            "pnl": {
+              "other_variable": 29.494538,
+              "compute_imputed": 1.03123,
+              "external_spend": 576.26392,
+              "gross_revenue": 38.03,
+              "fees": 2.60287,
+              "api_cloud": 0.0,
+              "total_costs": 609.392558,
+              "refunds": 0.0,
+              "net_realized_profit": -571.362558,
+              "unrealized": 0
+            },
+            "projection_gross": 38.03,
+            "projection_net": -571.362558,
+            "trial_balance_sum": 0.0
+          },
+          "selection_replay": {
+            "0": true,
+            "1": true
+          },
+          "generations_started_once": true
+        }
+      },
+      "control": {
+        "arm": "control",
+        "ledger": "baseline/20261003/control/ledger.sqlite3",
+        "model": "qwen-policy-emulator",
+        "backend": "simulated",
+        "role_counts": {
+          "business": 17,
+          "research": 2,
+          "red_team": 1
+        },
+        "initial_population_digest": "4432a6a36c9b6555e2e23c3e934b7a478bb7d198180bc9b1341bc9326e306c64",
+        "pnl_before_tail": {
+          "other_variable": 24.696918,
+          "compute_imputed": 1.032936,
+          "external_spend": 967.45392,
+          "fees": 0.0,
+          "api_cloud": 0.0,
+          "total_costs": 993.183774,
+          "gross_revenue": 0.0,
+          "refunds": 0.0,
+          "net_realized_profit": -993.183774,
+          "unrealized": 35.95
+        },
+        "pnl_after_tail": {
+          "other_variable": 24.713269,
+          "compute_imputed": 1.032936,
+          "external_spend": 967.45392,
+          "gross_revenue": 35.95,
+          "fees": 2.24255,
+          "api_cloud": 0.0,
+          "total_costs": 995.442675,
+          "refunds": 0.0,
+          "net_realized_profit": -959.492675,
+          "unrealized": 0
+        },
+        "post_baseline_net": -521.15688,
+        "baseline_net": -438.335795,
+        "costs": {
+          "overhead": 9.997632,
+          "compute_imputed": 1.032936,
+          "external_spend": 965.45392,
+          "fulfillment": 2.0,
+          "delivery_labor": 14.689179,
+          "receivables_financing": 0.026458,
+          "payment_fee": 2.24255
+        },
+        "guardrails": {
+          "policy_violations": 0,
+          "human_interventions": 0,
+          "malformed": 29,
+          "steps": 2304,
+          "failed_tool_calls": 0,
+          "failed_inference": 0,
+          "step_exceptions": 0,
+          "gpu_seconds": 6198.010200000001,
+          "prompt_tokens": 2441251,
+          "completion_tokens": 285488,
+          "external_spend": 967.45392,
+          "refunds": 0.0,
+          "max_lineage_call_share": 0.08289930555555555,
+          "malformed_rate": 0.012586805555555556
+        },
+        "net_per_model_step": -0.4164464735243055,
+        "net_per_gpu_hour": -557.3036375448365,
+        "net_per_external_dollar": -0.9917709310640862,
+        "offers": 537,
+        "orders": 4,
+        "collected_orders": 4,
+        "minimum_cash": 1007.846536,
+        "ending_cash": 1041.540261,
+        "capital_exhausted": false,
+        "tail": {
+          "reconciliation_batches": 4,
+          "paid_through": "2026-01-05T04:10:00+00:00",
+          "pending": 0
+        },
+        "audit": {
+          "hash_chain": {
+            "ok": true,
+            "first_bad_seq": null
+          },
+          "accounting": {
+            "ok": true,
+            "pnl": {
+              "other_variable": 24.713269,
+              "compute_imputed": 1.032936,
+              "external_spend": 967.45392,
+              "gross_revenue": 35.95,
+              "fees": 2.24255,
+              "api_cloud": 0.0,
+              "total_costs": 995.442675,
+              "refunds": 0.0,
+              "net_realized_profit": -959.492675,
+              "unrealized": 0
+            },
+            "projection_gross": 35.95,
+            "projection_net": -959.492675,
+            "trial_balance_sum": 0.0
+          },
+          "selection_replay": {
+            "0": true,
+            "1": true
+          },
+          "generations_started_once": true
+        }
+      },
+      "delta_post_baseline_net": 388.13011700000004,
+      "relative_call_imbalance": 0.0,
+      "guardrails_pass": true
+    }
+  ],
+  "scenarios": {
+    "baseline": {
+      "independent_seed_pairs": 1,
+      "mean_delta": 388.13011700000004,
+      "delta_bootstrap_95": null,
+      "mean_net_after_tail": -571.362558,
+      "profit_bootstrap_95": null,
+      "profitable_runs": 0,
+      "loss_fraction": 1.0,
+      "worst_net": -571.362558,
+      "best_net": -571.362558,
+      "capital_exhausted_runs": 0,
+      "guardrails_pass": true
+    }
+  },
+  "simulation_screen": "inconclusive_or_fails_assumptions",
+  "enough_seeds_for_screen": false,
+  "real_world_validity": "unestablished",
+  "interpretation": "Intervals measure seed variation conditional on these assumptions, not real-world forecast accuracy.",
+  "missing_evidence": [
+    "Independently verified customer purchases and mature refund outcomes.",
+    "Measured quality and delivery cost for actual Qwen-generated work.",
+    "Prospective comparison with a simple non-agent workflow on the same customers."
+  ]
+}

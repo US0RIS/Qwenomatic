@@ -163,11 +163,20 @@ class Ledger:
     @staticmethod
     def trial_balance(events: Iterable[Event]) -> dict[str, float]:
         balances: dict[str, float] = defaultdict(float)
+        pending: dict[str, Event] = {}
         for e in events:
             if e.type is not EventType.FINANCIAL_EVENT:
                 continue
+            reference = e.payload.get('settles_reference')
+            if reference in pending:
+                # Clear the original forecast as well as posting the actual
+                # settlement. Defaults can clear it with a zero cash posting.
+                for posting in Ledger.postings(pending.pop(reference)):
+                    balances[posting.account] -= posting.debit - posting.credit
             for posting in Ledger.postings(e):
                 balances[posting.account] += posting.debit - posting.credit
+            if e.payload['status'] == 'unrealized':
+                pending[e.payload['external_reference']] = e
         return dict(balances)
 
     @staticmethod

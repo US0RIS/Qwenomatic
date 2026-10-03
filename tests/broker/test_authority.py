@@ -8,6 +8,33 @@ from broker.authority import Authority, wire_request
 from broker.protocol import Rejected, digest
 
 
+def test_explicit_tls_policy_migration_retains_audit_and_usage(tmp_path):
+    from scripts.provision_local_qwen import local_policy
+    key = Ed25519PrivateKey.generate().private_bytes_raw()
+    path = tmp_path / 'broker.sqlite3'
+    old, new = local_policy('a' * 64), local_policy('b' * 64)
+    prior = Authority(path, old, key)
+    prior.db.execute("INSERT INTO usage VALUES('farm:farm',0,'requests',9)")
+    prior.db.close()
+    assert Authority.migrate_local_tls_policy(path, new, key)
+    assert not Authority.migrate_local_tls_policy(path, new, key)
+    restarted = Authority(path, new, key)
+    restarted.verify_audit()
+    assert restarted.db.execute("SELECT value FROM usage WHERE scope='farm:farm'").fetchone() == (9,)
+    restarted.db.close()
+
+
+def test_tls_policy_migration_refuses_unresolved_attempt(tmp_path):
+    from scripts.provision_local_qwen import local_policy
+    key = Ed25519PrivateKey.generate().private_bytes_raw()
+    path = tmp_path / 'broker.sqlite3'
+    prior = Authority(path, local_policy('a' * 64), key)
+    prior.db.execute("INSERT INTO attempts VALUES('farm','x','h','d','attempted')")
+    prior.db.close()
+    with pytest.raises(Rejected, match='unresolved attempted'):
+        Authority.migrate_local_tls_policy(path, local_policy('b' * 64), key)
+
+
 def policy():
     bounds = dict(requests=3, messages=3, purchases=3, bytes=10000, spend_cents=100,
                   concurrency=2, period_seconds=3600)

@@ -25,7 +25,7 @@ from runtime.agent import GENOTYPE_VERSION, AgentRuntime, random_genotype, valid
 from runtime.inference import InferenceBackend, InferenceService, build_backend
 from runtime.tools.base import ToolRegistry
 from runtime.tools.market import MarketOfferTool, MarketSurveyTool, MemoryNoteTool
-from runtime.tools.sim_market import SimulatedMarket
+from runtime.tools.sim_market import SimulatedMarket, build_market
 from runtime.tools.workspace import WorkspaceReadTool, WorkspaceWriteTool
 from storage.events import EventStore, EventType, FarmState, digest
 
@@ -98,9 +98,12 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
-        self.boundary.record(self.store)
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
+        # Start a new deterministic ID namespace before recording startup
+        # evidence. Otherwise a retry after a failed launch reuses the first
+        # session's event ID and SQLite rejects the barrier record.
+        self.boundary.record(self.store)
         self.clock.set_tick(self.state.last_tick + 1)
 
         self.authority = TokenAuthority(load_or_create_secret(self.data_dir / "secrets" / "supervisor.key"))
@@ -116,15 +119,17 @@ class Supervisor:
         self.observer = MarketObserver(self.store)
         self.milestones = MilestoneValidator(self.store)
         self.compliance = ComplianceMonitor(self.store)
+        from .accounting.adapters import MarketCostMeter
+        self.market_costs = MarketCostMeter(self.ledger)
         for adapter in (self.payments, self.ads, self.compute, self.labor, self.observer, self.milestones,
-                        self.compliance):
+                        self.compliance, self.market_costs):
             self.ledger.register_adapter(adapter)
 
         start = self.clock.start if isinstance(self.clock, SimulatedClock) else parse_ts(clock_cfg.get("start", self.clock.now()))
-        self.market = market or SimulatedMarket(farm["simulation"]["market"], config.seed, start)
+        self.market = market or build_market(farm["simulation"]["market"], config.seed, start, self.store)
         segments = list(econ["segments"])
         self.registry = ToolRegistry()
-        self.registry.register(MarketOfferTool(self.market, self.observer, self.payments, self.ads, segments))
+        self.registry.register(MarketOfferTool(self.market, self.observer, self.payments, self.ads, segments, self.market_costs))
         self.registry.register(MarketSurveyTool(self.market, segments))
         self.registry.register(MemoryNoteTool())
         quota = int(farm["runtime"].get("workspace_quota_bytes", 262144))
@@ -408,6 +413,30 @@ class Supervisor:
         return None
 
     # ================================================================ ticks
+    def _market_overhead(self, now, gen, tick):
+        if self.market.model != 'constrained_v1':
+            return
+        agents = [a for a in self.state.active_agents() if a.role == 'business']
+        cfg = self.market.settings
+        amount = cfg['overhead_per_day'] * cfg['cost_multiplier'] * self.config.tick_seconds/86400
+        for agent in agents:
+            self.market_costs.charge(Attribution(agent.id, agent.lineage_id, gen, None, tick, now),
+                                     f'overhead:{tick}:{agent.id}', {'overhead': amount/len(agents)})
+
+    def _market_financing(self, now, gen, tick):
+        if self.market.model != 'constrained_v1':
+            return
+        for p in list(self.state.pending_settlements.values()):
+            if p.get('kind') != 'sale':
+                continue
+            start = max(parse_ts(p['occurred_at']), now-timedelta(seconds=self.config.tick_seconds))
+            end = min(now, parse_ts(p['due_at']))
+            days = max(0., (end-start).total_seconds()/86400)
+            attr = Attribution(p['agent_id'], p['lineage_id'], gen, p.get('step_id'), tick, now)
+            self.market_costs.charge(attr, f"active-financing:{tick}:{p['external_reference']}",
+                {'receivables_financing': p['amount']*self.market.settings['annual_capital_rate']*days/365},
+                step_generation=p.get('step_generation'))
+
     def run(self, *, generations: int | None = None, ticks: int | None = None) -> list[TickResult]:
         self.bootstrap()
         start_gen = self.state.current_generation or 0
@@ -445,19 +474,38 @@ class Supervisor:
             return result
         gv = self.state.generations[gen]
         now = self.clock.now_dt()
+        # A simulated clock must not turn a broken real-model connection into
+        # days of apparent economic results. Check before time-based charges or
+        # generation close, and retain the failed health event for diagnosis.
+        real_model = self.backend.name != 'simulated'
+        if real_model:
+            health = self.inference.health()
+            if not health.ok:
+                self.store.append(EventType.HEALTH_EVENT,
+                                  {"component": "inference", "kind": "backend_health",
+                                   "ok": False, "detail": health.detail})
+                from runtime.inference import BackendUnavailable
+                raise BackendUnavailable(f"real-model inference unavailable; run stopped without advancing simulated time: {health.detail}")
         if now >= parse_ts(gv.ends_at):
+            if real_model and not self.store.iter_events(
+                    types=[EventType.INFERENCE_JOB_COMPLETED], generation_ids=[gen], limit=1):
+                from runtime.inference import BackendUnavailable
+                raise BackendUnavailable(
+                    f"generation {gen} has no successful real-model inference; refusing to close an invalid run")
             self.close_generation()
             result.closed_generation = gen
             return result
 
         with self.store.transaction():
+            self._market_financing(now, gen, tick)
             self.payments.reconcile(now, gen, tick)
+            self._market_overhead(now, gen, tick)
             self._execute_granted_approvals(gen, tick)
             self._enforce_status(gen)
             self.improvements.observe_tick(gen, tick)
 
         reason = None
-        health = self.inference.health()
+        health = health if real_model else self.inference.health()
         if health.ok != self._last_backend_ok:
             self.store.append(EventType.HEALTH_EVENT, {"component": "inference", "kind": "backend_health",
                                                        "ok": health.ok, "detail": health.detail})
@@ -535,6 +583,14 @@ class Supervisor:
                                   {"component": "supervisor", "kind": "step_exception", "detail": repr(exc)[:500]},
                                   agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
                 result.failed += 1
+        if real_model and result.failed:
+            # Persist the partially completed tick exactly once. Retrying the
+            # same tick could replay successful offers with new job IDs.
+            self.clock.set_tick(tick + 1)
+            from runtime.inference import BackendUnavailable
+            raise BackendUnavailable(
+                f"real-model run stopped at tick {tick}: {result.failed} inference/step job(s) failed; "
+                "inspect inference health and job_failed events before resuming")
         self.clock.set_tick(tick + 1)
         return result
 

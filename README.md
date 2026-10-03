@@ -16,33 +16,80 @@ The initial target machine is a single consumer workstation (RTX 5080, Ryzen 9 9
 
 ## Quickstart
 
-Python 3.11+, one dependency (PyYAML). No GPU is needed for the simulated farm.
+Python 3.11+, PyYAML and cryptography. No GPU is needed for the simulated farm.
+Use the protected Linux launcher: **[current WSL setup, simulation and market
+validity commands](MARKET.md#run-on-the-existing-wsl-installation)**.
+The default now has finite demand, competition, delivery costs, cash limits and
+delayed losses. **Demand and product quality remain assumptions.** The default
+backend is a scripted policy emulator; it does not run Qwen.
 
 ```bash
 pip install -e ".[dev]"
 
-qwenomatic init                     # create Generation Zero (20 agents) in var/
-qwenomatic run --generations 3      # run; each 24-hour generation takes seconds in simulated time
 qwenomatic status                   # headline numbers straight from the ledger
 qwenomatic dashboard                # read-only dashboard on http://127.0.0.1:8765
-qwenomatic verify                   # hash chain + accounting replay + selection replay
 python -m pytest                    # unit, adversarial, simulation and acceptance suites
 ```
 
-The CLI looks for configuration in `--config-dir`, then `$QWENOMATIC_CONFIG_DIR`, then `./config`, and keeps the ledger in `var/` beside it. Without installing, use `scripts/qwenomatic <command>`. `scripts/generation_zero.py` runs Generation Zero end to end and prints the audit evidence.
+The CLI looks for configuration in `--config-dir`, then `$QWENOMATIC_CONFIG_DIR`, then `./config`, and keeps the ledger in `var/` beside it. Supply the same data/config directories used by the launcher when viewing results. `init`, `run`, `verify`, and experiment execution require the protected launcher. A market/configuration change needs a new ledger.
 
 Operator controls: `qwenomatic stop --reason "..."` (emergency stop: halts work and revokes every capability), `qwenomatic resume`, `qwenomatic approvals`, `qwenomatic approve|deny <id>`. While a supervisor is running these are delivered through its inbox, so the supervisor remains the ledger's only writer.
 
 ### Running against a local Qwen model
 
-Any OpenAI-compatible server works. On a 16 GB RTX 5080 a ~14B Qwen model at Q4_K_M leaves room for a parallel KV cache, e.g. with llama.cpp:
+Use the protected inference and broker setup in [deploy/BROKER.md](deploy/BROKER.md).
+Real inference requires its version 2 manifest and authenticated transport; the
+empty simulation manifest permits the emulator only. Set the protected
+`inference.openai_compatible` configuration to the approved service, model and
+concurrency. The farm still starts through the Linux launcher.
+
+For an existing installation created by `scripts/provision_local_qwen.py`, stop
+the broker and upgrade its bounded inference timeout without rotating TLS keys
+or replacing its ledger:
 
 ```bash
-llama-server -m Qwen3-14B-Q4_K_M.gguf --port 8080 --parallel 4 -c 32768 -ngl 99
-qwenomatic run --backend openai_compatible --model Qwen3-14B-Instruct --wall-clock
+sudo /opt/qwenomatic-runtime/bin/python -I \
+  /opt/qwenomatic/scripts/provision_local_qwen.py --update-timeouts
 ```
 
-Set `inference.openai_compatible` in `config/farm.yaml` (URL, model name, quantization label, `max_concurrency` matching `--parallel`). `--wall-clock` makes a generation last 24 real hours; without it, ticks advance simulated time as fast as the model answers. Every completion records model, quantization, token counts, wall time, attributed GPU time and queue latency.
+Restart the broker before starting the farm. Do not use `-S` for provisioning;
+it needs PyYAML and cryptography from the virtual environment. `-I -S` remains
+required for privileged launchers. A real backend that cannot complete broker
+health now stops before simulated time advances or overhead is charged. A
+configured backend name alone is not proof of inference: the run prints its
+first recorded completion and reports progress every 12 ticks.
+
+For a short proof before a full generation, use `--operation generation-zero
+--ticks 1` with a fresh farm data directory. This runs one scheduler batch,
+prints the first recorded real-model completion, audits the partial ledger and
+leaves generation zero open. It does not establish real-world profitability.
+
+Installations provisioned before the Python 3.14 certificate fix need a one-time
+TLS repair. Stop the broker first, then run the following and restart it. This
+rotates only the broker/farm TLS chain and updates the broker's authorized client
+fingerprint, and writes a signed broker policy migration retaining its usage,
+attempt and audit records; it preserves the audit signing key, manifest and farm
+ledger:
+
+```bash
+sudo /opt/qwenomatic-runtime/bin/python -I \
+  /opt/qwenomatic/scripts/provision_local_qwen.py --repair-tls
+```
+
+If certificates were repaired with an earlier revision of this script but the
+broker refuses startup with `policy changed`, stop the broker and finish only
+the policy migration (without another certificate rotation):
+
+```bash
+sudo /opt/qwenomatic-runtime/bin/python -I \
+  /opt/qwenomatic/scripts/provision_local_qwen.py --migrate-tls-policy
+```
+
+The clock may advance simulated time even when inference uses actual Qwen.
+Every completion records model, token counts and attributed inference usage.
+Model inference alone does not make synthetic customer demand or assumed
+delivery quality empirically valid; use the calibration and prospective tests
+in [MARKET.md](MARKET.md).
 
 ## Core loop
 

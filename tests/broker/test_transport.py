@@ -2,11 +2,12 @@ import json
 import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
 import pytest
 from broker.network import public_ip, resolve_public, service_url, transmit
 from broker.protocol import Rejected, decode
-from broker.server import Connections, parse_isolated
+from broker.server import Connections, accept_with_capacity, parse_isolated
 from broker.inference import InferenceProxy
 
 
@@ -85,9 +86,65 @@ def test_kill_switch_closes_real_inflight_socket():
     assert first.fileno() == second.fileno() == -1
 
 
+def test_connection_admission_waits_for_capacity_before_accepting():
+    """A just-finished health call must not make the following burst get reset."""
+    waiting = threading.Event()
+    gate = threading.Event()
+    accepted = threading.Event()
+
+    class Admission:
+        def acquire(self):
+            waiting.set()
+            assert gate.wait(1)
+            return True
+
+        def release(self):
+            pass
+
+    class Listener:
+        def accept(self):
+            accepted.set()
+            return object(), ('peer', 1)
+
+    result = []
+    worker = threading.Thread(
+        target=lambda: result.append(accept_with_capacity(Listener(), Admission())),
+        daemon=True,
+    )
+    worker.start()
+    assert waiting.wait(1)
+    assert not accepted.is_set()  # old accept-then-try-acquire ordering fails here
+    gate.set()
+    assert accepted.wait(1)
+    worker.join(1)
+    assert not worker.is_alive()
+    assert result and result[0][1] == ('peer', 1)
+
+
+def test_connection_admission_releases_capacity_if_accept_fails():
+    admission = threading.BoundedSemaphore(1)
+
+    class BrokenListener:
+        def accept(self):
+            raise OSError('listener failed')
+
+    with pytest.raises(OSError, match='listener failed'):
+        accept_with_capacity(BrokenListener(), admission)
+    assert admission.acquire(blocking=False)  # helper restored the slot
+    admission.release()
+
+
 def inference():
     return InferenceProxy(dict(endpoint='http://10.204.2.2:11434/v1/chat/completions', model='fixed', max_tokens=64,
                               max_messages=4,max_content_bytes=128, requests_per_period=4,period_seconds=3600,concurrency=1))
+
+
+def test_inference_timeout_is_bounded_and_explicit():
+    cfg = dict(inference().config, timeout_seconds=120)
+    assert InferenceProxy(cfg).timeout_seconds == 120
+    for value in (9, 181, True, '120'):
+        with pytest.raises(Rejected, match='bounded inference timeout'):
+            InferenceProxy(dict(cfg, timeout_seconds=value))
 
 
 def chat():

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -28,9 +29,12 @@ def main() -> int:
     p.add_argument("--config-dir", default=None)
     p.add_argument("--data-dir", default="var/generation-zero")
     p.add_argument("--generations", type=int, default=1)
+    p.add_argument("--ticks", type=int, help="stop after this many ticks to verify a short real-model run")
     p.add_argument("--backend", choices=["simulated", "openai_compatible"], default=None)
     p.add_argument("--wall-clock", action="store_true")
     args = p.parse_args()
+    if args.ticks is not None and args.ticks < 1:
+        p.error("--ticks must be positive")
 
     overrides: dict = {"farm": {}}
     if args.backend:
@@ -41,8 +45,34 @@ def main() -> int:
     sup = Supervisor(cfg)
     try:
         sup.bootstrap()
+        print(f"Market: {sup.market.model}; configured decision backend: {sup.backend.name}", flush=True)
+        print('Synthetic customers and assumed delivery quality; real-world validity is unestablished.')
+        if sup.backend.name == 'simulated':
+            print('Scripted policy emulator: Qwen is not running; GPU time is emulated.')
         start = sup.state.current_generation
-        sup.run(generations=args.generations)
+        target = start + args.generations
+        started = time.monotonic()
+        ticks = 0
+        proved = bool(sup.store.iter_events(types=[EventType.INFERENCE_JOB_COMPLETED],
+                                            generation_ids=[start], limit=1))
+        while sup.state.current_generation < target and (args.ticks is None or ticks < args.ticks):
+            result = sup.tick()
+            if result.halted:
+                raise RuntimeError(f"farm halted: {sup.state.halt_reason}")
+            ticks += 1
+            if sup.backend.name != 'simulated' and result.completed and not proved:
+                proved = True
+                print("Real-model inference verified: first completion recorded in the ledger.", flush=True)
+            if ticks % 12 == 0 or result.closed_generation is not None or ticks == args.ticks:
+                gv = sup.state.generations[sup.state.current_generation]
+                print(f"Progress: generation {sup.state.current_generation}, "
+                      f"tick {sup.clock.tick - gv.start_tick}/{cfg.ticks_per_generation}, "
+                      f"{(time.monotonic() - started)/60:.1f} wall minutes", flush=True)
+            sup.clock.sleep_until_next_tick()
+        if sup.backend.name != 'simulated' and not proved:
+            raise RuntimeError("no successful real-model inference; run is invalid")
+        if args.ticks is not None and sup.state.current_generation < target:
+            print(f"Stopped after {ticks} tick(s); generation {sup.state.current_generation} remains open.", flush=True)
         for g in range(start, sup.state.current_generation):
             fit = sup.state.fitness[g]
             plan = sup.state.selections[g]["plan"]
@@ -61,6 +91,7 @@ def main() -> int:
         print(json.dumps({k: v for k, v in report.items() if k != "accounting"}, indent=2))
         print(f"accounting replay ok: {report['accounting']['ok']}")
         print(f"human interventions:  {len(sup.store.iter_events(types=[EventType.HUMAN_INTERVENTION]))}")
+        print(f"pending settlements:  {len(sup.state.pending_settlements)} (use market-validity for complete payment/refund tails)")
         print(f"ledger:               {cfg.data_dir / 'ledger.sqlite3'}")
     finally:
         sup.close()

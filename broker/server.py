@@ -147,6 +147,24 @@ class Broker:
         raise Rejected("unknown operator operation")
 
 
+def accept_with_capacity(listener, admission):
+    """Leave excess connections in the kernel backlog until a worker is free.
+
+    A completed client request can receive its response a few milliseconds
+    before the handler reaches its finally block and releases the admission
+    slot.  Accepting first and then doing a non-blocking semaphore acquire
+    therefore spuriously reset the next burst.  Inference health is checked
+    immediately before each scheduler burst, so that race could reject most
+    of an otherwise valid first tick.
+    """
+    admission.acquire()
+    try:
+        return listener.accept()
+    except BaseException:
+        admission.release()
+        raise
+
+
 def run_server(broker, tls, address, admin_path, slots, expected_host):
     if os.geteuid() == 0:
         raise Rejected("broker must run as a distinct unprivileged service")
@@ -179,6 +197,7 @@ def run_server(broker, tls, address, admin_path, slots, expected_host):
     admission = threading.BoundedSemaphore(slots)
     def handle(raw):
         process = None
+        operation = "unknown"
         def expire():
             terminate(raw)
             if process is not None:
@@ -189,23 +208,32 @@ def run_server(broker, tls, address, admin_path, slots, expected_host):
             broker.connections.add(raw)
             root = str(Path(__file__).resolve().parents[1])
             bootstrap = "import sys;sys.path.insert(0," + repr(root) + ");from broker.frontend import main;main()"
-            config = dict(tls, expected_host=expected_host)
+            config = dict(tls, expected_host=expected_host,
+                          inference_timeout=broker.inference.timeout_seconds if broker.inference else 10)
             process = subprocess.Popen([sys.executable, "-I", "-c", bootstrap, json.dumps(config), str(raw.fileno())],
                                        pass_fds=(raw.fileno(),), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.DEVNULL, env={"PATH":"/usr/bin:/bin"}, cwd="/")
             parsed = decode(process.stdout.readline(65537))
             fields(parsed, ("fingerprint", "path", "body"))
+            operation = parsed["path"]
             farm = broker.authority.authenticate(parsed["fingerprint"])
             if parsed["path"] == "/v1/execute":
                 value = broker.execute(farm, parsed["body"])
             elif parsed["path"] == "/v1/chat/completions" and broker.inference is not None:
+                timer.cancel()
+                timer = threading.Timer(broker.inference.timeout_seconds + 10, expire)
+                timer.start()
                 value = broker.inference.generate(farm, parsed["body"], broker)
             else:
                 raise Rejected("inference unavailable")
             process.stdin.write(canonical({"status":200,"body":value}) + b"\n")
             process.stdin.flush()
             process.wait(timeout=5)
-        except Exception:
+        except Exception as exc:
+            if operation == "/v1/chat/completions":
+                # Operator-only stderr: no prompts, response bodies or keys.
+                reason = str(exc) if isinstance(exc, Rejected) else type(exc).__name__
+                print(f"broker chat refused: {reason}", file=sys.stderr, flush=True)
             if process is not None and process.poll() is None:
                 try:
                     process.stdin.write(canonical({"status":403,"body":{"status":"refused"}}) + b"\n")
@@ -224,10 +252,11 @@ def run_server(broker, tls, address, admin_path, slots, expected_host):
             terminate(raw)
             admission.release()
     while True:
-        raw, _ = listener.accept()
-        if not admission.acquire(blocking=False):
-            raw.close()
-            continue
+        # Reserve handler capacity before accept().  When all slots are busy,
+        # new connections remain in the bounded kernel listen backlog instead
+        # of being accepted and reset.  This does not increase broker or model
+        # concurrency; it only removes a cleanup race between adjacent calls.
+        raw, _ = accept_with_capacity(listener, admission)
         threading.Thread(target=handle, args=(raw,), daemon=True).start()
 
 

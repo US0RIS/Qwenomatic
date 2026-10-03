@@ -84,6 +84,8 @@ def check_authorship(event_type: EventType, author: str) -> None:
             raise AuthorshipError(f"agent-authored {event_type.value} events are not permitted")
         return
     supervisor_controls = {
+        EventType.MARKET_CONFIGURED,
+        EventType.MARKET_RUN_FINISHED,
         EventType.FEATURE_ASSIGNMENT, EventType.KNOWLEDGE_SNAPSHOT, EventType.RETIREMENT_REPORT,
         EventType.ROUTING_DECISION, EventType.PREDICTION_RECORDED, EventType.PREDICTION_SCORED,
         EventType.REGIME_OBSERVATION, EventType.MARKET_SHIFT, EventType.ANOMALY_FLAG,

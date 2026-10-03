@@ -11,8 +11,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from helpers import make_supervisor, run_ticks
+from broker.inference import InferenceProxy
 from runtime.inference import BackendUnavailable, InferenceRequest, OpenAICompatibleBackend
-from storage.events import EventType
+from storage.events import EventType, digest
 
 
 class FakeQwen(BaseHTTPRequestHandler):
@@ -75,6 +76,62 @@ def test_unreachable_server_is_unavailable():
         b.generate(InferenceRequest(messages=[]))
 
 
+def test_initial_population_seeds_fit_fixed_broker_scope(tmp_path):
+    """Business and specialist jobs from the shipped 17/2/1 population must all reach Qwen."""
+    sup = make_supervisor(tmp_path, {"farm": {"roles": {"enabled": True}}})
+    proxy = InferenceProxy({
+        "endpoint": "http://10.204.2.2:11434/v1/chat/completions", "model": "fixed",
+        "max_tokens": 4096, "max_messages": 32, "max_content_bytes": 65536,
+        "requests_per_period": 10000, "period_seconds": 3600, "concurrency": 4,
+    })
+    try:
+        population = list(sup.state.agents.values())
+        assert len(population) == 20
+        assert {role: sum(a.role == role for a in population) for role in ("business", "research", "red_team")} == {
+            "business": 17, "research": 2, "red_team": 1}
+        high_raw_seeds = 0
+        for agent in population:
+            _, state, _ = sup.runtime.load_state(agent.id)
+            if agent.role == "business":
+                request = sup.runtime.build_request(agent, state, sup.config.seed)
+                raw_seed = int(digest([sup.config.seed, agent.id, 0, "inference"])[:8], 16)
+            else:
+                request = sup.specialists.build_request(agent, state)
+                raw_seed = int(digest([sup.config.seed, agent.id, 0])[:8], 16)
+            high_raw_seeds += raw_seed > 0x7fffffff
+            assert request.metadata["seed"] == raw_seed & 0x7fffffff
+            proxy.validate({"model": "fixed", "messages": request.messages,
+                            "max_tokens": request.max_tokens, "temperature": request.temperature,
+                            "seed": request.metadata["seed"], "response_format": {"type": "json_object"}})
+        assert high_raw_seeds > 0  # This exact configuration used to fail at tick zero.
+    finally:
+        sup.close()
+
+
+def test_real_backend_outage_does_not_advance_simulated_economy(tmp_path):
+    from supervisor.core import Supervisor
+    from supervisor.config import FarmConfig
+    from supervisor.safety.boundary import NetworkBoundary
+
+    # The normal acceptance harness installs an empty test boundary. Only the
+    # real backend's unavailable transport is under test here.
+    cfg = FarmConfig.load(data_dir=tmp_path / "farm", overrides={"farm": {
+        "inference": {"backend": "openai_compatible", "openai_compatible": {
+            "base_url": "http://127.0.0.1:9/v1", "model": "missing",
+            "timeout_seconds": 1}}}})
+    sup = Supervisor(cfg)
+    try:
+        sup.bootstrap()
+        before = sup.clock.tick
+        with pytest.raises(BackendUnavailable, match="stopped without advancing simulated time"):
+            sup.tick()
+        assert sup.clock.tick == before
+        assert not sup.store.iter_events(types=[EventType.FINANCIAL_EVENT, EventType.SCHEDULER_ALLOCATION])
+        assert any(e.payload.get("ok") is False for e in sup.store.iter_events(types=[EventType.HEALTH_EVENT]))
+    finally:
+        sup.close()
+
+
 def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     backend = OpenAICompatibleBackend({"base_url": server, "model": "Qwen3-14B-Instruct",
                                        "quantization": "Q4_K_M", "max_concurrency": 4})
@@ -94,4 +151,3 @@ def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     assert "Tool catalog" in prompt and "market.offer" in prompt
     for secret in ("supervisor.key", "fitness.yaml", "risk_aversion", sup.token_for(steps[0].agent_id, 0)):
         assert secret not in prompt
-

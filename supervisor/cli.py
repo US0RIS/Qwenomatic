@@ -131,6 +131,8 @@ def cmd_status(args: argparse.Namespace) -> int:
     view = LedgerView(EventStore(_db(cfg), read_only=True))
     view.refresh()
     o = view.overview()
+    print(f"market: {o['market']['model']} | {o['market']['decision_maker']}")
+    print('real-world validity: unestablished; amounts below include simulated economic events')
     for k in ("generation", "time_remaining_hours", "population", "status_counts", "role_counts", "role_targets", "halted", "gross_revenue",
               "net_realized_profit", "unrealized", "external_spend", "inference_tokens", "gpu_seconds",
               "human_interventions", "policy_violations", "events"):

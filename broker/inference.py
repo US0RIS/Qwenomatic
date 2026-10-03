@@ -9,17 +9,23 @@ from .protocol import Rejected, canonical, decode, fields
 
 class InferenceProxy:
     def __init__(self, config):
-        fields(config, ("endpoint", "model", "max_tokens", "max_messages", "max_content_bytes", "requests_per_period", "period_seconds", "concurrency"))
+        required = {"endpoint", "model", "max_tokens", "max_messages", "max_content_bytes", "requests_per_period", "period_seconds", "concurrency"}
+        if not isinstance(config, dict) or not required.issubset(config) or set(config) - required - {"timeout_seconds"}:
+            raise Rejected("invalid inference configuration")
         u = urlsplit(config["endpoint"])
         import ipaddress
         if u.scheme != "http" or u.username or u.password or u.query or u.fragment or u.path != "/v1/chat/completions":
             raise Rejected("fixed chat inference endpoint required")
         ipaddress.IPv4Address(u.hostname)
-        if not u.port or any(type(config[k]) is not int or config[k] < 1 for k in config if k not in ("endpoint", "model")):
+        if not u.port or any(type(config[k]) is not int or config[k] < 1 for k in required - {"endpoint", "model"}):
             raise Rejected("explicit inference limits required")
         if not isinstance(config["model"], str) or not config["model"]:
             raise Rejected("fixed model required")
+        timeout = config.get("timeout_seconds", 10)
+        if type(timeout) is not int or not 10 <= timeout <= 180:
+            raise Rejected("bounded inference timeout required")
         self.config = config
+        self.timeout_seconds = timeout
         self.host, self.port, self.path = u.hostname, u.port, u.path
         self.lock = threading.Lock()
         self.active = 0
@@ -66,7 +72,7 @@ class InferenceProxy:
             authority.db.execute("INSERT INTO usage VALUES(?,?,'requests',1) ON CONFLICT(scope,period,dimension) DO UPDATE SET value=value+1", (scope, period))
             authority._audit("inference_request", {"farm": farm, "content_hash": __import__('hashlib').sha256(canonical(body)).hexdigest()})
             self.active += 1
-        connection = http.client.HTTPConnection(self.host, self.port, timeout=5)
+        connection = http.client.HTTPConnection(self.host, self.port, timeout=min(5, self.timeout_seconds))
         def expire():
             if connection.sock is not None:
                 try:
@@ -75,10 +81,11 @@ class InferenceProxy:
                     pass
                 broker.connections.remove(connection.sock)
                 connection.close()
-        timer = threading.Timer(10, expire)
+        timer = threading.Timer(self.timeout_seconds, expire)
         try:
             timer.start()
             connection.connect()
+            connection.sock.settimeout(self.timeout_seconds)
             broker.connections.add(connection.sock)
             connection.request("POST", self.path, body=canonical(body), headers={"Host": f"{self.host}:{self.port}", "Content-Type": "application/json", "Connection": "close"})
             response = connection.getresponse()

@@ -123,13 +123,24 @@ economy:
     trend-hype:           {archetype: standard}
     enterprise-audit:     {archetype: long_cycle}
 
-# Deterministic economic environment for Phase 0. The simulated market is the
-# "external world": agents cannot read these parameters.
+# Structural simulation. Assumptions are NOT calibrated sales forecasts.
+# MARKET.md documents sources, limitations, calibration and validation.
 simulation:
   market:
+    model: constrained_v1
+    realism:
+      initial_cash: 2000.0
+      overhead_per_day: 5.0
+      labor_hourly: 46.89  # BLS June 2026 private-industry compensation; broad anchor
+      capacity_minutes_per_day: 480
+      annual_capital_rate: 0.12
+      macro_sigma: 0.25
+      parameter_sigma: 0.35
+      survey_lag_hours: 24
     survey_noise: 0.25
     segments:
       freelancer-templates:
+        realism: {prospects_per_day: 60, customer_pool: 900, intent_rate: 0.20, unit_cost: 0.5, labor_minutes: 3, support_minutes: 2, delivery_hours: 2, repeat_after_days: 30, retention: 0.2}
         base_conversion: 0.30
         reference_price: 20
         ad_cost: 0.50
@@ -139,6 +150,7 @@ simulation:
         refund_rate: 0.03
         refund_delay_hours: 6
       smb-bookkeeping:
+        realism: {prospects_per_day: 20, customer_pool: 300, intent_rate: 0.12, unit_cost: 2, labor_minutes: 25, support_minutes: 10, delivery_hours: 48, repeat_after_days: 30, retention: 0.65}
         base_conversion: 0.15
         reference_price: 60
         ad_cost: 1.00
@@ -148,6 +160,7 @@ simulation:
         refund_rate: 0.05
         refund_delay_hours: 12
       local-services:
+        realism: {prospects_per_day: 40, customer_pool: 500, intent_rate: 0.18, unit_cost: 1, labor_minutes: 15, support_minutes: 5, delivery_hours: 24, repeat_after_days: 14, retention: 0.4}
         base_conversion: 0.25
         reference_price: 10
         ad_cost: 0.30
@@ -157,6 +170,7 @@ simulation:
         refund_rate: 0.02
         refund_delay_hours: 6
       trend-hype:                 # deceptive early reward: conversion collapses
+        realism: {prospects_per_day: 80, customer_pool: 1000, intent_rate: 0.25, unit_cost: 1, labor_minutes: 5, support_minutes: 4, delivery_hours: 4, repeat_after_days: 60, retention: 0.05}
         base_conversion: 0.90
         reference_price: 30
         ad_cost: 0.80
@@ -167,11 +181,12 @@ simulation:
         refund_delay_hours: 6
         decay: {half_life_hours: 3, floor: 0.01}
       enterprise-audit:           # long-cycle: revenue settles after a long delay
+        realism: {prospects_per_day: 6, customer_pool: 120, intent_rate: 0.06, unit_cost: 10, labor_minutes: 60, support_minutes: 15, delivery_hours: 168, collection_hours: 720, refund_window_hours: 720, repeat_after_days: 90, retention: 0.6, delivery_success: 0.6}
         base_conversion: 0.03
         reference_price: 500
         ad_cost: 2.00
-        fee_rate: 0.01
-        fee_fixed: 0.00
+        fee_rate: 0.029
+        fee_fixed: 0.30
         settlement_delay_hours: 36
         refund_rate: 0.0
         refund_delay_hours: 0

@@ -46,6 +46,14 @@ def test_cli_generation_limit_forwarded():
     assert "--generations" in command and "--ticks" in command
 
 
+def test_generation_zero_single_tick_forwarded():
+    args = SimpleNamespace(operation="generation-zero", config_dir="/cfg", data_dir="/data",
+                           generations=1, ticks=1, pairs=2)
+    command = operation_command(args, "/protected/code")
+    assert "from scripts.generation_zero import main" in command
+    assert "'--ticks', '1'" in command
+
+
 def test_recovery_rejects_unrelated_resource_names(monkeypatch):
     monkeypatch.setattr("deploy.launch.RECOVERY", Path(__file__))
     monkeypatch.setattr("deploy.launch.protected_json", lambda _: {"suffix": "abcdef12", "namespace": "unrelated"})

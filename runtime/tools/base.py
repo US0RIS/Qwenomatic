@@ -61,6 +61,9 @@ class ToolAdapter:
     def spend(self, args: dict[str, Any]) -> float:
         return 0.0
 
+    def spend_at(self, args: dict[str, Any], now: datetime) -> float:
+        return self.spend(args)
+
     def validate(self, args: dict[str, Any]) -> list[str]:
         errors = []
         if not isinstance(args, dict):
@@ -116,4 +119,3 @@ class ToolRegistry:
 
     def describe(self, names: list[str]) -> list[dict[str, Any]]:
         return [self._tools[n].describe() for n in names if n in self._tools]
-

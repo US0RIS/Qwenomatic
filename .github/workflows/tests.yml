@@ -53,3 +53,23 @@ jobs:
           sudo iptables -S FORWARD
       - name: Prove broker and inference kernel boundaries with controlled TLS
         run: sudo /opt/qwenomatic-runtime/bin/python -I /opt/qwenomatic/deploy/broker_kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python
+
+  market-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Compare the default 17/2/1 farm with a frozen population
+        env:
+          QWENOMATIC_MARKET_EVIDENCE_ROOT: var/market-ci
+        run: python -m pytest tests/simulation/test_market_evidence.py -q -s
+      - name: Retain the predeclared plan, results and all experiment ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-evidence
+          path: var/market-ci
+          retention-days: 30
