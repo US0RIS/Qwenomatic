@@ -147,6 +147,24 @@ class Broker:
         raise Rejected("unknown operator operation")
 
 
+def accept_with_capacity(listener, admission):
+    """Leave excess connections in the kernel backlog until a worker is free.
+
+    A completed client request can receive its response a few milliseconds
+    before the handler reaches its finally block and releases the admission
+    slot.  Accepting first and then doing a non-blocking semaphore acquire
+    therefore spuriously reset the next burst.  Inference health is checked
+    immediately before each scheduler burst, so that race could reject most
+    of an otherwise valid first tick.
+    """
+    admission.acquire()
+    try:
+        return listener.accept()
+    except BaseException:
+        admission.release()
+        raise
+
+
 def run_server(broker, tls, address, admin_path, slots, expected_host):
     if os.geteuid() == 0:
         raise Rejected("broker must run as a distinct unprivileged service")
@@ -234,10 +252,11 @@ def run_server(broker, tls, address, admin_path, slots, expected_host):
             terminate(raw)
             admission.release()
     while True:
-        raw, _ = listener.accept()
-        if not admission.acquire(blocking=False):
-            raw.close()
-            continue
+        # Reserve handler capacity before accept().  When all slots are busy,
+        # new connections remain in the bounded kernel listen backlog instead
+        # of being accepted and reset.  This does not increase broker or model
+        # concurrency; it only removes a cleanup race between adjacent calls.
+        raw, _ = accept_with_capacity(listener, admission)
         threading.Thread(target=handle, args=(raw,), daemon=True).start()
 
 
