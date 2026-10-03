@@ -88,6 +88,7 @@ def arm_config(
     model: str | None = None,
     max_concurrency: int = 2,
     seed: int | None = None,
+    config_dir: str | Path | None = None,
 ) -> FarmConfig:
     if arm not in ("treatment", "control"):
         raise ValueError("arm must be treatment or control")
@@ -106,7 +107,7 @@ def arm_config(
             "retire_fraction": 0.0,
             "immigration_rate": 0.0,
         }
-    return FarmConfig.load(data_dir=data_dir, overrides=overrides)
+    return FarmConfig.load(config_dir, data_dir=data_dir, overrides=overrides)
 
 
 def summarize(data_dir: Path, arm: str, generations: int) -> ArmSummary:
@@ -160,6 +161,7 @@ def run_arm(
     model: str | None = None,
     max_concurrency: int = 2,
     seed: int | None = None,
+    config_dir: str | Path | None = None,
     progress_every_ticks: int = 12,
 ) -> ArmSummary:
     cfg = arm_config(
@@ -170,6 +172,7 @@ def run_arm(
         model=model,
         max_concurrency=max_concurrency,
         seed=seed,
+        config_dir=config_dir,
     )
     sup = Supervisor(cfg)
     try:

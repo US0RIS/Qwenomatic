@@ -28,17 +28,17 @@ from supervisor.experiments.evolution_ab import compare, run_arm, write_report  
 
 
 def main() -> int:
-    default_seed = FarmConfig.load().seed
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("--config-dir", default=None)
     p.add_argument("--root", default="var/evolution-ab")
     p.add_argument("--generations", type=int, default=2,
                    help="number of closed generations per arm; Generation 0 is baseline")
-    p.add_argument("--backend", choices=["simulated", "openai_compatible"], default="simulated")
+    p.add_argument("--backend", choices=["simulated", "openai_compatible"], default=None)
     p.add_argument("--base-url", default=None)
     p.add_argument("--model", default=None)
-    p.add_argument("--max-concurrency", type=int, default=2,
+    p.add_argument("--max-concurrency", type=int, default=None,
                    help="must match actual inference-server parallelism for GPU accounting")
-    p.add_argument("--seed", type=int, default=default_seed)
+    p.add_argument("--seed", type=int, default=None)
     p.add_argument("--order", choices=["treatment-first", "control-first"], default="treatment-first")
     p.add_argument("--reset", action="store_true", help="delete this experiment root before starting")
     args = p.parse_args()
@@ -46,12 +46,17 @@ def main() -> int:
     if args.generations < 2:
         p.error("--generations must be at least 2 (Generation 0 is the pre-treatment baseline)")
 
+    cfg = FarmConfig.load(args.config_dir)
+    args.seed = cfg.seed if args.seed is None else args.seed
+    args.backend = args.backend or cfg.farm["inference"]["backend"]
+    args.max_concurrency = args.max_concurrency or cfg.farm["inference"].get("openai_compatible", {}).get("max_concurrency", 2)
     root = Path(args.root).resolve()
     if args.reset and root.exists():
         shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
 
     common = dict(
+        config_dir=args.config_dir,
         generations=args.generations,
         backend=args.backend,
         base_url=args.base_url,

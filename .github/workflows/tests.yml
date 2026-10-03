@@ -27,10 +27,16 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y nftables iproute2 python3-venv
       - name: Prepare root-owned trusted checkout and runtime
         run: |
+          sudo chmod 755 /opt
           sudo cp -a . /opt/qwenomatic
           sudo chown -R root:root /opt/qwenomatic
           sudo chmod -R go-w /opt/qwenomatic
           sudo python3 -m venv /opt/qwenomatic-runtime
           sudo /opt/qwenomatic-runtime/bin/pip install PyYAML
+          sudo chown -R root:root /opt/qwenomatic-runtime
+          sudo chmod -R go-w /opt/qwenomatic-runtime
+      - name: Show trusted path ownership
+        run: |
+          for p in /opt/qwenomatic /opt/qwenomatic-runtime/bin/python "$(sudo readlink -f /opt/qwenomatic-runtime/bin/python)"; do sudo namei -l "$p"; done
       - name: Prove kernel barrier and fail-closed farm startup
         run: sudo /opt/qwenomatic-runtime/bin/python /opt/qwenomatic/deploy/kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python

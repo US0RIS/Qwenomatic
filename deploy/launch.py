@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import pwd
+import signal
 import socket
 import subprocess
 import sys
@@ -51,21 +52,128 @@ def rules(destinations, child):
     """
 
 
+
+def protected_path(path):
+    """Check lexical ancestors as well as the resolved symlink target."""
+    path = Path(os.path.abspath(path))
+    for item in (path, *path.parents):
+        info = item.lstat()
+        if info.st_uid != 0 or (not item.is_symlink() and info.st_mode & 0o022):
+            raise SafetyError(f"unsafe runtime ownership or permissions: {item}")
+        if item.is_symlink():
+            protected_path(item.resolve(strict=True))
+
+
+def verify_runtime(python):
+    executable = Path(os.path.abspath(python))
+    protected_path(executable)
+    # Do not resolve bin/python before identifying its venv.
+    venv = executable.parent.parent
+    if (venv / "pyvenv.cfg").exists():
+        for item in [venv, *venv.rglob("*")]:
+            protected_path(item)
+            if item.is_symlink() and item != executable and not item.resolve().is_relative_to(venv):
+                if not (item.parent == executable.parent and item.name.startswith("python") and item.resolve() == executable.resolve()):
+                    raise SafetyError("venv links must stay within the protected runtime tree")
+        values = {key.strip(): value.strip() for key, value in (line.split("=", 1) for line in (venv / "pyvenv.cfg").read_text().splitlines() if "=" in line)}
+        if values.get("include-system-site-packages", "false").strip().lower() == "true":
+            raise SafetyError("venv must not include system site packages")
+    else:
+        raise SafetyError("farm Python must be an explicit protected virtual environment")
+
+
+def operation_command(args, root):
+    bootstrap = "import sys; sys.path.insert(0," + repr(root) + "); "
+    if args.operation in {"run", "init", "verify"}:
+        argv = ["qwenomatic", "--config-dir", args.config_dir, "--data-dir", args.data_dir, args.operation]
+        if args.operation == "run":
+            for flag, value in (("--ticks", args.ticks), ("--generations", args.generations)):
+                if value is not None:
+                    argv += [flag, str(value)]
+        return bootstrap + "from supervisor.cli import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
+    scripts = {"evolution-ab": "evolution_ab", "campaign": "evolution_ab_campaign", "generation-zero": "generation_zero"}
+    argv = [scripts[args.operation], "--config-dir", args.config_dir]
+    argv += ["--data-dir" if args.operation == "generation-zero" else "--root", args.data_dir]
+    if args.generations is not None:
+        argv += ["--generations", str(args.generations)]
+    if args.operation == "campaign":
+        argv += ["--pairs", str(args.pairs)]
+    return bootstrap + "from scripts." + scripts[args.operation] + " import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
+
+
+RECOVERY = Path("/run/qwenomatic-launch-state.json")
+
+
+def cleanup(state):
+    ns, host_if, table = state["namespace"], state["host_if"], state["table"]
+    # Namespace identity, rather than reusable PID numbers, controls termination.
+    result = subprocess.run(["ip", "netns", "pids", ns], text=True, capture_output=True)
+    for pid in result.stdout.split():
+        try:
+            os.kill(int(pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    for command in (["ip", "netns", "del", ns], ["ip", "link", "del", host_if], ["nft", "delete", "table", "ip", table]):
+        result = subprocess.run(command, text=True, capture_output=True)
+        if result.returncode and not any(word in result.stderr.lower() for word in ("no such", "cannot find", "does not exist")):
+            raise SafetyError("cleanup failed: " + result.stderr[:1000])
+    if state.get("evidence_path"):
+        Path(state["evidence_path"]).unlink(missing_ok=True)
+    Path("/proc/sys/net/ipv4/ip_forward").write_text(state["old_forward"])
+    RECOVERY.unlink(missing_ok=True)
+
+
+def recover():
+    if not RECOVERY.exists():
+        return
+    state = protected_json(RECOVERY)
+    import re
+    suffix = state.get("suffix", "")
+    if not re.fullmatch("[0-9a-f]{8}", suffix) or state.get("namespace") != "qwen-" + suffix or state.get("host_if") != "qh" + suffix or state.get("table") != "qwen_" + suffix or state.get("old_forward") not in ("0", "1"):
+        raise SafetyError("invalid recovery record")
+    evidence = state.get("evidence_path")
+    if evidence is not None and not re.fullmatch(r"/run/qwenomatic-boundaries/[0-9]+\.json", evidence):
+        raise SafetyError("invalid recovery evidence path")
+    cleanup(state)
+
+
+def save_recovery(state):
+    temporary = RECOVERY.with_suffix(".tmp")
+    with temporary.open("w") as stream:
+        json.dump(state, stream)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.chmod(0o600)
+    temporary.replace(RECOVERY)
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--manifest", required=True)
-    p.add_argument("--user", required=True)
+    p.add_argument("--cleanup", action="store_true", help="recover an interrupted launch under the host lock")
+    p.add_argument("--manifest")
+    p.add_argument("--user")
     p.add_argument("--python", default=sys.executable)
-    p.add_argument("--config-dir", required=True)
-    p.add_argument("--data-dir", required=True)
+    p.add_argument("--config-dir")
+    p.add_argument("--data-dir")
     p.add_argument("--check-only", action="store_true")
     p.add_argument("--ticks", type=int)
-    p.add_argument("--operation", choices=["run", "init", "verify"], default="run")
+    p.add_argument("--generations", type=int)
+    p.add_argument("--pairs", type=int, default=2)
+    p.add_argument("--operation", choices=["run", "init", "verify", "evolution-ab", "campaign", "generation-zero"], default="run")
     args = p.parse_args()
     if os.geteuid() != 0:
         raise SafetyError("launcher requires root; farm does not")
+    if not sys.flags.isolated or not sys.flags.no_site:
+        raise SafetyError("start launcher with trusted system Python -I -S; site loading must be disabled before checks")
     lock = open("/run/qwenomatic-network-launch.lock", "a")
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    if args.cleanup:
+        recover()
+        return
+    if RECOVERY.exists():
+        raise SafetyError("interrupted launch: run --cleanup before starting")
+    if not all((args.manifest, args.user, args.config_dir, args.data_dir)):
+        p.error("manifest, user, config-dir and data-dir are required")
+    verify_runtime(args.python)
     # Root will import trusted code and execute this Python. Protect both.
     for path in (Path(__file__).resolve().parents[1], Path(args.python).resolve()):
         for ancestor in (path, *path.parents):
@@ -75,6 +183,7 @@ def main():
     checkout = Path(__file__).resolve().parents[1]
     for source in checkout.rglob("*"):
         if source.is_file() and source.suffix in {".py", ".yaml", ".sql"}:
+            protected_path(source)
             s = source.lstat()
             if s.st_uid != 0 or s.st_mode & 0o022 or source.is_symlink():
                 raise SafetyError("trusted code and config cannot be writable by the farm")
@@ -103,10 +212,14 @@ def main():
     evidence_path = None
     old_forward = Path("/proc/sys/net/ipv4/ip_forward").read_text().strip()
     canary = socket.socket()
-    created = False
+    state = {"suffix": suffix, "namespace": ns, "host_if": host_if, "table": table,
+             "old_forward": old_forward, "evidence_path": None}
+    save_recovery(state)  # durable before the first host mutation
+    def interrupted(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupted)
     try:
         run("ip", "netns", "add", ns)
-        created = True
         run("ip", "link", "add", host_if, "type", "veth", "peer", "name", child_if)
         run("ip", "link", "set", child_if, "netns", ns)
         run("ip", "addr", "add", host + "/30", "dev", host_if)
@@ -145,17 +258,19 @@ def main():
         run("ip", "netns", "exec", ns, "nft", "insert", "rule", "inet", "qwenomatic", "output",
             "ip", "daddr", host, "tcp", "dport", str(port), "accept")
         probe = "import socket; s=socket.create_connection((" + repr(host) + "," + str(port) + "),2); s.close()"
-        run("ip", "netns", "exec", ns, args.python, "-I", "-c", probe)
+        run("ip", "netns", "exec", ns, args.python, "-I", "-S", "-c", probe)
         # Reinstall the exact allowlist atomically, removing the temporary rule.
         run("ip", "netns", "exec", ns, "nft", "-f", "-",
             input="delete table inet qwenomatic\n" + rules(destinations, child))
-        inode = run("ip", "netns", "exec", ns, args.python, "-I", "-c",
+        inode = run("ip", "netns", "exec", ns, args.python, "-I", "-S", "-c",
                     "import os; print(os.stat('/proc/self/ns/net').st_ino)").strip()
         directory = Path("/run/qwenomatic-boundaries")
         directory.mkdir(mode=0o755, exist_ok=True)
         if directory.stat().st_uid != 0 or directory.stat().st_mode & 0o022:
             raise SafetyError("unsafe boundary evidence directory")
         evidence_path = directory / (inode + ".json")
+        state["evidence_path"] = str(evidence_path)
+        save_recovery(state)
         evidence = {"namespace": "net:[" + inode + "]", "uid": user.pw_uid,
                     "manifest_path": str(manifest_path), "manifest_digest": digest(m),
                     "destinations": sorted([list(d) for d in destinations]),
@@ -177,26 +292,11 @@ def main():
         subprocess.run(prefix + [check], check=True, env=clean_env, cwd=root)
         if args.check_only:
             return
-        command = bootstrap + "from supervisor.cli import main; sys.argv=" + repr(
-            ["qwenomatic", "--config-dir", args.config_dir, "--data-dir", args.data_dir, args.operation]
-            + (["--ticks", str(args.ticks)] if args.ticks is not None and args.operation == "run" else [])) + "; raise SystemExit(main())"
+        command = operation_command(args, root)
         subprocess.run(prefix + [command], check=True, env=clean_env, cwd=root)
     finally:
         canary.close()
-        if evidence_path:
-            evidence_path.unlink(missing_ok=True)
-        if created:
-            # No child survives teardown, even when interrupted.
-            pids = run("ip", "netns", "pids", ns).split()
-            for pid in pids:
-                try:
-                    os.kill(int(pid), 9)
-                except ProcessLookupError:
-                    pass
-            subprocess.run(["ip", "netns", "del", ns], capture_output=True)
-            subprocess.run(["ip", "link", "del", host_if], capture_output=True)
-        subprocess.run(["nft", "delete", "table", "ip", table], capture_output=True)
-        Path("/proc/sys/net/ipv4/ip_forward").write_text(old_forward)
+        cleanup(state)
 
 
 if __name__ == "__main__":

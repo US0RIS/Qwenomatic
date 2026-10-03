@@ -25,6 +25,7 @@ from supervisor.core import Supervisor  # noqa: E402
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("--config-dir", default=None)
     p.add_argument("--data-dir", default="var/generation-zero")
     p.add_argument("--generations", type=int, default=1)
     p.add_argument("--backend", choices=["simulated", "openai_compatible"], default=None)
@@ -36,7 +37,7 @@ def main() -> int:
         overrides["farm"]["inference"] = {"backend": args.backend}
     if args.wall_clock:
         overrides["farm"]["clock"] = {"mode": "wall"}
-    cfg = FarmConfig.load(data_dir=Path(args.data_dir).resolve(), overrides=overrides)
+    cfg = FarmConfig.load(args.config_dir, data_dir=Path(args.data_dir).resolve(), overrides=overrides)
     sup = Supervisor(cfg)
     try:
         sup.bootstrap()

@@ -1,0 +1,77 @@
+QEMU 8.2.2; Ubuntu Linux 6.8.0-138-generic; 2 GiB RAM; no external VM interfaces.
+Test: /usr/bin/python3.12 -I /opt/qwenomatic/deploy/kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python
+
+=== QWENOMATIC ACTUAL KERNEL SMOKE START ===
+[   10.350066] random: crng init done
+kernel barrier verified
+kernel barrier verified
+
+== generation 0
+agents evaluated      20  (eligible 20)
+steps / GPU-seconds   16 / 35
+gross / net realized  76.86 / 61.53  (simulated economy)
+elites                
+retired               0
+offspring/immigrants  0/0
+
+== audit
+{
+  "hash_chain": {
+    "ok": true,
+    "first_bad_seq": null
+  },
+  "selection_replay": {
+    "0": true
+  },
+  "generations_started_once": true
+}
+accounting replay ok: True
+human interventions:  0
+ledger:               /run/qwenomatic-smoke-n8n2dm09/generation-zero/ledger.sqlite3
+kernel barrier verified
+
+== treatment: target 2 closed generations ==
+treatment generation 0 closed | net 61.53 | steps 16 | retired 0 | offspring 0
+treatment generation 1 closed | net -14.11 | steps 16 | retired 0 | offspring 0
+
+== control: target 2 closed generations ==
+control generation 0 closed | net 61.53 | steps 16 | retired 0 | offspring 0
+control generation 1 closed | net -14.11 | steps 16 | retired 0 | offspring 0
+
+== A/B RESULT ==
+post-baseline treatment net  -14.11
+post-baseline control net    -14.11
+raw post-baseline delta      +0.00
+baseline-adjusted delta/call +0.000000
+equal call counts            True
+report                       /run/qwenomatic-smoke-n8n2dm09/evolution-ab/report.md
+raw JSON                     /run/qwenomatic-smoke-n8n2dm09/evolution-ab/report.json
+kernel barrier verified
+
+========================================================================
+PAIR 1/1 | seed 20260930 | order treatment -> control
+========================================================================
+
+== treatment: target 2 closed generations ==
+treatment generation 0 closed | net 61.53 | steps 16 | retired 0 | offspring 0
+treatment generation 1 closed | net -14.11 | steps 16 | retired 0 | offspring 0
+
+== control: target 2 closed generations ==
+control generation 0 closed | net 61.53 | steps 16 | retired 0 | offspring 0
+control generation 1 closed | net -14.11 | steps 16 | retired 0 | offspring 0
+PAIR 1 RESULT | raw delta +0.00 | baseline-adjusted delta/call +0.000000
+
+========================================================================
+CAMPAIGN RESULT
+========================================================================
+pairs completed                1
+positive adjusted pairs        0/1
+mean raw delta                 +0.00
+mean adjusted delta/call       +0.000000
+equal call counts              True
+report                         /run/qwenomatic-smoke-n8n2dm09/campaign/campaign-report.md
+raw JSON                       /run/qwenomatic-smoke-n8n2dm09/campaign/campaign-report.json
+PASS: live positive control, kernel outbound rejection, actual farm startup, ledger receipt, unsafe startup refusal, protected experiments, writable venv refusal, SIGKILL recovery
+QWENOMATIC_KERNEL_SMOKE_EXIT=0
+[   93.926325] ACPI: PM: Preparing to enter system sleep state S5
+[   93.929026] reboot: Power down
