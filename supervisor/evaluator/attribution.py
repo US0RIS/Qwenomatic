@@ -21,6 +21,8 @@ def causal_report(state: FarmState, generation: int) -> dict[str, Any]:
     for agent_id, c in state.counters.get(generation, {}).items():
         if c.steps == 0 or agent_id not in state.agents:
             continue
+        if state.agents[agent_id].role != 'business':
+            continue
         rows.append({
             "agent_id": agent_id,
             "cohort": gen.cohort.get(agent_id, "treatment"),

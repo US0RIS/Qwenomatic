@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Local-first evolutionary agent farm with an independent supervisor"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["PyYAML>=6.0"]
+dependencies = ["PyYAML>=6.0", "cryptography>=46.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
@@ -17,7 +17,7 @@ dev = ["pytest>=8"]
 qwenomatic = "supervisor.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["supervisor*", "runtime*", "storage*", "dashboard*"]
+include = ["supervisor*", "runtime*", "storage*", "dashboard*", "broker*"]
 
 [tool.setuptools.package-data]
 storage = ["migrations/*.sql"]

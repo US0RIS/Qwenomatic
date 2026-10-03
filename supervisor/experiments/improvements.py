@@ -48,6 +48,8 @@ def run_campaign(root, feature, *, seeds=(101, 202), generations=3, config_dir=N
     root.mkdir(parents=True, exist_ok=True)
     source = FarmConfig.load(config_dir, overrides=overrides)
     baseline_hash = digest(source.farm)
+    from supervisor.roles import layout
+    business_size = layout(source.farm)['counts']['business']
     pairs = []
     for index, seed in enumerate(seeds):
         order = ['control', 'treatment']
@@ -63,6 +65,10 @@ def run_campaign(root, feature, *, seeds=(101, 202), generations=3, config_dir=N
             # Disposable simulations never inherit live routes, credentials or providers.
             cfg.farm['inference']['backend'] = 'simulated'
             cfg.farm['clock']['mode'] = 'simulated'
+            # Economic paired campaigns hold the business population fixed and
+            # never recursively start specialist campaigns or red-team work.
+            cfg.farm.setdefault('roles', {})['enabled'] = False
+            cfg.farm['farm']['population_size'] = business_size
             cfg.farm['improvements'] = settings()
             if arm == 'treatment':
                 if feature == 'self_tuning':
@@ -98,5 +104,7 @@ def run_campaign(root, feature, *, seeds=(101, 202), generations=3, config_dir=N
                           if t['profit_per_gpu_hour'] is not None and c['profit_per_gpu_hour'] is not None else None})
     return {'feature': feature, 'changes': changes, 'seeds': list(seeds), 'generations': generations,
             'baseline_hash': baseline_hash, 'status': 'simulation_verified', 'promoted': False,
+            'population_scope': 'business-only paired simulations; specialist overhead excluded',
+            'business_population_size': business_size,
             'pairs': pairs, 'mean_delta_net': sum(p['delta_net'] for p in pairs)/len(pairs),
             'limits': 'Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion.'}

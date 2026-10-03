@@ -50,6 +50,10 @@ class EventType(str, Enum):
     OUTBOUND_ATTEMPTED = "outbound_attempted"
     OUTBOUND_RESULT = "outbound_result"
 
+    BROKER_EVENT = "broker_event"
+    INSPECTOR_EVENT = "inspector_event"
+    REVENUE_INGEST_EVENT = "revenue_ingest_event"
+
     # Economy
     OPPORTUNITY = "opportunity"
     FINANCIAL_EVENT = "financial_event"
@@ -72,6 +76,10 @@ class EventType(str, Enum):
     RED_TEAM_FINDING = "red_team_finding"
     TUNING_PROPOSED = "tuning_proposed"
     TUNING_RESOLVED = "tuning_resolved"
+    ROLE_LAYOUT_PLANNED = "role_layout_planned"
+    RESEARCH_RESULT = "research_result"
+    RESEARCH_STARTED = "research_started"
+    SPECIALIST_REJECTED = "specialist_rejected"
 
     # Operations
     ARTIFACT_RECORDED = "artifact_recorded"
@@ -137,4 +145,3 @@ class Event:
             "prev_hash": self.prev_hash,
             "hash": self.hash,
         }
-

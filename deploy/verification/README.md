@@ -60,3 +60,11 @@ An earlier VM attempt with insufficient memory exhausted its initramfs space;
 the successful 2 GiB run is the receipt above. No live payment relay or Windows
 model connection was enabled or tested. The short experiment generations test
 entry-point compatibility, not the scientific efficacy of evolution.
+
+## Phase 1 broker and inference boundaries
+
+[PHASE1.md](PHASE1.md) records the executable controls, operator prerequisites,
+residual risks and successful controlled VM receipts. The source inventory is
+[phase1-source-sha256.json](phase1-source-sha256.json); final broker and baseline
+console receipts and the complete local test result are stored alongside it.
+This evidence is separate from GitHub CI and production deployment status.

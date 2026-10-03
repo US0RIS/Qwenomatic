@@ -9,6 +9,15 @@ farm:
   data_dir: var                # ledger, agent workspaces, supervisor secret, lock
   population_size: 20
 
+# Role is supervisor-owned lifecycle metadata, not a mutable genotype field.
+# Business seats = population_size - research - red_team (17 by default).
+roles:
+  enabled: true
+  research: 2
+  red_team: 1
+  every_ticks: 24
+  campaigns_per_agent_generation: 1
+
 generation:
   duration_hours: 24
   tick_seconds: 600            # one scheduler round per tick (144 ticks / generation)

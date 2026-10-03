@@ -92,9 +92,12 @@ def crowd_results(results, state, generation):
     cfg = state.generations[generation].config.get('improvements', settings())['crowding']
     if not cfg['enabled']:
         return results
-    counts = Counter(state.agents[a].genotype['target']['segment'] for a in results)
+    business = [a for a in results if state.agents[a].role == 'business']
+    counts = Counter(state.agents[a].genotype['target']['segment'] for a in business)
     for a, row in results.items():
-        share = counts[state.agents[a].genotype['target']['segment']] / max(1, len(results))
+        if a not in business:
+            continue
+        share = counts[state.agents[a].genotype['target']['segment']] / max(1, len(business))
         # Subtract a scale-dependent penalty, so negative fitness never improves.
         penalty = cfg['weight'] * share * abs(row['fitness']) if isinstance(row['fitness'], (int, float)) else 0
         row['crowding_share'], row['crowding_penalty'] = share, penalty
@@ -138,7 +141,7 @@ class Improvements:
         for name in ('knowledge', 'small_model', 'autopilot', 'predictions'):
             if not cfg[name]['enabled']:
                 continue
-            ids = sorted(population)
+            ids = sorted(a for a in population if self.sup.state.agents[a].role == 'business')
             rng = random.Random(int(digest([self.sup.config.seed, generation, name, 'assignment'])[:16], 16))
             treated = rng.sample(ids, round(len(ids) * (cfg[name].get('access_fraction', .5))))
             emit(self.sup, EventType.FEATURE_ASSIGNMENT, {'feature': name, 'treatment': sorted(treated),
@@ -228,7 +231,8 @@ class Improvements:
             self.detect_shift(generation, tick)
         if cfg['fraud']['enabled']:
             self.fraud_scan(generation, tick)
-        if cfg['red_team']['enabled'] and tick % cfg['red_team']['every_ticks'] == 0:
+        if (cfg['red_team']['enabled'] and not self.sup.generation_config().get('roles', {}).get('counts', {}).get('red_team', 0)
+                and tick % cfg['red_team']['every_ticks'] == 0):
             from .red_team import run_red_team
             run_red_team(self.sup, tick)
 

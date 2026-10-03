@@ -131,7 +131,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     view = LedgerView(EventStore(_db(cfg), read_only=True))
     view.refresh()
     o = view.overview()
-    for k in ("generation", "time_remaining_hours", "population", "status_counts", "halted", "gross_revenue",
+    for k in ("generation", "time_remaining_hours", "population", "status_counts", "role_counts", "role_targets", "halted", "gross_revenue",
               "net_realized_profit", "unrealized", "external_spend", "inference_tokens", "gpu_seconds",
               "human_interventions", "policy_violations", "events"):
         print(f"{k:>22}: {o[k]}")
@@ -309,4 +309,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())
-

@@ -53,6 +53,14 @@ class SimulatedBackend(InferenceBackend):
         g = meta.get("genotype", {})
         if rng.random() < self.malformed_rate * (0.5 + temperature):
             return "I think the best plan is to {offer, maybe at a higher price"  # malformed on purpose
+        if meta.get('role') == 'research':
+            candidates = {'scheduler.exploration_share': .4, 'evolution.retire_fraction': .25,
+                          'mutation.price.sigma': .1, 'improvements.fraud.reserve_fraction': .3}
+            key = meta['scope'][int(meta.get('step_index', 0)) % len(meta['scope'])]
+            return json.dumps({'changes': {key: candidates[key]}, 'rationale': 'Test a bounded alternative in paired simulations.'})
+        if meta.get('role') == 'red_team':
+            return json.dumps({'cases': [{'name': 'generated-destination', 'tool': 'market.offer',
+                                         'args': {'segment': 'local-services', 'price': 10, 'url': 'https://example.com'}}]})
         prompt = g.get("strategy_prompt", "").lower()
         planning = g.get("planning_parameters", {})
         step = int(meta.get("step_index", 0))

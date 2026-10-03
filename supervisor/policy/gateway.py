@@ -75,6 +75,11 @@ class ToolGateway:
         if claims.agent_id != step.agent_id:
             self._decision(step, request_id, tool, "security.token_misuse", Decision.DENY, "token/agent mismatch", 0.0, args)
             return ToolResult(False, "denied", error="capability invalid")
+        agent = self.state.agents.get(step.agent_id)
+        if agent is not None and agent.role != 'business':
+            self._decision(step, request_id, str(tool), 'specialist', Decision.DENY,
+                           'specialist roles have no live tools', 0.0, args)
+            return ToolResult(False, 'denied', error='specialist roles have no live tools')
 
         engine = self.policy()
         adapter = self.registry.get(tool) if isinstance(tool, str) else None
@@ -184,7 +189,7 @@ class ToolGateway:
                 and receipt.payload.get("capability_epoch") == self.state.capability_epoch
                 and receipt.payload.get("policy_digest") == digest(self.policy().config)
                 and p["manifest_digest"] == digest(boundary.manifest)
-                and not self.state.halted and agent is not None and agent.status == "running"
+                and not self.state.halted and agent is not None and agent.status == "running" and agent.role == 'business'
                 and not (getattr(tool, 'payment', False) and self.payout_held(queued.lineage_id))
                 and queued.generation_id == self.state.current_generation
                 and p["tool"] in self.policy().capabilities
@@ -203,8 +208,16 @@ class ToolGateway:
             if eligible:
                 try:
                     ok = tool._send(p["args"], iid)
+                    if getattr(tool, "broker_receipt", None):
+                        self.store.append(EventType.BROKER_EVENT, tool.broker_receipt, author="broker",
+                                          agent_id=queued.agent_id, lineage_id=queued.lineage_id,
+                                          generation_id=queued.generation_id, idempotency_key="broker_receipt:" + iid)
                     status = "accepted" if ok else "provider_rejected_or_unknown"
-                except Exception:
+                except Exception as exc:
+                    from storage.events.store import AuthorshipError
+                    from ..safety.boundary import SafetyError
+                    if isinstance(exc, (AuthorshipError, SafetyError)):
+                        raise SafetyError("broker provenance validation failed") from exc
                     status = "unknown_requires_operator_reconciliation"
             else:
                 status = "cancelled_requires_operator_reconciliation"

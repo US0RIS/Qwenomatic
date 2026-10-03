@@ -8,6 +8,13 @@ BOUNDS = {'scheduler.exploration_share': (.1, .6), 'evolution.retire_fraction': 
           'mutation.price.sigma': (.05, .3), 'improvements.fraud.reserve_fraction': (.1, .5)}
 
 
+def tuning_enabled(sup):
+    from .roles import layout
+    g = sup.state.current_generation
+    roles = sup.state.generations[g].config.get('roles', {}) if g is not None else layout(sup.config.farm)
+    return sup.improvements.cfg['self_tuning']['enabled'] or roles.get('counts', {}).get('research', 0) > 0
+
+
 def validate_changes(changes):
     if not isinstance(changes, dict) or not changes or set(changes) - set(BOUNDS):
         raise ValueError('only bounded exploration, retirement, mutation and reserve settings may be proposed')
@@ -30,7 +37,7 @@ def apply_changes(farm, changes):
 
 
 def propose_tuning(sup, changes, campaign):
-    if not sup.improvements.cfg['self_tuning']['enabled']:
+    if not tuning_enabled(sup):
         raise ValueError('self tuning is disabled')
     validate_changes(changes)
     if (campaign.get('feature') != 'self_tuning' or campaign.get('changes') != changes
@@ -60,7 +67,7 @@ def resolve_tuning(sup, proposal_id, granted, operator, note):
 
 def effective_settings(sup, cfg):
     # Changes enter only a new generation's frozen config. Files are never overwritten.
-    if not sup.improvements.cfg['self_tuning']['enabled']:
+    if not (sup.improvements.cfg['self_tuning']['enabled'] or cfg.get('roles', {}).get('counts', {}).get('research', 0)):
         return
     for r in sup.store.iter_events(types=[EventType.TUNING_RESOLVED]):
         if r.payload['granted'] and r.payload['base_hash'] == digest(sup.config.farm):

@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install kernel test dependencies
-        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 python3-venv
+        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 python3-venv libseccomp2
       - name: Prepare root-owned trusted checkout and runtime
         run: |
           sudo chmod 755 /opt
@@ -32,7 +32,7 @@ jobs:
           sudo chown -R root:root /opt/qwenomatic
           sudo chmod -R go-w /opt/qwenomatic
           sudo python3 -m venv /opt/qwenomatic-runtime
-          sudo /opt/qwenomatic-runtime/bin/pip install PyYAML
+          sudo /opt/qwenomatic-runtime/bin/pip install PyYAML "cryptography>=46"
           sudo chown -R root:root /opt/qwenomatic-runtime
           sudo chmod -R go-w /opt/qwenomatic-runtime
       - name: Show trusted path ownership
@@ -40,3 +40,16 @@ jobs:
           for p in /opt/qwenomatic /opt/qwenomatic-runtime/bin/python "$(sudo readlink -f /opt/qwenomatic-runtime/bin/python)"; do sudo namei -l "$p"; done
       - name: Prove kernel barrier and fail-closed farm startup
         run: sudo /opt/qwenomatic-runtime/bin/python /opt/qwenomatic/deploy/kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python
+      - name: Prepare distinct broker and inference principals
+        run: |
+          sudo useradd --system --user-group --no-create-home qbroker
+          sudo useradd --system --user-group --no-create-home qinfer
+      - name: Allow namespace routing on the hosted runner
+        run: |
+          sudo iptables -S FORWARD || true
+          sudo iptables -P FORWARD ACCEPT
+          sudo iptables -I FORWARD 1 -j ACCEPT
+          sudo sysctl -w net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0
+          sudo iptables -S FORWARD
+      - name: Prove broker and inference kernel boundaries with controlled TLS
+        run: sudo /opt/qwenomatic-runtime/bin/python -I /opt/qwenomatic/deploy/broker_kernel_smoke.py --python /opt/qwenomatic-runtime/bin/python

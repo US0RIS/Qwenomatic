@@ -1,0 +1,1265 @@
+{
+  "status": "simulation_verified",
+  "integrated_main": "edc906f04f45e3ebbea8ea38b067c32a399eab44",
+  "seeds": [
+    101,
+    202
+  ],
+  "generations": 2,
+  "authorship": "supervisor-only role creation/layout/research evidence; operator, adapter and agent forgery checks passed",
+  "runs": [
+    {
+      "seed": 101,
+      "generation": 2,
+      "counts": {
+        "business": 17,
+        "research": 2,
+        "red_team": 1
+      },
+      "audit": {
+        "hash_chain": {
+          "ok": true,
+          "first_bad_seq": null
+        },
+        "accounting": {
+          "ok": true,
+          "pnl": {
+            "compute_imputed": 0.02874,
+            "external_spend": 37.8,
+            "gross_revenue": 138.37,
+            "fees": 7.01273,
+            "api_cloud": 0.0,
+            "other_variable": 0.0,
+            "total_costs": 44.84147,
+            "refunds": 0.0,
+            "net_realized_profit": 93.52853,
+            "unrealized": 0
+          },
+          "projection_gross": 138.37,
+          "projection_net": 93.52853,
+          "trial_balance_sum": 0.0
+        },
+        "selection_replay": {
+          "0": true,
+          "1": true
+        },
+        "generations_started_once": true
+      },
+      "research": [
+        {
+          "agent_id": "86291017-ed7d-588a-88b8-f886333106b9",
+          "generation": 0,
+          "changes": {
+            "mutation.price.sigma": 0.1
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "3c1159428130bff9dbf25711a54ef68600ec1f7712fbdc24b9844ffea4d13edb",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 118,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 118,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "8672c52b-f80e-5976-9ed3-efa4c8e21409",
+          "generation": 0,
+          "changes": {
+            "scheduler.exploration_share": 0.4
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": -16.5522655,
+          "proposal_id": "41bb51d776523da0c1bc02a54d8a4146ab912a6da9a07ec9d79f76cb0b6441b3",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 118,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028141,
+                    "external_spend": 43.4,
+                    "gross_revenue": 38.83,
+                    "fees": 1.72607,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 45.154211,
+                    "refunds": 0.0,
+                    "net_realized_profit": -6.324211,
+                    "unrealized": 118.19
+                  },
+                  "projection_gross": 38.83,
+                  "projection_net": -6.324211,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 118,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027805,
+                    "external_spend": 49.1,
+                    "gross_revenue": 36.88,
+                    "fees": 2.56952,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 51.697325,
+                    "refunds": 0.0,
+                    "net_realized_profit": -14.817325,
+                    "unrealized": 232.0
+                  },
+                  "projection_gross": 36.88,
+                  "projection_net": -14.817325,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "8672c52b-f80e-5976-9ed3-efa4c8e21409",
+          "generation": 1,
+          "changes": {
+            "evolution.retire_fraction": 0.25
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "5247bb8223b9b9a3f99bf92afe0b682a98394dd2d184ece4ea33a331cf47acbd",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 118,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 118,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "86291017-ed7d-588a-88b8-f886333106b9",
+          "generation": 1,
+          "changes": {
+            "improvements.fraud.reserve_fraction": 0.3
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "673699887b56251120cea3a222d5683273cb1a844a2b4e8a46269922f06b75c8",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 118,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 118,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028075,
+                    "external_spend": 43.7,
+                    "gross_revenue": 21.96,
+                    "fees": 0.93684,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 44.664915,
+                    "refunds": 0.0,
+                    "net_realized_profit": -22.704915,
+                    "unrealized": 102.36
+                  },
+                  "projection_gross": 21.96,
+                  "projection_net": -22.704915,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 132,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.02789,
+                    "external_spend": 50.4,
+                    "gross_revenue": 89.8,
+                    "fees": 4.7042,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.13209,
+                    "refunds": 0.0,
+                    "net_realized_profit": 34.66791,
+                    "unrealized": 6.93
+                  },
+                  "projection_gross": 89.8,
+                  "projection_net": 34.66791,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        }
+      ],
+      "red_team": {
+        "cases": 36,
+        "generated": 4,
+        "confirmed": 0,
+        "reward": 0
+      }
+    },
+    {
+      "seed": 202,
+      "generation": 2,
+      "counts": {
+        "business": 17,
+        "research": 2,
+        "red_team": 1
+      },
+      "audit": {
+        "hash_chain": {
+          "ok": true,
+          "first_bad_seq": null
+        },
+        "accounting": {
+          "ok": true,
+          "pnl": {
+            "compute_imputed": 0.028251,
+            "external_spend": 35.8,
+            "gross_revenue": 88.68,
+            "fees": 4.97172,
+            "api_cloud": 0.0,
+            "other_variable": 0.0,
+            "total_costs": 40.799971,
+            "refunds": 0.0,
+            "net_realized_profit": 47.880029,
+            "unrealized": 0
+          },
+          "projection_gross": 88.68,
+          "projection_net": 47.880029,
+          "trial_balance_sum": 0.0
+        },
+        "selection_replay": {
+          "0": true,
+          "1": true
+        },
+        "generations_started_once": true
+      },
+      "research": [
+        {
+          "agent_id": "056d2087-d71e-51a2-927e-2226b92dc35e",
+          "generation": 0,
+          "changes": {
+            "scheduler.exploration_share": 0.4
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": -54.478286999999995,
+          "proposal_id": "717376d4d240651d004c5454faed7b729e5141c28a04f6d34e9bb6ab5918c43f",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 219,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 219,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.029016,
+                    "external_spend": 49.6,
+                    "gross_revenue": 48.24,
+                    "fees": 2.59896,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 52.227976,
+                    "refunds": 0.0,
+                    "net_realized_profit": -3.987976,
+                    "unrealized": 0
+                  },
+                  "projection_gross": 48.24,
+                  "projection_net": -3.987976,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028289,
+                    "external_spend": 51.3,
+                    "gross_revenue": 29.29,
+                    "fees": 1.14941,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 52.477699,
+                    "refunds": 0.0,
+                    "net_realized_profit": -23.187699,
+                    "unrealized": 6.74
+                  },
+                  "projection_gross": 29.29,
+                  "projection_net": -23.187699,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "c85b1592-37a0-5472-a862-65b5ee95dc1f",
+          "generation": 0,
+          "changes": {
+            "mutation.price.sigma": 0.1
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "d9629d05c77338904090894057a19b2c4d2bfed396aa520a6c61645b30ec4d6e",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 219,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 219,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "056d2087-d71e-51a2-927e-2226b92dc35e",
+          "generation": 1,
+          "changes": {
+            "evolution.retire_fraction": 0.25
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "c98756f330a98615e3ecae2336b7caf4ac26dd7db53016fa9a5a6ae4f40f6db2",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 219,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 219,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        },
+        {
+          "agent_id": "c85b1592-37a0-5472-a862-65b5ee95dc1f",
+          "generation": 1,
+          "changes": {
+            "improvements.fraud.reserve_fraction": 0.3
+          },
+          "status": "simulation_verified",
+          "mean_delta_net": 0.0,
+          "proposal_id": "2c73a6742cb6387638b1005f37d7994a68bf6aee265c492334d68709b91f9b4e",
+          "business_population_size": 17,
+          "nested_ledger_audits": [
+            {
+              "seed": 219,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 219,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.028418,
+                    "external_spend": 51.1,
+                    "gross_revenue": 67.13,
+                    "fees": 2.84677,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 53.975188,
+                    "refunds": 0.0,
+                    "net_realized_profit": 13.154812,
+                    "unrealized": 26.61
+                  },
+                  "projection_gross": 67.13,
+                  "projection_net": 13.154812,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "treatment",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            },
+            {
+              "seed": 233,
+              "arm": "control",
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.027473,
+                    "external_spend": 50.9,
+                    "gross_revenue": 124.36,
+                    "fees": 4.80644,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 55.733913,
+                    "refunds": 0.0,
+                    "net_realized_profit": 68.626087,
+                    "unrealized": 73.01
+                  },
+                  "projection_gross": 124.36,
+                  "projection_net": 68.626087,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              }
+            }
+          ]
+        }
+      ],
+      "red_team": {
+        "cases": 36,
+        "generated": 4,
+        "confirmed": 0,
+        "reward": 0
+      }
+    }
+  ],
+  "limits": "Test-only empty boundary. Simulated inference and revenue; no kernel or actual-Qwen performance attestation. Nested ledgers re-audited from retained files."
+}

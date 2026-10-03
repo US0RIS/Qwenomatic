@@ -69,6 +69,11 @@ def evaluate_generation(sup: "Supervisor", state: FarmState, generation: int) ->
         window = evaluator.window(archetype, generation, agent.generation_born)
         counters = state.window_counters(agent.id, window)
         elig = evaluate_eligibility(agent, counters)
+        if agent.role != 'business':
+            from ..roles import specialist_fitness
+            results[agent.id] = specialist_fitness(agent, counters, elig, generation,
+                                                   sup.store.iter_events(upto_seq=state.last_seq))
+            continue
         results[agent.id] = evaluator.evaluate(agent, counters, archetype=archetype, generation=generation,
                                                window=window, eligibility=elig).to_dict()
     from ..improvements import crowd_results
@@ -81,16 +86,22 @@ def selection_for(sup: "Supervisor", state: FarmState, generation: int,
     lineage_of = {a: state.agents[a].lineage_id for a in results}
     rng = seeded_rng(sup.config.seed, "selection", generation)
     cfg = copy.deepcopy(gen.config['evolution'])
+    from ..roles import frozen_layout, plan_specialists
+    role_cfg = frozen_layout(state, generation)
+    business_results = {a: r for a, r in results.items() if state.agents[a].role == 'business'}
     shifts = sup.store.iter_events(types=[EventType.MARKET_SHIFT], upto_seq=state.last_seq,
                                   generation_ids=[generation])
     if shifts and gen.config.get('improvements', {}).get('adaptation', {}).get('enabled'):
         cfg['immigration_rate'] = shifts[-1].payload['immigration_rate']
-    plan = plan_selection(results, lineage_of, population_size=sup.config.population_size,
+    plan = plan_selection(business_results, lineage_of, population_size=role_cfg['counts']['business'],
                           cfg=cfg, rng=rng)
     if shifts:
         plan['market_shift_seq'] = shifts[-1].seq
     from ..improvements import spread_plan, settings
-    return spread_plan(plan, results, state, gen.config.get('improvements', settings()), sup.config.population_size)
+    plan = spread_plan(plan, business_results, state, gen.config.get('improvements', settings()), role_cfg['counts']['business'])
+    if 'roles' not in gen.config and generation not in state.role_layouts:
+        return plan  # Historical pre-role selections must replay byte-for-byte.
+    return plan_specialists(plan, results, state, role_cfg)
 
 
 class GenerationManager:
@@ -137,6 +148,10 @@ class GenerationManager:
         return {"settled": settled, "pending_after": len(sup.state.pending_settlements)}
 
     def _step_freeze_ledger(self, g: int, done: dict[str, Any]) -> dict[str, Any]:
+        from ..roles import layout
+        from ..improvements import emit
+        emit(self.sup, EventType.ROLE_LAYOUT_PLANNED, {'layout': layout(self.sup.config.farm)},
+             f'role-layout:{g}', generation=g)
         seq, h = self.sup.store.head()
         return {"snapshot_seq": seq, "snapshot_hash": h}
 
@@ -214,8 +229,9 @@ class GenerationManager:
         mutations = MutationEngine(sup.generation_config(g)['mutation'], segments=list(sup.config.segments),
                                    granted_tools=sorted(sup.config.policy['capabilities']),
                                    max_mutations=int(sup.generation_config(g)['evolution'].get('max_mutations', 2)))
-        counts = Counter(sup.state.agents[a].genotype['target']['segment'] for a in plan['survivors'])
-        cap = plan.get('segment_cap', sup.config.population_size)
+        counts = Counter(sup.state.agents[a].genotype['target']['segment'] for a in plan['survivors']
+                         if sup.state.agents[a].role == 'business')
+        cap = plan.get('segment_cap', plan.get('role_layout', {}).get('counts', {}).get('business', sup.config.population_size))
         immigrants = [o for o in plan['offspring'] if o['origin'] == 'immigrant']
         archive_slots = set()
         archives = []
@@ -229,6 +245,12 @@ class GenerationManager:
         for o in plan["offspring"]:
             child_id = stable_id(seed, "agent", g + 1, o["slot"])
             rng = seeded_rng(seed, "mutation", g, o["slot"])
+            if o['origin'] == 'specialist':
+                from ..roles import specialist_genotype
+                offspring.append({'agent_id': child_id, 'lineage_id': stable_id(seed, 'lineage', g+1, o['slot']),
+                    'parent_id': None, 'origin': 'specialist', 'mutations': [], 'role': o['role'],
+                    'role_slot': o['role_slot'], 'genotype': specialist_genotype(sup, o['role'], o['role_slot'])})
+                continue
             if o["origin"] == "offspring":
                 parent = sup.state.agents[o["parent_id"]]
                 try:
@@ -278,7 +300,12 @@ class GenerationManager:
     def _step_validate_offspring(self, g: int, done: dict[str, Any]) -> dict[str, Any]:
         valid, invalid = [], []
         for o in done["generate_mutations"]["offspring"]:
-            errors = [o["error"]] if o.get("error") else self.sup.mutations.validate(o["genotype"])
+            if o.get('role', 'business') != 'business':
+                from runtime.agent import validate_genotype
+                errors = validate_genotype(o['genotype'], mutation_cfg={**self.sup.config.farm['mutation'], 'required_tools': []},
+                                           segments=list(self.sup.config.segments), granted_tools=[])
+            else:
+                errors = [o["error"]] if o.get("error") else self.sup.mutations.validate(o["genotype"])
             (invalid if errors else valid).append(o["agent_id"] if not errors else
                                                   {"agent_id": o["agent_id"], "errors": errors})
         return {"valid": valid, "invalid": invalid}
@@ -305,7 +332,8 @@ class GenerationManager:
         plan = self._plan(g)
         for r in plan["retirements"]:
             agent = sup.state.agents[r["agent_id"]]
-            sup.improvements.archive(agent, g, r['reason'])
+            if agent.role == 'business':
+                sup.improvements.archive(agent, g, r['reason'])
             sup.store.append(EventType.AGENT_RETIRED, {"reason": r["reason"]}, agent_id=agent.id,
                              lineage_id=agent.lineage_id, generation_id=g, idempotency_key=f"retire:{g}:{agent.id}")
         valid = set(done["validate_offspring"]["valid"])
@@ -314,10 +342,12 @@ class GenerationManager:
             if o["agent_id"] not in valid:
                 continue
             sup.create_agent(agent_id=o["agent_id"], lineage_id=o["lineage_id"], parent_id=o["parent_id"],
-                             generation=g + 1, genotype=o["genotype"], origin=o["origin"], mutations=o["mutations"])
+                             generation=g + 1, genotype=o["genotype"], origin=o["origin"], mutations=o["mutations"],
+                             role=o.get('role', 'business'), role_slot=o.get('role_slot'))
             created.append(o["agent_id"])
         population = sorted(set(plan["survivors"]) | set(created))
-        sup.start_generation(g + 1, population)
+        from ..roles import frozen_layout
+        sup.start_generation(g + 1, population, role_layout=plan.get('role_layout', frozen_layout(self._frozen(g), g)))
         return {"population": population, "created": created, "retired": [r["agent_id"] for r in plan["retirements"]],
                 "diversity": diversity_report(sup.state.agents[a] for a in population)}
 

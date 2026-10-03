@@ -69,11 +69,15 @@ class Supervisor:
     ) -> None:
         from .safety.boundary import NetworkBoundary
         self.boundary = NetworkBoundary(config)
+        if self.boundary.manifest.get("version") == 2 and config.farm["inference"].get("backend") == "openai_compatible":
+            config.farm["inference"]["openai_compatible"]["broker_transport"] = self.boundary.manifest["broker"]
         if backend is not None and backend.name != "simulated":
             raise ValueError("injected network backends are prohibited")
         from .improvements import Improvements, settings
         settings(config.farm.get('improvements'))  # reject invalid supervisor controls before any work
         self.config = config
+        from .roles import layout, SpecialistRuntime
+        layout(config.farm)
         self.data_dir = Path(config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._lock_fh = self._acquire_lock() if lock else None
@@ -155,6 +159,7 @@ class Supervisor:
         self.runtime = AgentRuntime(store=self.store, registry=self.registry, gateway=self.gateway,
                                     config=farm["runtime"])
         self.runtime.improvements = self.improvements
+        self.specialists = SpecialistRuntime(self)
         self.mutations = MutationEngine(
             farm["mutation"], segments=segments, granted_tools=sorted(self.config.policy.get("capabilities", {})),
             max_mutations=int(farm["evolution"].get("max_mutations", 2)),
@@ -220,7 +225,8 @@ class Supervisor:
             return self._fresh_generation_config()
         return self.state.generations[g].config
 
-    def _fresh_generation_config(self) -> dict[str, Any]:
+    def _fresh_generation_config(self, *, role_layout=None) -> dict[str, Any]:
+        from .roles import layout
         farm = self.config.farm
         cfg = {
             "fitness": self.config.fitness,
@@ -229,6 +235,7 @@ class Supervisor:
             "evolution": farm["evolution"],
             "improvements": self.improvements.cfg,
             "mutation": farm["mutation"],
+            "roles": role_layout if role_layout is not None else layout(farm),
         }
         import copy
         cfg = copy.deepcopy(cfg)
@@ -281,8 +288,21 @@ class Supervisor:
         return random_genotype(rng, self.config.farm["mutation"], list(self.config.segments))
 
     def create_agent(self, *, agent_id: str, lineage_id: str, parent_id: str | None, generation: int,
-                     genotype: dict[str, Any], origin: str, mutations: list[dict[str, Any]] | None = None) -> None:
-        errors = validate_genotype(genotype, mutation_cfg=self.config.farm["mutation"],
+                     genotype: dict[str, Any], origin: str, mutations: list[dict[str, Any]] | None = None,
+                     role: str = 'business', role_slot: int | None = None) -> None:
+        from .roles import ROLES, BUSINESS, RND, RED
+        if role not in ROLES or (role != BUSINESS and (type(role_slot) is not int or not 0 <= role_slot < (2 if role == RND else 1))):
+            raise ValueError('invalid supervisor-owned agent role')
+        if parent_id and self.state.agents[parent_id].role != role:
+            raise ValueError('offspring cannot change roles')
+        mutation_cfg = self.config.farm['mutation']
+        budgets = dict(self.config.farm['agent_budgets'])
+        if role != BUSINESS:
+            mutation_cfg = {**mutation_cfg, 'required_tools': []}
+            if genotype.get('tool_preferences') != []:
+                raise ValueError('specialists cannot hold live tools')
+            budgets.update(external_spend=0, tool_calls=0)
+        errors = validate_genotype(genotype, mutation_cfg=mutation_cfg,
                                    segments=list(self.config.segments),
                                    granted_tools=sorted(self.config.policy.get("capabilities", {})))
         if errors:
@@ -290,7 +310,8 @@ class Supervisor:
         self.store.append(
             EventType.AGENT_CREATED,
             {"parent_id": parent_id, "generation": generation, "genotype_version": GENOTYPE_VERSION,
-             "genotype": genotype, "genotype_digest": digest(genotype), "budgets": dict(self.config.farm["agent_budgets"]),
+             "genotype": genotype, "genotype_digest": digest(genotype), "budgets": budgets,
+             "role": role, "role_slot": role_slot,
              "origin": origin, "status": "queued", "mutations": mutations or []},
             agent_id=agent_id, lineage_id=lineage_id, generation_id=generation,
             idempotency_key=f"create:{agent_id}",
@@ -305,27 +326,35 @@ class Supervisor:
         seed_genotypes = seed_genotypes or self.config.farm.get("seed_population") or []
         with self.store.transaction():
             population = []
-            for i in range(self.config.population_size):
-                genotype = seed_genotypes[i] if i < len(seed_genotypes) else self.random_genotype(rng)
+            from .roles import layout, role_slots, specialist_genotype, BUSINESS
+            for i, (role, slot) in enumerate(role_slots(layout(self.config.farm))):
+                genotype = (seed_genotypes[i] if i < len(seed_genotypes) else self.random_genotype(rng)) if role == BUSINESS else specialist_genotype(self, role, slot)
                 agent_id = stable_id(seed, "agent", 0, i)
                 self.create_agent(agent_id=agent_id, lineage_id=stable_id(seed, "lineage", 0, i), parent_id=None,
-                                  generation=0, genotype=genotype, origin="seed")
+                                  generation=0, genotype=genotype, origin="seed", role=role,
+                                  role_slot=slot if role != BUSINESS else None)
                 population.append(agent_id)
             self.start_generation(0, population)
 
-    def start_generation(self, number: int, population: list[str]) -> None:
-        cfg = self._fresh_generation_config()
+    def start_generation(self, number: int, population: list[str], *, role_layout=None) -> None:
+        cfg = self._fresh_generation_config(role_layout=role_layout)
+        from collections import Counter
+        counts = Counter(self.state.agents[a].role for a in population)
+        if any(counts[role] != count for role, count in cfg['roles']['counts'].items()):
+            raise ValueError('next population does not match frozen role quotas')
         started = self.clock.now_dt()
         ends = started + timedelta(hours=float(self.config.farm["generation"]["duration_hours"]))
         rng = random.Random(int(digest([self.config.seed, "cohort", number])[:16], 16))
         frac = float(cfg["scheduler"].get("control_cohort_fraction", 0.0))
-        k = round(frac * len(population))
-        control = set(rng.sample(sorted(population), k)) if k else set()
+        business = sorted(a for a in population if self.state.agents[a].role == 'business')
+        k = round(frac * len(business))
+        control = set(rng.sample(business, k)) if k else set()
         self.store.append(
             EventType.GENERATION_STARTED,
             {"number": number, "start_tick": self.clock.tick, "started_at": started.isoformat(),
              "ends_at": ends.isoformat(), "config": cfg, "population": sorted(population),
-             "cohort": {a: ("control" if a in control else "treatment") for a in sorted(population)}},
+             "cohort": {a: ("specialist" if self.state.agents[a].role != 'business' else
+                             "control" if a in control else "treatment") for a in sorted(population)}},
             generation_id=number, idempotency_key=f"genstart:{number}",
         )
         self.improvements.start(number, population)
@@ -341,6 +370,8 @@ class Supervisor:
             )
 
     def _capabilities_for(self, agent_id: str, engine: PolicyEngine) -> list[str]:
+        if self.state.agents[agent_id].role != 'business':
+            return []
         prefs = set(self.state.agents[agent_id].genotype["tool_preferences"])
         return sorted(prefs & set(engine.granted_capabilities()))
 
@@ -438,8 +469,7 @@ class Supervisor:
             reason = "daily inference ceiling reached"
         candidates = [] if reason else self._candidates(gen, tick)
         slots = int(self.config.farm["inference"].get("slots_per_tick", 4))
-        decision = self.scheduler_for(gen).allocate(tick, gen, candidates, slots, list(self.state.allocations),
-                                                    reason=reason)
+        decision = self._allocate_with_roles(gen, tick, candidates, slots, reason)
 
         submitted: list[tuple[str, str, int, dict[str, Any]]] = []
         with self.store.transaction():
@@ -452,9 +482,12 @@ class Supervisor:
                     self.store.append(EventType.HEALTH_EVENT,
                                       {"component": "agent_state", "kind": "state_corrupted", "detail": "reset"},
                                       agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
-                request = self.runtime.build_request(agent, st, self.config.seed)
-                mode, repeat_action, anchor = self.improvements.route(agent, st)
-                request.metadata.update(supervisor_route=mode, repeat_action=repeat_action, routine_anchor=anchor)
+                if agent.role == 'business':
+                    request = self.runtime.build_request(agent, st, self.config.seed)
+                    mode, repeat_action, anchor = self.improvements.route(agent, st)
+                    request.metadata.update(supervisor_route=mode, repeat_action=repeat_action, routine_anchor=anchor)
+                else:
+                    request = self.specialists.build_request(agent, st)
                 counters = self.state.counter(gen, agent.id)
                 remaining_tokens = float(agent.budgets.get("inference_tokens", 1e12)) - counters.tokens
                 step_id = self.ids.new("step")
@@ -522,7 +555,9 @@ class Supervisor:
         self.compute.charge(attr, job.job_id, usage.gpu_seconds, usage.cloud_usd)
         step = StepContext(agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen, step_id=step_id,
                            tick=tick, now=now, workspace=self.workspace_for(agent.id))
-        outcome = self.runtime.execute(agent, self.token_for(agent.id, gen), step, job.text or "", version, st)
+        outcome = (self.runtime.execute(agent, self.token_for(agent.id, gen), step, job.text or "", version, st)
+                   if agent.role == 'business' else
+                   self.specialists.execute(agent, step, job.text or '', version, st))
         self.store.append(
             EventType.AGENT_STEP_COMPLETED,
             {"step_id": step_id, "job_id": job.job_id, "tick": tick, "actions": outcome.actions,
@@ -536,11 +571,51 @@ class Supervisor:
                               {"component": "agent", "kind": "malformed_output", "detail": outcome.error},
                               agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
 
+    def _allocate_with_roles(self, gen, tick, candidates, slots, reason):
+        """Reserve due specialist service inside, never in addition to, the slot ceiling."""
+        import copy
+        from .scheduler.scheduler import AllocationDecision
+        history = list(self.state.allocations)
+        cfg = self.generation_config(gen).get('roles', {})
+        due = []
+        if not reason:
+            for a in sorted(self.state.agents.values(), key=lambda a: a.id):
+                if a.role == 'business' or a.status != 'running':
+                    continue
+                c = self.state.counter(gen, a.id)
+                budgets = {k: v for k, v in a.budgets.items() if k in ('inference_tokens', 'gpu_seconds')}
+                if not check_agent_budget(budgets, c).ok:
+                    continue
+                if a.role == 'research' and len(self.store.iter_events(types=[EventType.RESEARCH_STARTED],
+                        agent_id=a.id, generation_ids=[gen])) >= cfg.get('campaigns_per_agent_generation', 1):
+                    continue
+                if a.last_scheduled_tick is not None and tick - a.last_scheduled_tick < cfg.get('every_ticks', 24):
+                    continue
+                due.append(Candidate(a.id, a.lineage_id, c.steps, 0, [],
+                    c.gpu_seconds / c.steps if c.steps else 2, a.last_scheduled_tick, a.burst,
+                    cohort='specialist', generation_start_tick=self.state.generations[gen].start_tick))
+        if not due:
+            return self.scheduler_for(gen).allocate(tick, gen, candidates, slots, history, reason=reason)
+        sched = copy.deepcopy(self.generation_config(gen)['scheduler'])
+        sched['method'] = 'equal'
+        specialist = Scheduler(sched, seed=self.config.seed, min_exposure_steps=0).allocate(
+            tick, gen, due, min(slots, len(due)), history)
+        business = self.scheduler_for(gen).allocate(tick, gen, candidates, slots-len(specialist.selected), history)
+        for selected in specialist.selected:
+            selected.pool = self.state.agents[selected.agent_id].role
+        pools = dict(business.pools)
+        for selected in specialist.selected:
+            pools[selected.pool] = pools.get(selected.pool, 0) + 1
+        return AllocationDecision(tick, business.method, slots, specialist.selected + business.selected,
+            {**business.priorities, **specialist.priorities}, pools,
+            starving=business.starving, cap_blocked=business.cap_blocked + specialist.cap_blocked,
+            candidates=len(candidates)+len(due), reason=reason)
+
     def _candidates(self, gen: int, tick: int) -> list[Candidate]:
         gv = self.state.generations[gen]
         fcfg = self.generation_config(gen)["fitness"]
         prior_default = float(fcfg.get("posterior", {}).get("prior_mean_per_step", 0.0))
-        running = [a for a in self.state.agents.values() if a.status == "running"]
+        running = [a for a in self.state.agents.values() if a.status == "running" and a.role == 'business']
         gpu_known = [self.state.counter(gen, a.id) for a in running]
         gpu_known = [c.gpu_seconds / c.steps for c in gpu_known if c.steps]
         default_gpu = sum(gpu_known) / len(gpu_known) if gpu_known else 2.0
@@ -713,4 +788,3 @@ def submit_command(data_dir: Path, command: dict[str, Any]) -> Path:
     tmp.write_text(json.dumps(command))
     tmp.rename(path)
     return path
-
