@@ -309,6 +309,7 @@ def test_primary_failure_preserves_completed_small_usage():
 
 
 def test_launcher_campaign_is_a_fixed_operator_operation():
+    pytest.importorskip('fcntl', reason='the privileged launcher requires Linux/WSL')
     from deploy.launch import operation_command
     args=SimpleNamespace(operation='improvement-campaign',config_dir='/protected/config',data_dir='/data',
                          feature='knowledge',generations=2,candidate=None)
