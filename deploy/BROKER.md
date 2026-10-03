@@ -226,13 +226,13 @@ immutable root-owned JSON request file containing exactly `service`, `args`,
 Review the configured service, account and actual content before granting.
 
 ```sh
-sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/broker_operator.py \
   --config /etc/qwenomatic/broker.json --operator owner \
   grant --farm farm --request-file /etc/qwenomatic/action.json --ttl 60
-sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/broker_operator.py \
   --config /etc/qwenomatic/broker.json --operator owner \
   revoke --farm farm --invocation-id exact-invocation
-sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/broker_operator.py \
   --config /etc/qwenomatic/broker.json --operator owner halt
 ```
 

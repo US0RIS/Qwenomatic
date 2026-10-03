@@ -228,7 +228,7 @@ for path,status in [('/v1/chat/completions',200),('/api/pull',403)]:
             clientcode='from broker.client import Client;from broker.protocol import Rejected;c=Client('+repr(transport)+');'
             farm_code(clientcode+'\ntry:c.submit("text",{"text":"approved fixture"},"single-action")\nexcept Rejected:pass\nelse:raise AssertionError("missing approval allowed")')
             assert not calls
-            operator_command=['/usr/bin/python3','-I','-S',str(root/'deploy/operator.py'),'--config',broker_cfg,'--operator','owner']
+            operator_command=['/usr/bin/python3','-I','-S',str(root/'deploy/broker_operator.py'),'--config',broker_cfg,'--operator','owner']
             request_file=file('operator-request.json',r)
             receipt=json.loads(run(*(operator_command+['grant','--farm','farm','--request-file',request_file,'--ttl','60'])))
             assert receipt['record']['kind']=='operator_grant'
