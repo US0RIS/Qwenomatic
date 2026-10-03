@@ -64,6 +64,71 @@ def update_timeouts(root: Path):
     print('Updated broker/farm timeouts; certificates and ledger were preserved. Restart the broker.')
 
 
+def repair_tls(root: Path, farm_user: str, broker_user: str):
+    """Replace the incompatible TLS chain while retaining audit identity and state."""
+    from supervisor.safety.boundary import protected_json
+    if Path('/run/qwenomatic-service-broker.json').exists():
+        raise SystemExit('stop the broker before replacing its TLS certificates')
+    private = root / 'private'
+    targets = [private / name for name in ('ca.pem', 'broker.pem', 'broker.key',
+                                           'farm.pem', 'farm.key', 'policy.json', 'broker.json')]
+    for path in (root / 'manifest.json', *targets):
+        for item in (path, *path.parents):
+            info = item.lstat()
+            if info.st_uid != 0 or info.st_mode & 0o022 or stat.S_ISLNK(info.st_mode):
+                raise SystemExit(f'unsafe installed TLS path: {item}')
+    broker_path, policy_path = private / 'broker.json', private / 'policy.json'
+    broker = protected_json(broker_path)
+    policy = protected_json(policy_path)
+    manifest = protected_json(root / 'manifest.json')
+    if broker['policy'] != policy or set(policy['farms']) != {'farm'}:
+        raise SystemExit('installed broker policy differs from the local-Qwen template')
+    if any(broker[k] != str(private / name) for k, name in (
+            ('client_ca', 'ca.pem'), ('tls_cert', 'broker.pem'), ('tls_key', 'broker.key'))):
+        raise SystemExit('installed broker TLS paths differ from the local-Qwen template')
+    if any(manifest['broker'][k] != str(private / name) for k, name in (
+            ('ca_file', 'ca.pem'), ('client_cert', 'farm.pem'), ('client_key', 'farm.key'))):
+        raise SystemExit('installed farm TLS paths differ from the local-Qwen template')
+    old_cert = x509.load_pem_x509_certificate((private / 'farm.pem').read_bytes())
+    old_fp = hashlib.sha256(old_cert.public_bytes(serialization.Encoding.DER)).hexdigest()
+    if policy['farms']['farm']['certificates'] != [old_fp]:
+        raise SystemExit('installed client certificate does not match the broker policy')
+    ca_pem, ca_key, ca_cert = make_ca()
+    address = str(ipaddress.IPv4Address(broker['listen'][0]))
+    broker_pem, broker_key, _ = cert(ca_key, ca_cert, address, address)
+    farm_pem, farm_key, new_fp = cert(ca_key, ca_cert, 'qwenomatic-farm')
+    policy['farms']['farm']['certificates'] = [new_fp]
+    broker['policy'] = policy
+    # The broker must be stopped. Each run writes a complete new chain, so a
+    # failed partial replacement can be retried without changing audit keys.
+    write(private / 'ca.pem', ca_pem)
+    write(private / 'broker.pem', broker_pem)
+    write(private / 'broker.key', broker_key, 0o440, broker_user)
+    write(private / 'farm.pem', farm_pem)
+    write(private / 'farm.key', farm_key, 0o440, farm_user)
+    json_write(policy_path, policy)
+    json_write(broker_path, broker)
+    print('Replaced TLS certificates and updated client fingerprint; audit key, manifest and ledger were preserved. Restart the broker.')
+
+
+def make_ca():
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Qwenomatic local CA')])
+    now = datetime.now(timezone.utc)
+    ca_cert = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name)
+               .public_key(ca_key.public_key()).serial_number(x509.random_serial_number())
+               .not_valid_before(now - timedelta(minutes=5)).not_valid_after(now + timedelta(days=365))
+               .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+               .add_extension(x509.KeyUsage(digital_signature=False, content_commitment=False,
+                                            key_encipherment=False, data_encipherment=False,
+                                            key_agreement=False, key_cert_sign=True, crl_sign=True,
+                                            encipher_only=False, decipher_only=False), critical=True)
+               .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
+               .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
+               .sign(ca_key, hashes.SHA256()))
+    return ca_cert.public_bytes(serialization.Encoding.PEM), ca_key, ca_cert
+
+
 def cert(ca_key, ca_cert, name: str, ip: str | None = None):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)])
@@ -74,7 +139,14 @@ def cert(ca_key, ca_cert, name: str, ip: str | None = None):
     names = [x509.DNSName(name)]
     if ip:
         names.append(x509.IPAddress(ipaddress.ip_address(ip)))
-    builder = builder.add_extension(x509.SubjectAlternativeName(names), critical=False)
+    builder = (builder.add_extension(x509.SubjectAlternativeName(names), critical=False)
+               .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+               .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False,
+                                            key_encipherment=True, data_encipherment=False,
+                                            key_agreement=False, key_cert_sign=False, crl_sign=False,
+                                            encipher_only=False, decipher_only=False), critical=True)
+               .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+               .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False))
     value = builder.sign(ca_key, hashes.SHA256())
     pem = value.public_bytes(serialization.Encoding.PEM)
     private = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
@@ -90,14 +162,20 @@ def main():
     p.add_argument("--ollama-host", help="Windows host address visible from WSL")
     p.add_argument("--ollama-model", default="qwen3:14b")
     p.add_argument("--update-timeouts", action="store_true", help="upgrade an existing installation without rotating keys")
+    p.add_argument("--repair-tls", action="store_true", help="repair Python 3.14 TLS certificates without replacing audit keys or ledger")
     p.add_argument("--farm-user", default="qwenomatic")
     p.add_argument("--broker-user", default="qbroker")
     a = p.parse_args()
     if os.geteuid() != 0:
         raise SystemExit("run this provisioning command with sudo")
     root, repo = Path(a.root), Path(a.repo)
+    if a.update_timeouts and a.repair_tls:
+        p.error('choose one repair operation at a time')
     if a.update_timeouts:
         update_timeouts(root)
+        return
+    if a.repair_tls:
+        repair_tls(root, a.farm_user, a.broker_user)
         return
     if not a.ollama_host:
         p.error('--ollama-host is required for initial provisioning')
@@ -123,15 +201,7 @@ def main():
     broker_gid = pwd.getpwnam(a.broker_user).pw_gid
     os.chown(state, broker_uid, broker_gid)
 
-    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Qwenomatic local CA")])
-    now = datetime.now(timezone.utc)
-    ca_cert = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name)
-               .public_key(ca_key.public_key()).serial_number(x509.random_serial_number())
-               .not_valid_before(now - timedelta(minutes=5)).not_valid_after(now + timedelta(days=365))
-               .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-               .sign(ca_key, hashes.SHA256()))
-    ca_pem = ca_cert.public_bytes(serialization.Encoding.PEM)
+    ca_pem, ca_key, ca_cert = make_ca()
     write(private / "ca.pem", ca_pem, 0o444)
     broker_pem, broker_key, _ = cert(ca_key, ca_cert, "10.204.1.2", "10.204.1.2")
     client_pem, client_key, client_fp = cert(ca_key, ca_cert, "qwenomatic-farm")
