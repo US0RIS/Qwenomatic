@@ -84,7 +84,7 @@ const views = {
     const o = await api("/api/overview");
     const tiles = [
       ["Generation", o.generation], ["Time remaining (h)", num(o.time_remaining_hours, 1)],
-      ["Population", o.population], ["Queue depth", o.queue_depth],
+      ["Population", o.population], ["Business / R&D / Red team", `${o.role_counts.business || 0} / ${o.role_counts.research || 0} / ${o.role_counts.red_team || 0}`], ["Queue depth", o.queue_depth],
       ["GPU utilization", o.gpu_utilization == null ? "—" : (o.gpu_utilization * 100).toFixed(1) + "%"],
       ["External spend", money(o.external_spend)], ["Unrealized (pending)", money(o.unrealized)],
       ["Inference tokens", num(o.inference_tokens, 0)], ["GPU seconds", num(o.gpu_seconds, 0)],
@@ -112,6 +112,7 @@ const views = {
     return table(rows, [
       {label: "Agent", fmt: (r) => `<span class="mono">${short(r.agent_id)}</span>`},
       {label: "Lineage", fmt: (r) => `<span class="mono">${short(r.lineage_id)}</span>`},
+      {label: "Role", fmt: (r) => `${esc(r.role)}${r.role_slot == null ? '' : ` ${r.role_slot + 1}`}`},
       {label: "Status", fmt: (r) => `${esc(r.status)}${r.status_reason ? ` <span class="note">${esc(r.status_reason)}</span>` : ""}`},
       {label: "Cohort", key: "cohort"},
       {label: "Segment", key: "segment"}, {label: "Price", num: 1, fmt: (r) => money(r.price)},
@@ -121,6 +122,7 @@ const views = {
       {label: "Steps", num: 1, key: "steps"}, {label: "Opps", num: 1, key: "opportunities"},
       {label: "Conv", num: 1, key: "conversions"}, {label: "GPU s", num: 1, fmt: (r) => num(r.gpu_seconds, 0)},
       {label: "Age", num: 1, key: "age"},
+      {label: "Specialist evidence", fmt: (r) => r.role === 'research' ? r.research_results.map(x => esc(x.status)).join(', ') : r.role === 'red_team' ? `${r.red_team_cases} sandbox cases` : '—'},
       {label: "Latest mutation", fmt: (r) => r.latest_mutation ? `<span class="mono">${esc(r.latest_mutation.type)}: ${esc(JSON.stringify(r.latest_mutation.before))} → ${esc(JSON.stringify(r.latest_mutation.after))}</span>` : "—"},
     ]);
   },

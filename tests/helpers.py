@@ -20,7 +20,10 @@ FAST = {
 
 def make_config(tmp_path: Path, overrides: dict[str, Any] | None = None, *, fast: bool = True,
                 segments: list[str] | None = None) -> FarmConfig:
-    merged = deep_merge(FAST, overrides or {}) if fast else (overrides or {})
+    # Existing mechanism tests intentionally use business-only populations.
+    # Role integration/acceptance tests explicitly enable the shipped split.
+    base = deep_merge(FAST if fast else {}, {'farm': {'roles': {'enabled': False}}})
+    merged = deep_merge(base, overrides or {})
     cfg = FarmConfig.load(data_dir=tmp_path / "farm", overrides=merged)
     if segments is not None:
         econ, market = cfg.farm["economy"]["segments"], cfg.farm["simulation"]["market"]["segments"]

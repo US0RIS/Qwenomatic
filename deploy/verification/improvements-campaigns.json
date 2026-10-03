@@ -1,0 +1,4745 @@
+{
+  "scope": "Unit-boundary paired simulation verification; no kernel, real model, or real revenue attestation",
+  "base_commit": "a1e65ba25d3f3148b353405f444aebe13f167a33",
+  "tests": "........................................................................ [ 32%]\n........................................................................ [ 64%]\n........................................................................ [ 97%]\n......                                                                   [100%]\n222 passed in 96.52s (0:01:36)",
+  "features": [
+    {
+      "feature": "knowledge",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "knowledge/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 241034,
+                    "gpu_seconds": 536.8114,
+                    "gross_revenue": 196.47,
+                    "net_realized": 0.7529020000000055,
+                    "external_spend": 174.8,
+                    "conversions": 9,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1037.672,
+                  "net_realized": 217.705113,
+                  "net_per_call": 0.566940398,
+                  "profit_per_gpu_hour": 755.285299
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 536.8114,
+                  "net_realized": 0.752902,
+                  "net_per_call": 0.003921365,
+                  "profit_per_gpu_hour": 5.049161
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.172947,
+                    "external_spend": 307.0,
+                    "gross_revenue": 563.86,
+                    "fees": 26.55194,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 333.724887,
+                    "net_realized_profit": 217.705113,
+                    "unrealized": 63.24
+                  },
+                  "projection_gross": 563.86,
+                  "projection_net": 217.705113,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "knowledge/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 7.159933000000024,
+          "delta_profit_per_gpu_hour": 20.585736999999995
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "knowledge/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "knowledge/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 241247,
+                    "gpu_seconds": 520.8358,
+                    "gross_revenue": 226.45,
+                    "net_realized": 51.596135,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1030.0318,
+                  "net_realized": 116.395002,
+                  "net_per_call": 0.303111984,
+                  "profit_per_gpu_hour": 406.804923
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 520.8358,
+                  "net_realized": 51.596135,
+                  "net_per_call": 0.26872987,
+                  "profit_per_gpu_hour": 356.630796
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.171678,
+                    "external_spend": 299.8,
+                    "gross_revenue": 459.08,
+                    "fees": 22.01332,
+                    "refunds": 20.7,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 321.984998,
+                    "net_realized_profit": 116.395002,
+                    "unrealized": 110.45
+                  },
+                  "projection_gross": 459.08,
+                  "projection_net": 116.395002,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -1.0341059999999942,
+          "delta_profit_per_gpu_hour": -6.226038000000017
+        }
+      ],
+      "mean_delta_net": 3.0629135000000147,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "archive",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "archive/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "archive/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "archive/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "archive/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "self_tuning",
+      "changes": {
+        "scheduler.exploration_share": 0.4
+      },
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "self_tuning/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "self_tuning/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "self_tuning/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "self_tuning/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "crossover",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "crossover/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204468,
+                    "gpu_seconds": 531.1614000000001,
+                    "gross_revenue": 187.44,
+                    "net_realized": -5.414293000000018,
+                    "external_spend": 171.9,
+                    "conversions": 10,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1032.022,
+                  "net_realized": 211.537918,
+                  "net_per_call": 0.550879995,
+                  "profit_per_gpu_hour": 737.907239
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 531.1614,
+                  "net_realized": -5.414293,
+                  "net_per_call": -0.028199443,
+                  "profit_per_gpu_hour": -36.695917
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.172012,
+                    "external_spend": 304.1,
+                    "gross_revenue": 554.83,
+                    "fees": 26.59007,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 330.862082,
+                    "net_realized_profit": 211.537918,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 554.83,
+                  "projection_net": 211.537918,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "crossover/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.9927380000000028,
+          "delta_profit_per_gpu_hour": 3.2076769999999897
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "crossover/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "crossover/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 209076,
+                    "gpu_seconds": 515.1342,
+                    "gross_revenue": 169.17000000000002,
+                    "net_realized": 17.078205999999998,
+                    "external_spend": 144.1,
+                    "conversions": 10,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1024.3302,
+                  "net_realized": 81.877073,
+                  "net_per_call": 0.213221544,
+                  "profit_per_gpu_hour": 287.756295
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 515.1342,
+                  "net_realized": 17.078206,
+                  "net_per_call": 0.08894899,
+                  "profit_per_gpu_hour": 119.350534
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170727,
+                    "external_spend": 300.9,
+                    "gross_revenue": 401.8,
+                    "fees": 18.8522,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 319.922927,
+                    "refunds": 0.0,
+                    "net_realized_profit": 81.877073,
+                    "unrealized": 60.85
+                  },
+                  "projection_gross": 401.8,
+                  "projection_net": 81.877073,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -35.552035000000004,
+          "delta_profit_per_gpu_hour": -125.27466599999997
+        }
+      ],
+      "mean_delta_net": -17.2796485,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "small_model",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "small_model/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {
+                "primary": 384
+              },
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "small_model/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "small_model/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "small_model/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {
+                "primary": 384
+              },
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "autopilot",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "autopilot/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {
+                "primary": 384
+              },
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "autopilot/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "autopilot/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "autopilot/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {
+                "primary": 384
+              },
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "crowding",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "crowding/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 203933,
+                    "gpu_seconds": 527.9062,
+                    "gross_revenue": 155.20999999999998,
+                    "net_realized": -52.30907600000001,
+                    "external_spend": 188.1,
+                    "conversions": 8,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1028.7668,
+                  "net_realized": 164.643135,
+                  "net_per_call": 0.428758164,
+                  "profit_per_gpu_hour": 576.141538
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 527.9062,
+                  "net_realized": -52.309076,
+                  "net_per_call": -0.272443104,
+                  "profit_per_gpu_hour": -356.716162
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.171465,
+                    "external_spend": 320.3,
+                    "gross_revenue": 522.6,
+                    "fees": 25.0554,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 345.526865,
+                    "net_realized_profit": 164.643135,
+                    "unrealized": -69.57
+                  },
+                  "projection_gross": 522.6,
+                  "projection_net": 164.643135,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "crowding/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -45.90204499999999,
+          "delta_profit_per_gpu_hour": -158.55802400000005
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "crowding/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "crowding/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 209032,
+                    "gpu_seconds": 515.165,
+                    "gross_revenue": 228.07,
+                    "net_realized": 54.430099999999996,
+                    "external_spend": 141.2,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1024.361,
+                  "net_realized": 119.228967,
+                  "net_per_call": 0.310492102,
+                  "profit_per_gpu_hour": 419.016617
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 515.165,
+                  "net_realized": 54.4301,
+                  "net_per_call": 0.283490104,
+                  "profit_per_gpu_hour": 380.360389
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170733,
+                    "external_spend": 298.0,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 320.231033,
+                    "net_realized_profit": 119.228967,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 119.228967,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 1.7998589999999979,
+          "delta_profit_per_gpu_hour": 5.985656000000006
+        }
+      ],
+      "mean_delta_net": -22.051092999999995,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "predictions",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "predictions/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 182247,
+                    "gpu_seconds": 512.1444,
+                    "gross_revenue": 470.43,
+                    "net_realized": 316.602175,
+                    "external_spend": 132.6,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 205880,
+                    "gpu_seconds": 547.462,
+                    "gross_revenue": 383.35999999999996,
+                    "net_realized": 185.421309,
+                    "external_spend": 176.7,
+                    "conversions": 14,
+                    "retired": 4,
+                    "offspring": 4,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1059.6064,
+                  "net_realized": 502.023484,
+                  "net_per_call": 1.307352823,
+                  "profit_per_gpu_hour": 1705.618749
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 547.462,
+                  "net_realized": 185.421309,
+                  "net_per_call": 0.965735984,
+                  "profit_per_gpu_hour": 1219.293234
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.176606,
+                    "external_spend": 309.3,
+                    "gross_revenue": 853.79,
+                    "fees": 36.45991,
+                    "refunds": 5.83,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 345.936516,
+                    "net_realized_profit": 502.023484,
+                    "unrealized": -58.73
+                  },
+                  "projection_gross": 853.79,
+                  "projection_net": 502.023484,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 196,
+                "mean_brier": 0.12233205441983908,
+                "trust": {
+                  "18f6d073-1543-582b-97f8-2b667f7f7e4e": {
+                    "samples": 16,
+                    "accuracy_trust": 0.9628398476726581
+                  },
+                  "39c266b0-27f0-5b6a-b824-b3dd94718f0f": {
+                    "samples": 12,
+                    "accuracy_trust": 0.9200389737720983
+                  },
+                  "fe637a89-2895-5d42-a435-dbf9a7671941": {
+                    "samples": 20,
+                    "accuracy_trust": 0.8585038625904011
+                  },
+                  "400759c3-f84e-5c9a-b89d-fc84ef6c729c": {
+                    "samples": 17,
+                    "accuracy_trust": 0.9202778744633948
+                  },
+                  "a906c4fb-6f06-511b-af5d-d615f7182430": {
+                    "samples": 4,
+                    "accuracy_trust": 0.9906113534333232
+                  },
+                  "96770cdf-7f29-556b-b3f6-24b8027ff0e5": {
+                    "samples": 15,
+                    "accuracy_trust": 0.821646942800789
+                  },
+                  "8807886f-c0a0-5b2e-8688-63ad469e8751": {
+                    "samples": 13,
+                    "accuracy_trust": 0.9911532409326762
+                  },
+                  "93ac6bb5-d6e2-58c2-93d4-8b1c79b5b5c9": {
+                    "samples": 5,
+                    "accuracy_trust": 0.7650555555555555
+                  },
+                  "1ff65051-98dc-59af-a712-faf5952129eb": {
+                    "samples": 6,
+                    "accuracy_trust": 0.9901505423283298
+                  },
+                  "34e8a3fc-9c7a-565e-8d1b-11c3862b6143": {
+                    "samples": 4,
+                    "accuracy_trust": 0.9884412145444342
+                  }
+                },
+                "next_generation_pairs": [
+                  {
+                    "agent_id": "24327b4f-fe3d-5f35-87d5-daeec0092d20",
+                    "generation": 0,
+                    "mean_brier": 0.1963780980851032,
+                    "next_generation_net_per_step": 1.155414
+                  },
+                  {
+                    "agent_id": "39c266b0-27f0-5b6a-b824-b3dd94718f0f",
+                    "generation": 0,
+                    "mean_brier": 0.08529950869236584,
+                    "next_generation_net_per_step": 1.3074236666666668
+                  },
+                  {
+                    "agent_id": "400759c3-f84e-5c9a-b89d-fc84ef6c729c",
+                    "generation": 0,
+                    "mean_brier": 0.23742625466164427,
+                    "next_generation_net_per_step": 0.738313588235294
+                  },
+                  {
+                    "agent_id": "86291017-ed7d-588a-88b8-f886333106b9",
+                    "generation": 0,
+                    "mean_brier": 0.17613386558327035,
+                    "next_generation_net_per_step": -0.80042
+                  },
+                  {
+                    "agent_id": "8807886f-c0a0-5b2e-8688-63ad469e8751",
+                    "generation": 0,
+                    "mean_brier": 0.09827777777777777,
+                    "next_generation_net_per_step": -2.000469153846154
+                  },
+                  {
+                    "agent_id": "a906c4fb-6f06-511b-af5d-d615f7182430",
+                    "generation": 0,
+                    "mean_brier": 0.07534600745059929,
+                    "next_generation_net_per_step": -0.30052775
+                  },
+                  {
+                    "agent_id": "d3bfb3eb-3334-5c7c-b378-e9556f243cb8",
+                    "generation": 0,
+                    "mean_brier": 0.2643876385102381,
+                    "next_generation_net_per_step": -1.6332911428571428
+                  }
+                ],
+                "brier_next_profit_correlation": -0.04922364165532605,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "predictions/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 291.478304,
+          "delta_profit_per_gpu_hour": 970.919187
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "predictions/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "predictions/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184860,
+                    "gpu_seconds": 521.1216,
+                    "gross_revenue": 203.04000000000002,
+                    "net_realized": 36.164984000000004,
+                    "external_spend": 157.0,
+                    "conversions": 13,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208285,
+                    "gpu_seconds": 533.4098,
+                    "gross_revenue": 244.35,
+                    "net_realized": 74.67494,
+                    "external_spend": 144.2,
+                    "conversions": 18,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1054.5314,
+                  "net_realized": 110.839924,
+                  "net_per_call": 0.288645635,
+                  "profit_per_gpu_hour": 378.389611
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 533.4098,
+                  "net_realized": 74.67494,
+                  "net_per_call": 0.388931979,
+                  "profit_per_gpu_hour": 503.983586
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.175766,
+                    "external_spend": 301.2,
+                    "gross_revenue": 447.39,
+                    "fees": 22.27431,
+                    "refunds": 12.9,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 323.650076,
+                    "net_realized_profit": 110.839924,
+                    "unrealized": -2.09
+                  },
+                  "projection_gross": 447.39,
+                  "projection_net": 110.839924,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 206,
+                "mean_brier": 0.12589486184619916,
+                "trust": {
+                  "6b8c9ce1-6f00-5d47-93bb-0fa994e35da4": {
+                    "samples": 14,
+                    "accuracy_trust": 0.8911848235111877
+                  },
+                  "7e4560c8-0237-5376-ab09-329c184f9d05": {
+                    "samples": 14,
+                    "accuracy_trust": 0.9937893303277918
+                  },
+                  "45139e42-1f0f-56f3-87c2-e0b5e6728865": {
+                    "samples": 6,
+                    "accuracy_trust": 0.8382642998027613
+                  },
+                  "73d4924d-c65d-5084-9307-ada6cd2b9feb": {
+                    "samples": 14,
+                    "accuracy_trust": 0.91932880154034
+                  },
+                  "c7f352a4-2763-534c-83d4-c6e60a3dd620": {
+                    "samples": 6,
+                    "accuracy_trust": 0.9877353750779977
+                  },
+                  "7093afd6-0573-52e7-b20c-b04e30035c9f": {
+                    "samples": 5,
+                    "accuracy_trust": 0.9937339702699343
+                  },
+                  "41ddee72-0cf4-5f80-b645-297596625afd": {
+                    "samples": 12,
+                    "accuracy_trust": 0.9934011640213077
+                  },
+                  "c85b1592-37a0-5472-a862-65b5ee95dc1f": {
+                    "samples": 4,
+                    "accuracy_trust": 0.9930555555555556
+                  },
+                  "9a588aef-6872-5aa6-8d89-80b06cad5603": {
+                    "samples": 18,
+                    "accuracy_trust": 0.7391831538194782
+                  },
+                  "df5f3656-a917-582b-90c6-520cc9395119": {
+                    "samples": 10,
+                    "accuracy_trust": 0.7872154698656322
+                  }
+                },
+                "next_generation_pairs": [
+                  {
+                    "agent_id": "0085d0a1-2660-5b71-bec2-500a8259c8ce",
+                    "generation": 0,
+                    "mean_brier": 0.08529950869236584,
+                    "next_generation_net_per_step": -2.0004359999999997
+                  },
+                  {
+                    "agent_id": "7093afd6-0573-52e7-b20c-b04e30035c9f",
+                    "generation": 0,
+                    "mean_brier": 0.061085303462948964,
+                    "next_generation_net_per_step": -0.8004218
+                  },
+                  {
+                    "agent_id": "7e4560c8-0237-5376-ab09-329c184f9d05",
+                    "generation": 0,
+                    "mean_brier": 0.18234461446041536,
+                    "next_generation_net_per_step": -0.5005170714285715
+                  },
+                  {
+                    "agent_id": "7f1c8a2c-780d-52c0-bdc9-8d12b9d11c8d",
+                    "generation": 0,
+                    "mean_brier": 0.12300626606140537,
+                    "next_generation_net_per_step": 0.34519399999999995
+                  },
+                  {
+                    "agent_id": "9225f0bb-bf56-5d30-a460-e0289055d06e",
+                    "generation": 0,
+                    "mean_brier": 0.12814036095511566,
+                    "next_generation_net_per_step": -2.00043975
+                  },
+                  {
+                    "agent_id": "9dbdfd9c-27dc-54f8-a239-2ddead6058b0",
+                    "generation": 0,
+                    "mean_brier": 0.23554358276413997,
+                    "next_generation_net_per_step": -0.6404578999999999
+                  },
+                  {
+                    "agent_id": "c7f352a4-2763-534c-83d4-c6e60a3dd620",
+                    "generation": 0,
+                    "mean_brier": 0.09827777777777777,
+                    "next_generation_net_per_step": -2.0004275000000002
+                  },
+                  {
+                    "agent_id": "ee26f83d-39f9-5adb-8f14-abf6fa279452",
+                    "generation": 0,
+                    "mean_brier": 0.28539698016237103,
+                    "next_generation_net_per_step": -0.03607442105263147
+                  }
+                ],
+                "brier_next_profit_correlation": 0.5112512598193139,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -6.589184000000003,
+          "delta_profit_per_gpu_hour": -34.64134999999999
+        }
+      ],
+      "mean_delta_net": 142.44456,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "adaptation",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "adaptation/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181506,
+                    "gpu_seconds": 500.6904,
+                    "gross_revenue": 346.9,
+                    "net_realized": 197.156449,
+                    "external_spend": 133.0,
+                    "conversions": 22,
+                    "retired": 7,
+                    "offspring": 5,
+                    "immigrants": 2
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 203226,
+                    "gpu_seconds": 527.5272,
+                    "gross_revenue": 0.0,
+                    "net_realized": -180.317925,
+                    "external_spend": 167.8,
+                    "conversions": 0,
+                    "retired": 6,
+                    "offspring": 4,
+                    "immigrants": 2
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1028.2176,
+                  "net_realized": 16.838524,
+                  "net_per_call": 0.043850323,
+                  "profit_per_gpu_hour": 58.955115
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 527.5272,
+                  "net_realized": -180.317925,
+                  "net_per_call": -0.939155859,
+                  "profit_per_gpu_hour": -1230.542292
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.171376,
+                    "external_spend": 300.8,
+                    "gross_revenue": 346.9,
+                    "fees": 16.6601,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 317.631476,
+                    "net_realized_profit": 16.838524,
+                    "unrealized": -64.12
+                  },
+                  "projection_gross": 346.9,
+                  "projection_net": 16.838524,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 3,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "adaptation/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 203712,
+                    "gpu_seconds": 526.3176000000001,
+                    "gross_revenue": 10.82,
+                    "net_realized": -181.611505,
+                    "external_spend": 179.3,
+                    "conversions": 1,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1027.1782,
+                  "net_realized": 35.340706,
+                  "net_per_call": 0.092033089,
+                  "profit_per_gpu_hour": 123.860243
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 526.3176,
+                  "net_realized": -181.611505,
+                  "net_per_call": -0.945893255,
+                  "profit_per_gpu_hour": -1242.218421
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.171204,
+                    "external_spend": 311.5,
+                    "gross_revenue": 378.21,
+                    "fees": 18.76809,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 330.439294,
+                    "net_realized_profit": 35.340706,
+                    "unrealized": 0.85
+                  },
+                  "projection_gross": 378.21,
+                  "projection_net": 35.340706,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -18.502181999999998,
+          "delta_profit_per_gpu_hour": -64.90512799999999
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "adaptation/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208734,
+                    "gpu_seconds": 513.6006,
+                    "gross_revenue": 5.65,
+                    "net_realized": -141.399459,
+                    "external_spend": 146.5,
+                    "conversions": 1,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1022.7966,
+                  "net_realized": -76.600592,
+                  "net_per_call": -0.199480708,
+                  "profit_per_gpu_hour": -269.615807
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 513.6006,
+                  "net_realized": -141.399459,
+                  "net_per_call": -0.736455516,
+                  "profit_per_gpu_hour": -991.116545
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170472,
+                    "external_spend": 303.3,
+                    "gross_revenue": 238.28,
+                    "fees": 11.41012,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 314.880592,
+                    "refunds": 0.0,
+                    "net_realized_profit": -76.600592,
+                    "unrealized": 9.38
+                  },
+                  "projection_gross": 238.28,
+                  "projection_net": -76.600592,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "adaptation/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208139,
+                    "gpu_seconds": 510.472,
+                    "gross_revenue": 0.0,
+                    "net_realized": -152.185087,
+                    "external_spend": 152.1,
+                    "conversions": 0,
+                    "retired": 5,
+                    "offspring": 3,
+                    "immigrants": 2
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1019.668,
+                  "net_realized": -87.38622,
+                  "net_per_call": -0.227568281,
+                  "profit_per_gpu_hour": -308.522374
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 510.472,
+                  "net_realized": -152.185087,
+                  "net_per_call": -0.792630661,
+                  "profit_per_gpu_hour": -1073.254387
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.16995,
+                    "external_spend": 308.9,
+                    "gross_revenue": 232.63,
+                    "fees": 10.94627,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 320.01622,
+                    "refunds": 0.0,
+                    "net_realized_profit": -87.38622,
+                    "unrealized": 9.38
+                  },
+                  "projection_gross": 232.63,
+                  "projection_net": -87.38622,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 2,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": -10.785627999999988,
+          "delta_profit_per_gpu_hour": -38.906566999999995
+        }
+      ],
+      "mean_delta_net": -14.643904999999993,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "red_team",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "red_team/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "red_team/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "red_team/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "red_team/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    },
+    {
+      "feature": "fraud",
+      "changes": null,
+      "seeds": [
+        101,
+        202
+      ],
+      "generations": 2,
+      "baseline_hash": "7eae0706fe573661fcf178a206fa074138cc45a9936eff8f8bb8c3a2c166a527",
+      "status": "simulation_verified",
+      "promoted": false,
+      "pairs": [
+        {
+          "seed": 101,
+          "order": [
+            "treatment",
+            "control"
+          ],
+          "arms": {
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "fraud/seed-101/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "fraud/seed-101/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 181862,
+                    "gpu_seconds": 500.8606,
+                    "gross_revenue": 367.39,
+                    "net_realized": 216.952211,
+                    "external_spend": 132.2,
+                    "conversions": 25,
+                    "retired": 7,
+                    "offspring": 6,
+                    "immigrants": 1
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 204853,
+                    "gpu_seconds": 530.8028,
+                    "gross_revenue": 190.64,
+                    "net_realized": -6.407031000000015,
+                    "external_spend": 175.7,
+                    "conversions": 11,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1031.6634,
+                  "net_realized": 210.54518,
+                  "net_per_call": 0.54829474,
+                  "profit_per_gpu_hour": 734.699562
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 530.8028,
+                  "net_realized": -6.407031,
+                  "net_per_call": -0.033369953,
+                  "profit_per_gpu_hour": -43.453636
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.17195,
+                    "external_spend": 307.9,
+                    "gross_revenue": 558.03,
+                    "fees": 26.98287,
+                    "refunds": 12.43,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 335.05482,
+                    "net_realized_profit": 210.54518,
+                    "unrealized": -7.02
+                  },
+                  "projection_gross": 558.03,
+                  "projection_net": 210.54518,
+                  "trial_balance_sum": -0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        },
+        {
+          "seed": 202,
+          "order": [
+            "control",
+            "treatment"
+          ],
+          "arms": {
+            "control": {
+              "summary": {
+                "arm": "control",
+                "data_dir": "fraud/seed-202/control",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            },
+            "treatment": {
+              "summary": {
+                "arm": "treatment",
+                "data_dir": "fraud/seed-202/treatment",
+                "generations": [
+                  {
+                    "generation": 0,
+                    "steps": 192,
+                    "tokens": 184236,
+                    "gpu_seconds": 509.19599999999997,
+                    "gross_revenue": 232.63000000000002,
+                    "net_realized": 64.79886700000002,
+                    "external_spend": 156.8,
+                    "conversions": 14,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  },
+                  {
+                    "generation": 1,
+                    "steps": 192,
+                    "tokens": 208977,
+                    "gpu_seconds": 514.3224,
+                    "gross_revenue": 228.07,
+                    "net_realized": 52.630241,
+                    "external_spend": 143.0,
+                    "conversions": 15,
+                    "retired": 5,
+                    "offspring": 5,
+                    "immigrants": 0
+                  }
+                ],
+                "total": {
+                  "steps": 384,
+                  "gpu_seconds": 1023.5184,
+                  "net_realized": 117.429108,
+                  "net_per_call": 0.305804969,
+                  "profit_per_gpu_hour": 413.030961
+                },
+                "post_baseline": {
+                  "generations": [
+                    1
+                  ],
+                  "steps": 192,
+                  "gpu_seconds": 514.3224,
+                  "net_realized": 52.630241,
+                  "net_per_call": 0.274115839,
+                  "profit_per_gpu_hour": 368.385409
+                }
+              },
+              "audit": {
+                "hash_chain": {
+                  "ok": true,
+                  "first_bad_seq": null
+                },
+                "accounting": {
+                  "ok": true,
+                  "pnl": {
+                    "compute_imputed": 0.170592,
+                    "external_spend": 299.8,
+                    "gross_revenue": 460.7,
+                    "fees": 22.0603,
+                    "refunds": 21.24,
+                    "api_cloud": 0.0,
+                    "other_variable": 0.0,
+                    "total_costs": 322.030892,
+                    "net_realized_profit": 117.429108,
+                    "unrealized": 109.01
+                  },
+                  "projection_gross": 460.7,
+                  "projection_net": 117.429108,
+                  "trial_balance_sum": 0.0
+                },
+                "selection_replay": {
+                  "0": true,
+                  "1": true
+                },
+                "generations_started_once": true
+              },
+              "predictions": {
+                "scored_offers": 0,
+                "mean_brier": null,
+                "trust": {},
+                "next_generation_pairs": [],
+                "brier_next_profit_correlation": null,
+                "trust_effect": "observational evidence only; never authority or revenue"
+              },
+              "archive_returns": 0,
+              "routing": {},
+              "shifts": 0,
+              "anomaly_flags": 0,
+              "red_team_confirmed": 0,
+              "violations": 0
+            }
+          },
+          "delta_net": 0.0,
+          "delta_profit_per_gpu_hour": 0.0
+        }
+      ],
+      "mean_delta_net": 0.0,
+      "limits": "Simulation mechanism verification only. GPU time is emulated; no real revenue or promotion."
+    }
+  ]
+}

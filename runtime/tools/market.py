@@ -12,6 +12,8 @@ from supervisor.accounting.adapters import (
     AdSpendMeter, Attribution, MarketObserver, PaymentProcessorAdapter,
 )
 
+from storage.events import EventType, digest
+
 from .base import ToolAdapter, ToolContext, ToolError
 from .sim_market import SimulatedMarket
 
@@ -78,6 +80,14 @@ class MarketOfferTool(ToolAdapter):
         self.ads.charge(attr, self.spend(args), ctx.invocation_id)
         self.observer.opportunity(attr, ctx.invocation_id, {"segment": segment, "price": round(price, 2)})
         outcome = self.market.resolve_offer(ctx.invocation_id, segment, price, ctx.now, args.get("tactic"))
+        self.observer.store.append(
+            EventType.OFFER_OBSERVED,
+            {'opportunity_id': ctx.invocation_id, 'step_id': ctx.step_id, 'tick': ctx.tick,
+             'segment': segment, 'price': outcome.price, 'converted': outcome.converted,
+             'tactic': args.get('tactic', 'standard')}, author=self.observer.author,
+            agent_id=ctx.agent_id, lineage_id=ctx.lineage_id, generation_id=ctx.generation_id,
+            idempotency_key='offer-observed:' + ctx.invocation_id,
+            event_id='offer-observed-' + digest(ctx.invocation_id)[:32])
         if outcome.converted:
             self.payments.on_sale(attr, outcome)
         return {

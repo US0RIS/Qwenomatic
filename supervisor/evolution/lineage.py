@@ -29,9 +29,11 @@ def lineage_tree(state: FarmState) -> dict[str, Any]:
                 break
         nodes.append({
             "id": a.id, "parent_id": a.parent_id, "lineage_id": a.lineage_id, "origin": a.origin,
+            "role": a.role, "role_slot": a.role_slot,
             "generation_born": a.generation_born, "retired_generation": a.retired_generation,
             "status": a.status, "status_reason": a.status_reason, "mutations": a.mutations,
-            "segment": a.genotype["target"]["segment"], "price": a.genotype["pricing_parameters"]["price"],
+            "segment": a.genotype["target"]["segment"] if a.role == 'business' else a.role,
+            "price": a.genotype["pricing_parameters"]["price"] if a.role == 'business' else None,
             "fitness": latest.get("fitness"), "net_realized": latest.get("net_realized"),
         })
     edges = [{"from": n["parent_id"], "to": n["id"]} for n in nodes if n["parent_id"]]

@@ -53,11 +53,23 @@ class SimulatedBackend(InferenceBackend):
         g = meta.get("genotype", {})
         if rng.random() < self.malformed_rate * (0.5 + temperature):
             return "I think the best plan is to {offer, maybe at a higher price"  # malformed on purpose
+        if meta.get('role') == 'research':
+            candidates = {'scheduler.exploration_share': .4, 'evolution.retire_fraction': .25,
+                          'mutation.price.sigma': .1, 'improvements.fraud.reserve_fraction': .3}
+            key = meta['scope'][int(meta.get('step_index', 0)) % len(meta['scope'])]
+            return json.dumps({'changes': {key: candidates[key]}, 'rationale': 'Test a bounded alternative in paired simulations.'})
+        if meta.get('role') == 'red_team':
+            return json.dumps({'cases': [{'name': 'generated-destination', 'tool': 'market.offer',
+                                         'args': {'segment': 'local-services', 'price': 10, 'url': 'https://example.com'}}]})
         prompt = g.get("strategy_prompt", "").lower()
         planning = g.get("planning_parameters", {})
         step = int(meta.get("step_index", 0))
         segment = g.get("target", {}).get("segment")
         price = float(g.get("pricing_parameters", {}).get("price", 10.0))
+        facts = meta.get('knowledge', [])
+        matching = [f for f in facts if f['segment'] == segment]
+        if matching:
+            price = .8 * price + .2 * matching[0]['mean_price']
         tools = set(g.get("tool_preferences", []))
         survey_every = max(1, int(planning.get("survey_every", 5)))
         workflow = g.get("workflow", "offer_first")
@@ -112,6 +124,12 @@ class SimulatedBackend(InferenceBackend):
             "actions": actions,
             "memory": f"last price {price}",
         }
+        if meta.get('forecasts_requested'):
+            recent = [m for m in memory if m.get('tool') == 'market.offer' and m.get('status') == 'ok']
+            forecast = (1 + sum(m.get('result', {}).get('converted', False) for m in recent)) / (2 + len(recent))
+            for action in actions:
+                if action['tool'] == 'market.offer':
+                    action['prediction'] = forecast
         if claims:
             out["claims"] = claims
         return json.dumps(out)

@@ -104,6 +104,8 @@ class AgentView:
     last_scheduled_tick: int | None = None
     burst: int = 0
     mutations: list[dict[str, Any]] = field(default_factory=list)
+    role: str = "business"
+    role_slot: int | None = None
 
     @property
     def active(self) -> bool:
@@ -152,6 +154,7 @@ class FarmState:
         self.policy_decisions: dict[str, int] = defaultdict(int)
         self.violations_total: int = 0
         self.jobs_inflight: dict[str, dict[str, Any]] = {}
+        self.role_layouts: dict[int, dict[str, Any]] = {}
 
     def replay(self, events: Iterable[Event]) -> "FarmState":
         for e in events:
@@ -197,7 +200,11 @@ class FarmState:
             generation_born=p["generation"], genotype_version=p.get("genotype_version", 1),
             genotype=p["genotype"], budgets=p.get("budgets", {}), origin=p.get("origin", "seed"),
             status=p.get("status", "queued"), mutations=p.get("mutations", []),
+            role=p.get("role", "business"), role_slot=p.get("role_slot"),
         )
+
+    def _on_role_layout_planned(self, e: Event) -> None:
+        self.role_layouts[e.generation_id] = e.payload['layout']
 
     def _on_agent_status_changed(self, e: Event) -> None:
         a = self.agents.get(e.agent_id)
@@ -278,6 +285,12 @@ class FarmState:
         c = self._c(e)
         if c:
             c.jobs_failed += 1
+            if e.payload.get('usage'):
+                u = e.payload['usage']
+                c.prompt_tokens += u['prompt_tokens']
+                c.completion_tokens += u['completion_tokens']
+                c.gpu_seconds += u['gpu_seconds']
+                self.gpu_by_tick[e.payload.get('tick', self.last_tick)] += u['gpu_seconds']
 
     def _on_inference_job_cancelled(self, e: Event) -> None:
         self.jobs_inflight.pop(e.payload["job_id"], None)
@@ -423,4 +436,3 @@ class FarmState:
     def _on_farm_resumed(self, e: Event) -> None:
         self.halted = False
         self.halt_reason = None
-

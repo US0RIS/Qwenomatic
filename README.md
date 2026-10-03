@@ -358,9 +358,9 @@ Using the status vocabulary of DESIGN §18:
 | Phase 2 — real-world economic adapter | Not implemented, by design: no external adapter is approved yet |
 | Revenue or profit of any kind | None claimed. All revenue in this repository is simulated. |
 
-"Verified in simulation" means the tests under `tests/` pass against the deterministic simulated market (`python -m pytest`, 118 tests). The §17 checklist is exercised by `tests/acceptance/test_generation_zero.py` on a farm using the shipped configuration (20 agents, 24-hour generations of 144 ticks) with one deliberately adversarial agent; interrupted-close recovery is tested after each of seven close steps in `tests/acceptance/test_restart_and_chaos.py`.
+"Verified in simulation" means the tests under `tests/` pass against the deterministic simulated market (`python -m pytest`; the current full-suite receipt is in `deploy/verification/roles-tests.txt`). The §17 checklist is exercised by `tests/acceptance/test_generation_zero.py` on a business-only reference farm (20 agents, 24-hour generations of 144 ticks); the shipped 17/2/1 split is exercised by `tests/acceptance/test_population_roles.py` with one deliberately adversarial agent; interrupted-close recovery is tested after each of seven close steps in `tests/acceptance/test_restart_and_chaos.py`.
 
-Not yet covered: container/OS isolation of population workloads (DESIGN §12) — agents currently have no tool that executes code, so the capability gateway is the whole boundary; a PostgreSQL store for multiple concurrent writers; and cloud escalation beyond the configuration switch and ceiling check.
+Protected Linux launch, kernel network checks and the independent broker are implemented; see SAFETY.md and deploy/BROKER.md for provisioning and evidence. Still unverified here: production deployment, actual Qwen throughput and real-world profit. PostgreSQL support and cloud escalation beyond its configuration switch remain future work.
 
 
 ## Evolution A/B experiment
@@ -456,3 +456,21 @@ It restarts Ollama at parallelism 1, 2, 3, and 4 with Flash Attention enabled an
 
 This is preferable to choosing the highest concurrency blindly: once the GPU is saturated, more parallel contexts can reduce per-request speed or cause memory pressure.
 
+
+## Twelve reversible farm improvements
+
+See [IMPROVEMENTS.md](IMPROVEMENTS.md) for the complete implementation map,
+feature switches, randomized campaigns, operator controls and verification
+limits. Economic treatments are opt-in; the canonical shared prompt prefix is
+always used. Agent capabilities and the existing safety startup barrier remain
+supervisor-controlled.
+
+## Default population roles
+
+The default 20-agent population now has **17 business agents, 2 R&D agents and
+1 red-team agent**. Research proposes bounded settings changes for checked
+experiments and operator review; red-team agents generate probes against a
+disposable simulated gateway. Specialists share primary inference but receive
+no live tool capabilities. Existing farms migrate at a generation boundary.
+See [ROLES.md](ROLES.md) for workloads, scheduling, approvals, migration,
+retained evidence and verification limits.

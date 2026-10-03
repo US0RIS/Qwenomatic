@@ -576,22 +576,24 @@ Moving schemas, tool definitions, instructions, or task-specific context relativ
 
 ## R01 — Permanent R&D cohort
 
-**Status:** proposed
+**Status:** implemented for bounded settings experiments and sandbox probes;
+the general software-patch/upgrade lifecycle remains proposed. See [ROLES.md](ROLES.md).
 
 Target architecture:
 
 - 17 economic agents
-- 3 R&D agents
+- 2 R&D agents
+- 1 red-team agent
 
-Suggested R&D specialties:
+Implemented specialties:
 
-1. **Architect** — planner, memory, workflow, nonprivileged tooling
-2. **Optimizer** — inference speed, caching, token efficiency, implementation efficiency
-3. **Scientist / Red Team** — experiment design, failure analysis, adversarial testing
+1. **Allocation and evolution** — bounded exploration and retirement settings
+2. **Strategy and reserves** — bounded price-mutation and reserve settings
+3. **Red Team** — model-generated probes plus the fixed adversarial corpus in disposable simulated gateways
 
 R&D agents do not earn economic fitness from self-reported improvements. Their work is evaluated by downstream verified experiments.
 
-Their outputs are inert proposals:
+Broader future outputs remain inert proposals:
 - code patches stored as text/diffs;
 - benchmark plans;
 - new tests;

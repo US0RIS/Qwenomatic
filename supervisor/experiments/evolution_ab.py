@@ -92,7 +92,7 @@ def arm_config(
 ) -> FarmConfig:
     if arm not in ("treatment", "control"):
         raise ValueError("arm must be treatment or control")
-    overrides: dict[str, Any] = {"farm": {"inference": {"backend": backend}}}
+    overrides: dict[str, Any] = {"farm": {"inference": {"backend": backend}, 'roles': {'enabled': False}}}
     if seed is not None:
         overrides["farm"]["farm"] = {"seed": int(seed)}
     if backend == "openai_compatible":

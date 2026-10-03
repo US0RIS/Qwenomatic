@@ -73,7 +73,7 @@ def check_authorship(event_type: EventType, author: str) -> None:
         if author != signed[event_type]:
             raise AuthorshipError("independent author required")
         return
-    if event_type is EventType.ACCESS_APPROVED and (not author.startswith("operator:") or not author[9:].strip()):
+    if event_type in (EventType.ACCESS_APPROVED, EventType.ANOMALY_REVIEW, EventType.TUNING_RESOLVED) and (not author.startswith("operator:") or not author[9:].strip()):
         raise AuthorshipError("access changes require an identified operator")
     if event_type in (EventType.NETWORK_BARRIER_VERIFIED, EventType.OUTBOUND_ATTEMPTED, EventType.OUTBOUND_RESULT) and author != AUTHOR_SUPERVISOR:
         raise AuthorshipError("safety dispatch events require the supervisor")
@@ -83,6 +83,18 @@ def check_authorship(event_type: EventType, author: str) -> None:
         if event_type not in AGENT_AUTHORABLE:
             raise AuthorshipError(f"agent-authored {event_type.value} events are not permitted")
         return
+    supervisor_controls = {
+        EventType.FEATURE_ASSIGNMENT, EventType.KNOWLEDGE_SNAPSHOT, EventType.RETIREMENT_REPORT,
+        EventType.ROUTING_DECISION, EventType.PREDICTION_RECORDED, EventType.PREDICTION_SCORED,
+        EventType.REGIME_OBSERVATION, EventType.MARKET_SHIFT, EventType.ANOMALY_FLAG,
+        EventType.RESERVE_UPDATED, EventType.RED_TEAM_FINDING, EventType.TUNING_PROPOSED,
+        EventType.ROLE_LAYOUT_PLANNED, EventType.RESEARCH_STARTED, EventType.RESEARCH_RESULT,
+        EventType.SPECIALIST_REJECTED, EventType.AGENT_CREATED,
+    }
+    if event_type in supervisor_controls and author != AUTHOR_SUPERVISOR:
+        raise AuthorshipError('improvement controls require the supervisor')
+    if event_type is EventType.OFFER_OBSERVED and author != 'adapter:market':
+        raise AuthorshipError('offer outcomes require the market observer')
     if event_type in ADAPTER_ONLY and not author.startswith("adapter:"):
         raise AuthorshipError(f"{event_type.value} must be authored by a trusted adapter, not {author!r}")
     if not (author == AUTHOR_SUPERVISOR or author.startswith("adapter:") or author.startswith("operator:")):
@@ -186,6 +198,7 @@ class EventStore:
         generation_id: int | None = None,
         occurred_at: str | None = None,
         idempotency_key: str | None = None,
+        event_id: str | None = None,
     ) -> Event:
         if self.read_only:
             raise EventStoreError("store opened read-only")
@@ -202,7 +215,7 @@ class EventStore:
             recorded_at = self._now()
             fields = {
                 "seq": self._head_seq + 1,
-                "event_id": self._new_id(),
+                "event_id": event_id or self._new_id(),
                 "type": type.value,
                 "author": author,
                 "agent_id": agent_id,
@@ -392,4 +405,3 @@ def _split_sql(script: str) -> list[str]:
     if buf:
         statements.append("\n".join(buf))
     return statements
-

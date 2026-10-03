@@ -14,12 +14,19 @@ import json
 import statistics
 import time
 import urllib.request
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from runtime.agent.prompts import SYSTEM_TEMPLATE
+from runtime.tools.market import MarketOfferTool, MarketSurveyTool, MemoryNoteTool
+from runtime.tools.workspace import WorkspaceReadTool, WorkspaceWriteTool
 
 
-SYSTEM = """You are an autonomous business agent in a supervised experiment.
-Goal: legitimate externally verifiable net profit. Think carefully but
-proportionally to the decision. Reply only with JSON:
-{"thought":"short reasoning","actions":[{"tool":"market.offer","args":{"segment":"smb-bookkeeping","price":60}}],"memory":"short note"}"""
+# describe() reads class-level contracts only; no adapter invocation or network setup.
+CATALOG = [cls.__new__(cls).describe() for cls in
+           (MarketOfferTool, MarketSurveyTool, MemoryNoteTool, WorkspaceReadTool, WorkspaceWriteTool)]
+SYSTEM = SYSTEM_TEMPLATE + json.dumps(sorted(CATALOG, key=lambda t: t['name']),
+                                    sort_keys=True, separators=(',', ':'))
 
 
 def call(base_url: str, model: str, seed: int, max_tokens: int):

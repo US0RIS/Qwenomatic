@@ -224,3 +224,39 @@ SQLite audit does not by itself detect privileged rollback: retain off-VM backup
 Human-approved text may be harmful. Review service automation authorization and
 account restrictions before deployment. Later-phase inspector judgment is not a
 promise to recognize every harmful action. No zero-risk guarantee is claimed.
+
+Every merged security change must identify executable enforcement, configuration
+requirements, test evidence, rollback/recovery and remaining limitations. Features
+without applicable evidence remain implemented-but-unverified or designed.
+
+
+## Reversible improvement controls
+
+The twelve mechanisms documented in [IMPROVEMENTS.md](IMPROVEMENTS.md) introduce
+no population authority. Knowledge and retirement evidence derive from trusted
+adapter outcomes, never agent claims. Settings proposals are restricted to
+bounded economics parameters; identified operator decisions enter a new frozen
+generation without editing policy or spending ceilings. Anomaly holds are
+rechecked both at payment authorization and outbound dispatch. Small-model and
+autopilot actions still pass through the same capability gateway and accounting.
+The red-team copy has only local simulated adapters and an ephemeral workspace;
+its findings never modify executable code. Its entire fixed corpus has committed
+adversarial regression tests. Telemetry uses a separate deterministic event-ID
+namespace so experimental instrumentation does not perturb market random draws.
+
+Simulation campaigns require the existing protected simulation launcher.
+Unit-test receipts use the documented test-only empty boundary and do not prove
+production kernel isolation. No evidence in this release promotes an economic
+treatment, authorizes a real-world destination or grants an external payment.
+
+## Permanent specialist role boundary
+
+The default population is 17 business, two research and one red-team agent.
+Roles are supervisor-only lifecycle metadata, outside the mutable genotype.
+Specialists receive empty live capability tokens and zero live spending/tool
+budgets; the gateway and outbound dispatcher independently refuse specialist
+actions. Research proposes only bounded settings and requires checked campaigns
+and operator approval. Red-team probes reach only a disposable simulated gateway
+with local market/memory/workspace adapters. Findings and proposals never execute
+code or change policy. Existing farms migrate at a frozen generation boundary;
+old records remain replayable. Full behavior and verification limits: [ROLES.md](ROLES.md).

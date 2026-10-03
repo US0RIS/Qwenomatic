@@ -69,6 +69,8 @@ class FarmConfig:
         farm = deep_merge(_read_yaml(config_dir / "farm.yaml"), overrides.get("farm"))
         policy = deep_merge(_read_yaml(config_dir / "policy.yaml"), overrides.get("policy"))
         fitness = deep_merge(_read_yaml(config_dir / "fitness.yaml"), overrides.get("fitness"))
+        from .roles import layout
+        layout(farm)
         if data_dir is None:
             data_dir = Path(farm["farm"].get("data_dir", "var"))
             if not data_dir.is_absolute():
