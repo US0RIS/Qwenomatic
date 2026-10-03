@@ -1,0 +1,17 @@
+python -m pytest -q -o addopts= --deselect=tests/safety/test_launcher.py::test_venv_checked_before_resolving_python --deselect=tests/unit/test_openai_backend.py::test_client_wire_format --deselect=tests/unit/test_openai_backend.py::test_farm_runs_on_an_openai_compatible_server
+
+........................................................................ [ 22%]
+........................................................................ [ 45%]
+........................................................................ [ 67%]
+..s..................................................................... [ 90%]
+...............................                                          [100%]
+318 passed, 1 skipped, 3 deselected in 112.57s (0:01:52)
+
+Full default campaign:
+World baseline, seed 20261003
+treatment: generation 1/2 closed
+treatment: generation 2/2 closed
+control: generation 1/2 closed
+control: generation 2/2 closed
+.
+1 passed in 197.62s (0:03:17)

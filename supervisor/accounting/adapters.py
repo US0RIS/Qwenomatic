@@ -38,25 +38,30 @@ class PaymentProcessorAdapter(TrustedAdapter):
         self.state = state
 
     def on_sale(self, attr: Attribution, outcome: Any) -> None:
+        details = getattr(outcome, 'details', None) or {}
         ref = f"sale:{outcome.opportunity_id}"
         common = dict(
             agent_id=attr.agent_id, lineage_id=attr.lineage_id, generation_id=attr.generation_id,
             occurred_at=attr.now.isoformat(), observed_at=attr.now.isoformat(), step_id=attr.step_id,
             step_generation=attr.generation_id, tick=attr.tick,
         )
-        if outcome.settle_at <= attr.now:
-            self._settle(ref, outcome.price, outcome.fee, outcome.refund, outcome.refund_delay_hours, common, attr.now)
+        if outcome.settle_at <= attr.now and not details.get('payment_failed'):
+            self._settle(ref, outcome.price, outcome.fee, outcome.refund, outcome.refund_delay_hours, common, attr.now,
+                         chargeback=details.get('chargeback', False), dispute_fee=details.get('chargeback_fee', 0.))
             return
         self.ledger.record(
             self, type="revenue", category="gross_revenue", amount=outcome.price, external_reference=ref,
             status="unrealized", confidence=0.9,
             extra={"due_at": outcome.settle_at.isoformat(), "fee": outcome.fee, "refund": outcome.refund,
-                   "refund_delay_hours": outcome.refund_delay_hours, "kind": "sale"},
+                   "refund_delay_hours": outcome.refund_delay_hours, "kind": "sale",
+                   'chargeback': details.get('chargeback', False), 'dispute_fee': details.get('chargeback_fee', 0.),
+                   'payment_failed': details.get('payment_failed', False)},
             **common,
         )
 
     def _settle(self, ref: str, price: float, fee: float, refund: bool, refund_delay: float,
-                common: dict[str, Any], now: datetime, settles: str | None = None) -> None:
+                common: dict[str, Any], now: datetime, settles: str | None = None,
+                chargeback: bool = False, dispute_fee: float = 0.) -> None:
         self.ledger.record(
             self, type="revenue", category="gross_revenue", amount=price, external_reference=f"{ref}:settled",
             settles_reference=settles, **common,
@@ -67,9 +72,9 @@ class PaymentProcessorAdapter(TrustedAdapter):
             )
         if refund:
             self.ledger.record(
-                self, type="refund", category="refund", amount=price, external_reference=f"{ref}:refund",
+                self, type="refund", category="chargeback" if chargeback else "refund", amount=price, external_reference=f"{ref}:refund",
                 status="unrealized", confidence=0.9,
-                extra={"due_at": (now + timedelta(hours=refund_delay)).isoformat(), "kind": "refund"},
+                extra={"due_at": (now + timedelta(hours=refund_delay)).isoformat(), "kind": "refund", 'dispute_fee': dispute_fee},
                 **common,
             )
 
@@ -87,14 +92,23 @@ class PaymentProcessorAdapter(TrustedAdapter):
                 step_generation=p.get("step_generation"), tick=tick,
             )
             ref = p["external_reference"]
-            if p.get("kind") == "refund":
+            if p.get('payment_failed'):
+                # Unwind an unpaid forecast without fabricating cash or a sale.
+                self.ledger.record(self, type='expense', category='other_variable', amount=0,
+                    external_reference=f'{ref}:default', settles_reference=ref,
+                    extra={'kind': 'invoice_default'}, **common)
+            elif p.get("kind") == "refund":
                 self.ledger.record(
-                    self, type="refund", category="refund", amount=p["amount"],
+                    self, type="refund", category=p['category'], amount=p["amount"],
                     external_reference=f"{ref}:settled", settles_reference=ref, **common,
                 )
+                if p.get('dispute_fee', 0):
+                    self.ledger.record(self, type='fee', category='platform_fee', amount=p['dispute_fee'],
+                                       external_reference=f'{ref}:dispute-fee', **common)
             else:
                 self._settle(ref, p["amount"], p.get("fee", 0.0), p.get("refund", False),
-                             p.get("refund_delay_hours", 0.0), common, now, settles=ref)
+                             p.get("refund_delay_hours", 0.0), common, now, settles=ref,
+                             chargeback=p.get('chargeback', False), dispute_fee=p.get('dispute_fee', 0.))
             settled += 1
         return settled
 
@@ -116,6 +130,26 @@ class AdSpendMeter(TrustedAdapter):
             occurred_at=attr.now.isoformat(), observed_at=attr.now.isoformat(), step_id=attr.step_id,
             step_generation=attr.generation_id, tick=attr.tick,
         )
+
+
+class MarketCostMeter(TrustedAdapter):
+    """Acquired inputs, imputed fulfillment labor and time-based overhead."""
+    name = 'market_costs'
+
+    def __init__(self, ledger):
+        self.ledger = ledger
+
+    def charge(self, attr, reference, costs, *, step_generation=None):
+        for kind, amount in costs.items():
+            if amount <= 0:
+                continue
+            self.ledger.record(
+                self, agent_id=attr.agent_id, lineage_id=attr.lineage_id, generation_id=attr.generation_id,
+                type='expense', category='external_spend' if kind == 'fulfillment' else 'other_variable',
+                amount=amount, external_reference=f'market-cost:{reference}:{kind}',
+                occurred_at=attr.now.isoformat(), observed_at=attr.now.isoformat(),
+                step_id=attr.step_id, step_generation=attr.generation_id if step_generation is None else step_generation, tick=attr.tick,
+                extra={'kind': kind, 'simulation': True})
 
 
 class ComputeMeter(TrustedAdapter):

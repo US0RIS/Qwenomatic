@@ -82,22 +82,27 @@ function table(rows, cols) {
 const views = {
   async Overview() {
     const o = await api("/api/overview");
+    const m = o.market || {};
     const tiles = [
       ["Generation", o.generation], ["Time remaining (h)", num(o.time_remaining_hours, 1)],
       ["Population", o.population], ["Business / R&D / Red team", `${o.role_counts.business || 0} / ${o.role_counts.research || 0} / ${o.role_counts.red_team || 0}`], ["Queue depth", o.queue_depth],
-      ["GPU utilization", o.gpu_utilization == null ? "—" : (o.gpu_utilization * 100).toFixed(1) + "%"],
+      [m.backend === 'simulated' ? "Emulated GPU utilization" : "GPU utilization", o.gpu_utilization == null ? "—" : (o.gpu_utilization * 100).toFixed(1) + "%"],
       ["External spend", money(o.external_spend)], ["Unrealized (pending)", money(o.unrealized)],
       ["Inference tokens", num(o.inference_tokens, 0)], ["GPU seconds", num(o.gpu_seconds, 0)],
       ["Human interventions", o.human_interventions], ["Policy violations", o.policy_violations],
       ["Ledger events", num(o.events, 0)],
+      ["Simulated cash", money(m.simulated_cash)], ["Pending refunds", money(m.pending_refunds)],
     ];
     const days = o.daily_pnl.slice(-14);
     const maxAbs = Math.max(1, ...days.map((d) => Math.abs(d.net)));
     return `
+      <div class="tile" style="margin-bottom:10px"><strong>Simulated market: ${esc(m.model)}</strong>
+        <div>${esc(m.decision_maker)}</div><div class="note">${esc(m.note)}</div>
+        <div class="note">Real-world validity: ${esc(m.real_world_validity)}. ${esc(m.evidence_status)}</div></div>
       ${o.halted ? `<div class="tile bad" style="margin-bottom:10px">Farm halted: ${esc(o.halt_reason)}</div>` : ""}
       <div class="headline">
-        <div class="tile"><div class="k">Gross revenue (reconciled)</div><div class="v">${money(o.gross_revenue)}</div></div>
-        <div class="tile"><div class="k">Net realized profit</div><div class="v ${cls(o.net_realized_profit)}">${money(o.net_realized_profit)}</div>
+        <div class="tile"><div class="k">Simulated gross revenue (reconciled)</div><div class="v">${money(o.gross_revenue)}</div></div>
+        <div class="tile"><div class="k">Simulated net realized profit</div><div class="v ${cls(o.net_realized_profit)}">${money(o.net_realized_profit)}</div>
           <div class="note">after refunds, fees, ad spend, imputed compute and labor</div></div>
       </div>
       <div class="grid">${tiles.map(([k, v]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>

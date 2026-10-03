@@ -1,0 +1,1 @@
+opportunity_id,customer_id,observed_at,segment,price,acquisition_cost,converted,outcome_complete,collected,refunded,chargeback,delivery_success,fulfillment_cost,labor_minutes,settlement_hours,refund_delay_hours,delivery_hours

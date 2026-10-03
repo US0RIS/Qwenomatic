@@ -52,9 +52,11 @@ class OfferOutcome:
     refund: bool
     refund_delay_hours: float
     conversion_probability: float
+    details: dict[str, Any] | None = None
 
 
 class SimulatedMarket:
+    model = "toy_v1"
     def __init__(self, config: dict[str, Any], seed: int, start: datetime) -> None:
         self.seed = seed
         self.start = start
@@ -126,3 +128,29 @@ class SimulatedMarket:
             "acquisition_cost": round(seg.ad_cost * noise(), 2),
             "payment_delay_hours": seg.settlement_delay_hours,
         }
+
+
+def build_market(config, seed, start, store):
+    """Freeze market assumptions for a ledger; never silently change its world."""
+    from storage.events import EventType
+    if store.iter_events(types=[EventType.MARKET_RUN_FINISHED], limit=1):
+        raise ValueError('completed market campaign ledger is read-only; use a fresh --data-dir')
+    model = config.get('model', 'toy_v1')
+    if model not in ('toy_v1', 'constrained_v1'):
+        raise ValueError(f'unknown market model: {model}')
+    identity = digest({'config': config, 'seed': seed, 'start': start.isoformat()})
+    previous = store.iter_events(types=[EventType.MARKET_CONFIGURED], limit=1)
+    if previous and previous[0].payload['identity'] != identity:
+        raise ValueError('market assumptions changed; use a fresh --data-dir for this experiment')
+    if not previous and model != 'toy_v1' and store.iter_events(types=[EventType.GENERATION_STARTED], limit=1):
+        raise ValueError('legacy ledger: use a fresh --data-dir for the constrained market')
+    if model == 'constrained_v1':
+        from .constrained_market import ConstrainedMarket
+        market = ConstrainedMarket(config, seed, start, store)
+    else:
+        market = SimulatedMarket(config, seed, start)
+    store.append(EventType.MARKET_CONFIGURED,
+                 {'model': model, 'identity': identity, 'config': config,
+                  'evidence_status': 'assumptions; real-world validity unestablished'},
+                 idempotency_key='market-configured')
+    return market

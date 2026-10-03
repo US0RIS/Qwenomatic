@@ -56,6 +56,8 @@ class EventType(str, Enum):
 
     # Economy
     OPPORTUNITY = "opportunity"
+    MARKET_CONFIGURED = "market_configured"
+    MARKET_RUN_FINISHED = "market_run_finished"
     FINANCIAL_EVENT = "financial_event"
     FINANCIAL_REJECTED = "financial_rejected"
     MILESTONE_VALIDATED = "milestone_validated"

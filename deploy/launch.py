@@ -74,7 +74,7 @@ def verify_runtime(python):
             protected_path(item)
             if item.is_symlink() and item != executable and not item.resolve().is_relative_to(venv):
                 if not (item.parent == executable.parent and item.name.startswith("python") and item.resolve() == executable.resolve()):
-                    raise SafetyError("venv links must stay within the protected runtime tree")
+                    raise SafetyError(f"venv links must stay within the protected runtime tree: {item} -> {item.resolve()}")
         values = {key.strip(): value.strip() for key, value in (line.split("=", 1) for line in (venv / "pyvenv.cfg").read_text().splitlines() if "=" in line)}
         if values.get("include-system-site-packages", "false").strip().lower() == "true":
             raise SafetyError("venv must not include system site packages")
@@ -99,12 +99,12 @@ def operation_command(args, root):
         if args.candidate:
             argv += ['--candidate', args.candidate]
         return bootstrap + "from scripts.improvement_campaign import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
-    scripts = {"evolution-ab": "evolution_ab", "campaign": "evolution_ab_campaign", "generation-zero": "generation_zero"}
+    scripts = {"evolution-ab": "evolution_ab", "campaign": "evolution_ab_campaign", "generation-zero": "generation_zero", "market-validity": "market_validity"}
     argv = [scripts[args.operation], "--config-dir", args.config_dir]
     argv += ["--data-dir" if args.operation == "generation-zero" else "--root", args.data_dir]
     if args.generations is not None:
         argv += ["--generations", str(args.generations)]
-    if args.operation == "campaign":
+    if args.operation in ("campaign", "market-validity"):
         argv += ["--pairs", str(args.pairs)]
     return bootstrap + "from scripts." + scripts[args.operation] + " import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
 
@@ -166,7 +166,7 @@ def main():
     p.add_argument("--ticks", type=int)
     p.add_argument("--generations", type=int)
     p.add_argument("--pairs", type=int, default=2)
-    p.add_argument("--operation", choices=["run", "init", "verify", "evolution-ab", "campaign", "generation-zero", "improvement-campaign"], default="run")
+    p.add_argument("--operation", choices=["run", "init", "verify", "evolution-ab", "campaign", "generation-zero", "improvement-campaign", "market-validity"], default="run")
     p.add_argument('--feature', choices=['knowledge','archive','crossover','small_model','autopilot','crowding','predictions','adaptation','red_team','fraud','self_tuning'])
     p.add_argument('--candidate', choices=['exploration','retirement','mutation','reserve'])
     args = p.parse_args()

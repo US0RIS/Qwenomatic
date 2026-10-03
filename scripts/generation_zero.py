@@ -41,6 +41,10 @@ def main() -> int:
     sup = Supervisor(cfg)
     try:
         sup.bootstrap()
+        print(f"Market: {sup.market.model}; decision backend: {sup.backend.name}")
+        print('Synthetic customers and assumed delivery quality; real-world validity is unestablished.')
+        if sup.backend.name == 'simulated':
+            print('Scripted policy emulator: Qwen is not running; GPU time is emulated.')
         start = sup.state.current_generation
         sup.run(generations=args.generations)
         for g in range(start, sup.state.current_generation):
@@ -61,6 +65,7 @@ def main() -> int:
         print(json.dumps({k: v for k, v in report.items() if k != "accounting"}, indent=2))
         print(f"accounting replay ok: {report['accounting']['ok']}")
         print(f"human interventions:  {len(sup.store.iter_events(types=[EventType.HUMAN_INTERVENTION]))}")
+        print(f"pending settlements:  {len(sup.state.pending_settlements)} (use market-validity for complete payment/refund tails)")
         print(f"ledger:               {cfg.data_dir / 'ledger.sqlite3'}")
     finally:
         sup.close()

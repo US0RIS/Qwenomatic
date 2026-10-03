@@ -41,6 +41,7 @@ class LedgerView:
         tokens = sum(c.tokens for g in s.counters.values() for c in g.values())
         gpu = sum(c.gpu_seconds for g in s.counters.values() for c in g.values())
         return {
+            "market": self.market_evidence(),
             "generation": s.current_generation,
             "generation_started_at": gen.started_at if gen else None,
             "generation_ends_at": gen.ends_at if gen else None,
@@ -69,6 +70,25 @@ class LedgerView:
             "daily_pnl": self.daily_pnl(),
             "events": s.last_seq,
         }
+
+    def market_evidence(self):
+        configs = self.store.iter_events(types=[EventType.MARKET_CONFIGURED], limit=1)
+        sessions = self.store.iter_events(types=[EventType.SUPERVISOR_STARTED], limit=1, descending=True)
+        config = configs[0].payload if configs else {}
+        backend = sessions[0].payload.get('backend', 'unknown') if sessions else 'unknown'
+        model = config.get('model', 'toy_v1 (legacy ledger)')
+        pending = list(self.state.pending_settlements.values())
+        initial = config.get('config', {}).get('realism', {}).get('initial_cash')
+        pnl = Ledger.pnl(self._pnl_events)
+        return {'model': model, 'backend': backend, 'simulated_economy': True,
+                'decision_maker': 'Scripted policy emulator; Qwen is not running' if backend == 'simulated' else 'Model inference; synthetic customers and assumed delivery quality',
+                'real_world_validity': 'unestablished',
+                'evidence_status': config.get('evidence_status', 'uncalibrated toy assumptions'),
+                'initial_capital': initial,
+                'simulated_cash': round(initial+pnl['net_realized_profit']+pnl['compute_imputed'], 6) if initial is not None else None,
+                'pending_payments': sum(p['amount'] for p in pending if p.get('kind') == 'sale'),
+                'pending_refunds': sum(p['amount'] for p in pending if p.get('kind') == 'refund'),
+                'note': 'Simulated dollars. Payment and refund tails may remain. This does not validate a business.'}
 
     def _last_allocation(self) -> dict[str, Any] | None:
         rows = self.store.iter_events(types=[EventType.SCHEDULER_ALLOCATION], limit=1, descending=True)

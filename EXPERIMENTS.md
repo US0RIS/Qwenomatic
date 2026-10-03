@@ -179,6 +179,40 @@ Rollback does not delete evidence. The failed version remains archived.
 
 # Feature experiments
 
+## M01 — Constrained market and validity campaign
+
+**Status:** implemented for simulation evaluation; empirical business validation
+and promotion remain unestablished. See [MARKET.md](MARKET.md).
+
+**Class:** farm-level paired campaign. Match initial populations, market seeds,
+model configuration and active generation budgets; counterbalance arm order.
+Freeze scenario sets, source SHA-256 inventory, configuration hashes, primary
+metric and guardrails in `plan.json` before the first result.
+
+**Primary metric:** post-baseline net profit after payment/refund runoff,
+treatment minus frozen-population control. Also report total net against zero
+incremental profit, all costs, exposure, failure rates and concentration.
+
+**Simulation screen:** at least ten seeds per predefined scenario, positive
+lower bootstrap bounds for evolution's delta and absolute profit, no exhausted
+capital, no policy or step exceptions, at most 5% relative call imbalance,
+and at most a one-percentage-point malformed-rate increase. A screen is not
+automatic promotion or real-world validation; all individual losses remain.
+
+**Guardrails:** replay/accounting failure or a changed control population
+invalidates the campaign. Customer holdout cannot affect fitted parameters.
+Imported data never becomes independently verified revenue merely by import.
+
+**Rollback:** keep old ledgers immutable; use `model: toy_v1` in a new protected
+configuration and a new ledger to reproduce legacy mechanisms. Retain the prior
+Git commit/runtime to reproduce the previous configuration exactly. Network,
+policy and broker enforcement are not optional in either model.
+
+**Required remaining evidence:** independently checked Qwen work, representative
+paid-customer observations, mature refunds, and a limited prospective comparison
+against a simple fixed workflow. No amount of synthetic profit substitutes for
+these observations.
+
 ## E01 — Shared farm knowledge
 
 **Status:** proposed

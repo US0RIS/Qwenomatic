@@ -116,7 +116,7 @@ class ToolGateway:
                                "invalid, stale, or consumed approval", 0.0, args)
                 return ToolResult(False, "denied", error="invalid, stale, or consumed approval")
         try:
-            spend = adapter.spend(safe_args) if adapter and not validation_errors else 0.0
+            spend = adapter.spend_at(safe_args, step.now) if adapter and not validation_errors else 0.0
         except Exception:
             return ToolResult(False, "denied", error="spend check failed")
         if not isinstance(spend, (int, float)) or isinstance(spend, bool) or not math.isfinite(spend) or spend < 0:
