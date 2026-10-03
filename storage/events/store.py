@@ -44,7 +44,35 @@ def _event_hash(fields: dict[str, Any]) -> str:
     return digest(fields)
 
 
+
+def provenance_keys():
+    from supervisor.safety.boundary import protected_json
+    return protected_json(Path("/etc/qwenomatic/provenance.json"))
+
+
+def check_signed_evidence(event_type, author, payload):
+    roles = {EventType.BROKER_EVENT: "broker", EventType.INSPECTOR_EVENT: "inspector",
+             EventType.REVENUE_INGEST_EVENT: "revenue_ingest"}
+    if event_type not in roles:
+        return
+    import base64
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    try:
+        role = roles[event_type]
+        if author != role or set(payload) != {"record", "signature"} or payload["record"]["author"] != role:
+            raise ValueError("signed authorship mismatch")
+        public = bytes.fromhex(provenance_keys()[role])
+        from .canonical import canonical_json
+        Ed25519PublicKey.from_public_bytes(public).verify(base64.b64decode(payload["signature"], validate=True), canonical_json(payload["record"]).encode())
+    except Exception as exc:
+        raise AuthorshipError("independent evidence signature could not be verified") from exc
+
 def check_authorship(event_type: EventType, author: str) -> None:
+    signed = {EventType.BROKER_EVENT: "broker", EventType.INSPECTOR_EVENT: "inspector", EventType.REVENUE_INGEST_EVENT: "revenue_ingest"}
+    if event_type in signed:
+        if author != signed[event_type]:
+            raise AuthorshipError("independent author required")
+        return
     if event_type is EventType.ACCESS_APPROVED and (not author.startswith("operator:") or not author[9:].strip()):
         raise AuthorshipError("access changes require an identified operator")
     if event_type in (EventType.NETWORK_BARRIER_VERIFIED, EventType.OUTBOUND_ATTEMPTED, EventType.OUTBOUND_RESULT) and author != AUTHOR_SUPERVISOR:
@@ -163,6 +191,7 @@ class EventStore:
             raise EventStoreError("store opened read-only")
         check_authorship(type, author)
         payload = payload or {}
+        check_signed_evidence(type, author, payload)
         # Round-trip through JSON so the in-memory payload equals the stored one.
         payload = json.loads(canonical_json(payload))
         with self._lock:

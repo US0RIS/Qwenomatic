@@ -198,12 +198,17 @@ def main():
     user = pwd.getpwnam(args.user)
     if not user.pw_uid:
         raise SafetyError("farm uid must be non-root")
+    if m["version"] == 1 and (m["adapters"] or m["model_url"] is not None):
+        raise SafetyError("legacy direct-access manifests require broker migration")
     fingerprints = {}
-    for a in m["adapters"]:
-        secret = protected_json(Path(a["credential_file"]))
-        if set(secret) != {"token"} or not isinstance(secret["token"], str) or not secret["token"]:
-            raise SafetyError("credential file must contain only a nonempty token")
-        fingerprints[a["name"]] = digest(secret)
+    if m["version"] == 2:
+        import hashlib
+        for key in ("ca_file", "client_cert", "client_key"):
+            file = Path(m["broker"][key])
+            protected_path(file)
+            if file.is_symlink():
+                raise SafetyError("session files cannot be symlinks")
+            fingerprints[key] = hashlib.sha256(file.read_bytes()).hexdigest()
     suffix = uuid.uuid4().hex[:8]
     ns, host_if, child_if, table = "qwen-" + suffix, "qh" + suffix, "qc" + suffix, "qwen_" + suffix
     # One /30 per simultaneous launch. IP address assignment fails on collisions.

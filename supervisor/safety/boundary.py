@@ -61,7 +61,52 @@ def endpoint(url: str, *, https: bool = False) -> tuple[str, int]:
     return str(ip), port
 
 
+
+def validate_broker_manifest(m):
+    if set(m) != {"version", "operator", "approval_reference", "model_url", "adapters", "broker"} or m["version"] != 2:
+        raise SafetyError("invalid broker manifest")
+    if any(not isinstance(m[k], str) or not m[k].strip() for k in ("operator", "approval_reference")):
+        raise SafetyError("explicit operator approval required")
+    b = m["broker"]
+    if not isinstance(b, dict) or set(b) != {"host", "port", "ca_file", "client_cert", "client_key", "audit_public_key"}:
+        raise SafetyError("invalid broker transport")
+    host, port = endpoint("https://" + str(b["host"]) + ":" + str(b["port"]))
+    if type(b["port"]) is not int or b["port"] != port:
+        raise SafetyError("explicit broker port required")
+    for key in ("ca_file", "client_cert", "client_key"):
+        if not isinstance(b[key], str) or not Path(b[key]).is_absolute():
+            raise SafetyError("explicit broker session files required")
+    if not isinstance(b["audit_public_key"], str) or len(b["audit_public_key"]) != 64:
+        raise SafetyError("explicit broker audit public key required")
+    try:
+        bytes.fromhex(b["audit_public_key"])
+    except ValueError as exc:
+        raise SafetyError("invalid audit key") from exc
+    if m["model_url"] is not None and m["model_url"] != f"https://{host}:{port}/v1":
+        raise SafetyError("inference must use the same restricted broker endpoint")
+    if not isinstance(m["adapters"], list):
+        raise SafetyError("explicit adapter list required")
+    names = set()
+    for a in m["adapters"]:
+        common = {"name", "kind", "service"}
+        if not isinstance(a, dict) or a.get("kind") not in {"fixed_json", "fixed_payment"}:
+            raise SafetyError("unknown adapter kind")
+        expected = common | ({"payee", "hard_cap_cents", "approval_threshold_cents"} if a["kind"] == "fixed_payment" else set())
+        if set(a) != expected or not isinstance(a["name"], str) or not a["name"].startswith("real.") or a["name"] in names:
+            raise SafetyError("invalid broker adapter")
+        if not isinstance(a["service"], str) or not a["service"] or len(a["service"]) > 128:
+            raise SafetyError("fixed broker service required")
+        names.add(a["name"])
+        if a["kind"] == "fixed_payment":
+            if not isinstance(a["payee"], str) or not a["payee"] or any(type(a[k]) is not int or a[k] < 0 for k in ("hard_cap_cents", "approval_threshold_cents")):
+                raise SafetyError("fixed payee/caps required")
+            if not 1 <= a["hard_cap_cents"] or a["approval_threshold_cents"] > a["hard_cap_cents"]:
+                raise SafetyError("invalid payment limits")
+    return {(host, port)}
+
 def validate_manifest(m: dict) -> set[tuple[str, int]]:
+    if m.get("version") == 2:
+        return validate_broker_manifest(m)
     if set(m) != {"version", "operator", "approval_reference", "model_url", "adapters"}:
         raise SafetyError("unexpected or missing safety manifest fields")
     if m["version"] != 1 or not isinstance(m["operator"], str) or not m["operator"].strip():
@@ -111,10 +156,22 @@ class NetworkBoundary:
                 raise SafetyError("namespace evidence mismatch")
             self.manifest = protected_json(Path(self.evidence["manifest_path"]))
             destinations = validate_manifest(self.manifest)
+            if self.manifest["version"] == 1 and (self.manifest["adapters"] or self.manifest["model_url"] is not None):
+                raise SafetyError("legacy direct-access manifests require broker migration")
             if digest(self.manifest) != self.evidence["manifest_digest"]:
                 raise SafetyError("operator configuration changed; relaunch required")
             if sorted([list(d) for d in destinations]) != self.evidence["destinations"]:
                 raise SafetyError("firewall allowlist mismatch")
+            if self.manifest["version"] == 2:
+                import hashlib
+                for key in ("ca_file", "client_cert", "client_key"):
+                    path = Path(self.manifest["broker"][key])
+                    for item in (path, *path.parents):
+                        st = item.lstat()
+                        if item.is_symlink() or st.st_uid != 0 or st.st_mode & 0o022:
+                            raise SafetyError("unsafe broker session file")
+                    if hashlib.sha256(path.read_bytes()).hexdigest() != self.evidence["credential_fingerprints"][key]:
+                        raise SafetyError("broker session changed; relaunch required")
             inference = config.farm["inference"]
             if inference.get("backend", "simulated") == "simulated":
                 if self.manifest["model_url"] is not None:

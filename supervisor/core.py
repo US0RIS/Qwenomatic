@@ -69,6 +69,8 @@ class Supervisor:
     ) -> None:
         from .safety.boundary import NetworkBoundary
         self.boundary = NetworkBoundary(config)
+        if self.boundary.manifest.get("version") == 2 and config.farm["inference"].get("backend") == "openai_compatible":
+            config.farm["inference"]["openai_compatible"]["broker_transport"] = self.boundary.manifest["broker"]
         if backend is not None and backend.name != "simulated":
             raise ValueError("injected network backends are prohibited")
         self.config = config

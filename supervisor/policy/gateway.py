@@ -198,8 +198,16 @@ class ToolGateway:
             if eligible:
                 try:
                     ok = tool._send(p["args"], iid)
+                    if getattr(tool, "broker_receipt", None):
+                        self.store.append(EventType.BROKER_EVENT, tool.broker_receipt, author="broker",
+                                          agent_id=queued.agent_id, lineage_id=queued.lineage_id,
+                                          generation_id=queued.generation_id, idempotency_key="broker_receipt:" + iid)
                     status = "accepted" if ok else "provider_rejected_or_unknown"
-                except Exception:
+                except Exception as exc:
+                    from storage.events.store import AuthorshipError
+                    from ..safety.boundary import SafetyError
+                    if isinstance(exc, (AuthorshipError, SafetyError)):
+                        raise SafetyError("broker provenance validation failed") from exc
                     status = "unknown_requires_operator_reconciliation"
             else:
                 status = "cancelled_requires_operator_reconciliation"

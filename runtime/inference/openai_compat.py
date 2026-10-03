@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import time
+import ssl
 import urllib.error
 import urllib.request
 from typing import Any
@@ -24,7 +25,15 @@ class OpenAICompatibleBackend(InferenceBackend):
     name = "openai_compatible"
 
     def __init__(self, config: dict[str, Any]) -> None:
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        handlers = [urllib.request.ProxyHandler({}), NoRedirect()]
+        self.broker_transport = config.get("broker_transport")
+        if self.broker_transport:
+            c = self.broker_transport
+            context = ssl.create_default_context(cafile=c["ca_file"])
+            context.minimum_version = ssl.TLSVersion.TLSv1_3
+            context.load_cert_chain(c["client_cert"], c["client_key"])
+            handlers.append(urllib.request.HTTPSHandler(context=context))
+        self._opener = urllib.request.build_opener(*handlers)
         self.base_url = config["base_url"].rstrip("/")
         self.model = config["model"]
         self.quantization = config.get("quantization", "unknown")
@@ -71,6 +80,12 @@ class OpenAICompatibleBackend(InferenceBackend):
         return Generation(text, prompt_tokens, completion_tokens, wall_seconds=wall, gpu_seconds=gpu, cloud_usd=cloud)
 
     def health(self) -> Health:
+        if self.broker_transport:
+            try:
+                self._post("/chat/completions", {"model": self.model, "messages": [{"role": "user", "content": "Reply OK"}], "max_tokens": 1, "temperature": 0})
+                return Health(True, self.name, self.model, "broker chat verified")
+            except Exception:
+                return Health(False, self.name, self.model, "broker chat unavailable")
         req = urllib.request.Request(f"{self.base_url}/models")
         try:
             with self._opener.open(req, timeout=5) as resp:

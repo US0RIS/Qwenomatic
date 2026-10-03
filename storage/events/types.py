@@ -50,6 +50,10 @@ class EventType(str, Enum):
     OUTBOUND_ATTEMPTED = "outbound_attempted"
     OUTBOUND_RESULT = "outbound_result"
 
+    BROKER_EVENT = "broker_event"
+    INSPECTOR_EVENT = "inspector_event"
+    REVENUE_INGEST_EVENT = "revenue_ingest_event"
+
     # Economy
     OPPORTUNITY = "opportunity"
     FINANCIAL_EVENT = "financial_event"

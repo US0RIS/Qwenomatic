@@ -1,215 +1,152 @@
 # Qwenomatic security specification and evidence
 
-This document is an inventory of enforcement, authority and evidence. It is not
-an assertion that arbitrary autonomous browsing is safe. Model output, agent
-explanations and externally supplied content are untrusted. The farm's economic
-selection pressure is part of the threat model, not a substitute for security.
+This document describes the code in this revision, including PR #6 launcher
+fixes and PR #7 Phase 1. Merging code is not deployment on the operator's
+computer. The current executable evidence and hashes are linked below.
 
-## Version and status
-
-At publication, main is based on commit
-110e49b2ebc0fa581de712ab467fabb655054859 (PR #5). PR #6
-https://github.com/US0RIS/Qwenomatic/pull/6 is unmerged; its head is
-a51db52a12147e026cb39c4a171bea9820b12647. Features below explicitly distinguish
-those revisions. Future changes must update this inventory when merged. A draft
-PR or design is not enforcement on main or on the operator's machine.
-
-| Component | Status at publication |
+| Component | State in this revision |
 |---|---|
-| Kernel network boundary, strict fixed adapters, gateway and durable outbox | Implemented on main; tested in an isolated Linux VM |
-| Complete venv checks, isolated experiments, mandatory external text approval, SIGKILL recovery | Implemented in unmerged PR #6; tested in a Linux VM |
-| Independent external-access broker and inference proxy | Phase 1 approved for implementation; not present on main |
-| Real revenue ingestion, holdback, independent refund/payout controls and budget envelopes | Phase 2 specification; not implemented |
-| Controlled Chromium worker/controller and TLS inspection | Phase 3 specification; not implemented |
-| Independent security inspector and delegated permissions | Phase 4 specification; not implemented |
-| Full hostile-browser/broker/inspector acceptance campaign | Phase 5 specification; not implemented |
+| Kernel barrier, protected runtime, fixed tools, gateway, durable outbox | Implemented |
+| Independent broker, mTLS, grants, ceilings, signed audit and kill switch | Implemented |
+| Restricted inference proxy and inference-host egress barrier | Implemented |
+| Operator grant/revoke/halt utility | Implemented; not a model tool |
+| Provider-specific revenue/refund/payout/holdback/envelopes | Phase 2, not implemented |
+| Controlled Chromium/browser and TLS inspection | Phase 3, not implemented |
+| Independent model inspector/delegated permission | Phase 4, not implemented |
+| Full browser/inspector adversarial campaign | Phase 5, not implemented |
 
-## Threat model and trust
+## Threat model and authority
 
-Assume an agent may produce malicious requests, lie about its intentions, exploit
-shared context, coordinate with other agents and optimize against refusals. Also
-consider malicious websites, prompt injection, replay, credential theft, DNS
-rebinding, request splitting, circular revenue and failures during dispatch.
+Treat agents as adaptive hostile workloads that may lie, coordinate, optimize
+against refusals and submit malicious data. External content is data, never policy.
+The operator, installed trusted runtime/code, OS/kernel/hypervisor, broker and TLS
+frontend remain trusted components. A larger model is not a security boundary.
+There is no claim of zero exploit risk or blanket legal authorization.
 
-On main the trusted computing base includes the OS/kernel, launcher, installed
-Python/runtime, supervisor, adapters, gateway, policy engine and ledger. It does
-**not** withstand a compromised supervisor: the supervisor currently holds
-provider credentials and can issue arbitrary traffic to an allowed IP/port.
-An append-only SQLite API does not prevent a process that owns the database
-from replacing it. Moving these authorities outside the farm is the next phase.
+## Existing controls retained
 
-An operator/root compromise, kernel/hypervisor exploit, vulnerable permitted
-service, incorrect provider configuration or human approval of harmful conduct
-can undermine controls. None of the test receipts establishes zero risk.
+Production farm startup, including simulation, requires the protected Linux
+launcher; no native Windows fallback or environment/YAML bypass exists. Root-owned
+code/config and the whole lexical virtualenv tree, symlink targets and packages
+are checked before privileged use. Launchers start with trusted system Python
+-I -S; site loading occurs only after dropping privileges. Children have zero
+capabilities and no_new_privs. Startup pairs a live canary with exact kernel
+administrative-prohibition rejection; missing evidence or errors stop execution.
+The farm repeats the boundary check at startup/ticks/queue/dispatch.
 
-## Enforcement on main
+Model output is strictly validated data. No tool executes model code, shell,
+queries or arbitrary modules. Extra arguments and invalid/nonfinite numeric data
+refuse. Fixed registries and operator-approved immutable configuration prevent
+agents from installing tools or choosing endpoints/accounts/payees. Agent-written
+workspace files must not be executed by operators.
 
-### 1. Kernel egress isolation
+All real actions retain capability/context/epoch/policy/schema/rate/budget checks
+through the existing gateway. Exact human approval for every external text write
+and material payments remains bound to the actual context/configuration; a bare
+approval ID is insufficient. Durable intents and full spend reservations commit
+before dispatch; durable attempted markers prevent automatic retries after
+crashes or ambiguity. Operator inbox actions precede dispatch. HTTP acceptance
+is service acceptance, not independent settlement or real revenue evidence.
 
-`deploy/launch.py` creates a Linux network namespace and veth interface with a
-default route. Namespace nftables input/output/forward policies drop traffic;
-only configured literal IPv4/TCP address-port pairs are permitted. IPv6, UDP,
-DNS and unapproved loopback destinations have no allow rules. A narrow ICMP
-administrative-prohibition allowance delivers rejection evidence to the socket.
+Protected fixed launcher operations support Generation Zero, A/B, campaigns and
+bounded generations. SIGTERM cleans up; root-only recovery after SIGKILL kills
+namespace children and removes recorded network/evidence resources. Broker and
+inference launchers do not toggle host forwarding. The farm launcher preserves
+its prior forwarding restoration. Recovery retains persistent audit/authority.
 
-The child runs under a dedicated non-root UID with cleared groups, zero Linux
-capabilities (including the bounding set), and no_new_privs. Agent output cannot
-rewrite firewall rules or elevate privileges through setuid binaries.
+## Phase 1 implementation
 
-The launcher temporarily changes host IPv4 forwarding and adds NAT. A dedicated
-Linux VM is required by the deployment runbook to limit host-wide effects.
-Native Windows farm execution, including simulation, refuses initialization.
-Windows Ollama requires an explicitly approved private address reachable from
-Linux, with separately enforced inbound firewall restrictions.
+The executable authority is now `broker/authority.py`; external transport is
+`broker/network.py`; isolated HTTP/TLS and JSON parsing are in `broker/frontend.py`
+and `broker/parser.py`. `deploy/service_launch.py` installs separate broker and
+inference namespaces and proves each boundary before its service runs.
+`supervisor/safety/adapters.py` contains no provider token read or direct provider
+transport. Version 2 manifests route the farm only to the broker. Version 1
+manifests containing a model destination or real adapter refuse production launch.
 
-Limit: address-port filtering does not constrain HTTP methods, paths or payloads.
-Direct access to Ollama's port exposes more than the chat API, including model
-management endpoints. It must not be represented as application-layer isolation.
+The broker keeps provider bearer credentials and its Ed25519 audit key in
+root-owned, protected files readable only by its separate primary group. Startup
+checks that the farm UID cannot read them. The farm holds only a protected mTLS
+session key and public verification keys. TLS 1.3 and explicit certificate DER
+fingerprints identify authorized farms; agent-supplied identity is bookkeeping.
+Each external action still passes through the existing farm gateway and outbox,
+and independently requires a root-operator grant through a 0600 local socket in
+broker-private storage with SO_PEERCRED UID 0. Inspector delegation is absent.
 
-### 2. Protected operator configuration
+A grant binds the service, configured account, POST method, configured path and
+host, canonical body hash, invocation/idempotency key, authenticated farm, broker
+policy hash and broker-clock expiry within five minutes. SQLite BEGIN IMMEDIATE
+atomically consumes grants, reserves cumulative usage and records attempts before
+any provider call. Replay, substitution, revocation, expiry and unknown fields
+refuse. Hard payment caps and fixed payees are independently broker-owned. A
+single clock snapshot determines the period checked and charged for each call.
+Backwards clocks, policy changes against an existing database and unresolved
+attempts at restart refuse or durably halt rather than reset authority.
 
-The manifest has an explicit operator identity, approval reference, model URL
-and adapter list. Missing/extra fields, unknown adapter kinds, implicit defaults,
-invalid payment limits and inline endpoint credentials are rejected. Files and
-ancestors must be root-owned, non-writable by group/others and non-symlinks.
-The loaded manifest digest and namespace/UID must match root-created evidence.
+Broker ceilings apply across each farm, shared account and shared destination to
+requests, messages, purchases, canonical body bytes and spending, plus active
+concurrency. They are not per-agent identity ceilings. Inference has a separate
+shared durable request ceiling, bounded text/token/messages and concurrency.
+Only a fixed `/v1/chat/completions` schema with one configured model is exposed;
+model management, tools, streaming and image/URL inputs refuse. The independent
+inference namespace has no outbound allow rule. An operator-provisioned private
+chat endpoint is the broker's only private outbound exception.
 
-Configured inference must match the approved local endpoint. Inline inference
-API keys and cloud escalation are prohibited. New destinations, credentials or
-compiled adapter kinds require an operator decision and relaunch. ACCESS_APPROVED
-records operator identity, decision reference, contract, destinations and
-credential fingerprints; tokens themselves must never be logged.
+At launch and connect, all resolved provider addresses must be global IPv4 and
+within the installed firewall set. Actual sockets connect to the validated IP
+without a second DNS lookup. TLS verifies the configured DNS name, with matching
+SNI and HTTP Host. Private, loopback, link-local, metadata, multicast, mapped and
+other IPv6 refuse. Protected /etc/hosts pins and relaunch are needed for rotations;
+no general DNS/UDP permission is added. **All redirects are refused**, including
+same-host redirects. This is stricter than validating each hop, and no CONNECT
+or raw network interface is exposed.
 
-Limit: the main launcher resolves venv/bin/python and can miss writable venv
-packages. PR #6 fixes this; main must not be described as checking a whole venv.
+Fresh disposable TLS workers load server TLS material only, never provider or
+signing keys. Mandatory seccomp then prohibits file opens, socket creation,
+connect, fork and exec; JSON workers use a smaller allowlist. Strict framing
+limits headers to 8192 bytes and bodies to 65536, allows one fixed request per
+connection, refuses duplicate/unknown headers and Transfer-Encoding, and parses
+duplicate-free finite JSON. CPU/memory/fd limits and frontend/upstream deadlines
+bound resource use. Provider responses yield only a bounded status line; external
+headers/content do not reach the farm. Sandbox failure refuses processing.
 
-### 3. Live rejection proof and fail-closed behavior
+Broker-private SQLite WAL/FULL stores signed append-only hash-chained audit.
+Farm BROKER_EVENT, INSPECTOR_EVENT and REVENUE_INGEST_EVENT authorship requires
+independently verified Ed25519 evidence from protected public keys. These last
+two classes are infrastructure, not implemented inspector/revenue services.
+ACCESS_APPROVED remains operator-only. Kill-switch IPC persists halt, revokes
+all grants and terminates tracked sockets. WebSockets/streams are unsupported.
+Unknown calls never automatically retry and remain charged pending reconciliation.
+The broker cannot guarantee a provider honored its contract or settled payment.
 
-The launcher creates a TCP canary, temporarily allows it and confirms a real
-connection from the farm namespace. It reinstalls the final rules atomically.
-NetworkBoundary then requires failure with EACCES/EPERM or Linux EHOSTUNREACH
-accompanied by the socket error queue's ICMP origin, type 3, code 13.
-Timeout, connection refusal and generic no-route are not accepted as proof.
+Separate VMs/kernels, hypervisor firewalls, protected hosts/CA provisioning,
+certificate issuance, account permissions and audit backups are operator tasks.
+The smoke fixture uses distinct namespaces/UIDs in one disposable VM; it proves
+kernel routing and service enforcement, not hypervisor separation. Broker state
+cannot be modified by the farm, but broker root can roll it back; off-VM audit
+backups remain necessary. No live provider or production installation is implied.
+The complete configuration, recovery and operator runbook is
+[deploy/BROKER.md](deploy/BROKER.md). This branch's current safety description
+is [SAFETY.md](SAFETY.md); the main/PR #6 inventory above is historical context.
 
-Initialization, each tick, adapter queueing and outbound dispatch check the
-boundary. Missing evidence, configuration mismatches and check errors stop the
-farm. There is no production bypass flag. Unit tests deliberately substitute a
-fixture; kernel tests run separately without that fixture.
+## Reviewed limits
 
-Limit: a canary checks an actual blocked endpoint, not every possible rule or
-protocol. It is evidence alongside privileged rule installation, not a complete
-formal proof of the kernel's correctness.
+The root-only operator utility now supports exact grant/revoke/halt operations;
+it validates protected files/socket ancestry and Unix peer identity. It neither
+creates adapter types nor delegates model authority. Every external action still
+needs an independent operator grant; no autonomous inspector is implemented.
 
-### 4. Model output is data
+Ceilings use fixed periods, allowing up to twice a period cap across a boundary.
+Farm expense reservations remain charged even after pre-attempt broker refusal;
+this is conservative accounting, not evidence a payment was sent. Audit signs/
+fsyncs every inference request and startup verification is linear in chain length;
+large-scale performance is unverified. Authentication relies on the sandboxed
+TLS frontend reporting the certificate fingerprint correctly. Backward clocks
+refuse startup/operations; provider IP rotation requires operator relaunch.
+These limits and concrete operator commands are in deploy/BROKER.md. Do not
+reset databases or weaken isolation to work around them.
 
-The runtime parses bounded JSON output; duplicate keys and explicit non-finite
-JSON constants are rejected. Tool validation rejects malformed/extra arguments
-and non-finite spend. Models have no shell/script/query execution tool and cannot
-load dynamic adapter implementations. Registries freeze after initialization.
-Workspace outputs remain data; operators must not execute agent-written files.
-
-This rule forbids executing model-generated programs. Future browsers may run
-site JavaScript inside Chromium's sandbox; that does not authorize agent-authored
-scripts, CDP calls, developer consoles or code-execution websites.
-
-### 5. Existing gateway remains mandatory
-
-ToolGateway verifies signed capability claims, agent/context binding, generation,
-current capability epoch, policy, tool existence, schemas, rate limits and spend.
-Denied requests do not reach adapters. Hard policy violations disqualify regardless
-of potential profit. Real-world adapters use this same path, not a parallel tool API.
-
-Human approvals must be granted, unused and bound to the exact agent, generation,
-tool, arguments, step, epoch, policy digest and real adapter digest. Changes to
-payee/config invalidate approval. Approval IDs alone confer no permission.
-
-Limit: capability keys and policy checks live inside the trusted supervisor.
-They do not protect against compromise of that process. Independent broker
-permissions must not trust supervisor claims as authoritative identities.
-
-### 6. Fixed real-world adapters
-
-`fixed_json` accepts only text, capped at 4096 UTF-8 bytes. `fixed_payment` accepts
-only positive integer amount_cents, under a configured hard cap; payee and USD
-are fixed by trusted configuration. No tool accepts URL, host, account, payee,
-command, provider headers or query expressions. HTTPS transport fixes the endpoint,
-disables redirects/proxies and verifies the certificate against the literal IP.
-
-Material payments (including equality with the approval threshold) require human
-approval even if the policy's configurable approval list omits the class.
-Threshold zero means every payment requires approval.
-
-On main, external.fixed_write is not intrinsically approval-required. PR #6 makes
-every text submission require exact-content approval independent of policy defaults.
-Text can be harmful even without executable syntax; schema validation is not
-content authorization or assurance about the receiving service.
-
-### 7. Money reservations and durable outbox
-
-Allowed invocations commit an outbound intent and full payment-spend reservation
-before dispatch. No transport executes inside an uncommitted ledger transaction.
-The dispatcher matches the committed TOOL_INVOKED receipt, arguments digest,
-authorship, policy/epoch, manifest, current generation and active agent state.
-Operator inbox commands are applied before dispatch on the next tick.
-
-OUTBOUND_ATTEMPTED commits before network transmission. No automatic retry occurs
-after crashes/timeouts/ambiguous outcomes. Reservations stay charged even if
-cancelled, rejected or unknown. HTTP acceptance is not bank-settlement evidence.
-An operator reconciles provider outcomes using the invocation/idempotency key.
-
-Limit: this controls farm intent. An external relay/provider must independently
-restrict payees, accounts, caps, approval and idempotency. No ready-made bank or
-provider relay is implemented on main. No live provider was used in verification.
-
-### 8. Economic evidence and ledger
-
-Agents cannot author financial events. Trusted accounting adapters record
-attributed revenue, expenses, fees and refunds; fitness derives from the ledger,
-not agent claims. Event authorship checks distinguish agents, adapters, operator
-and supervisor. SQLite transactions, idempotency keys, hash chaining and replay
-provide integrity checks and restart recovery within the current trust model.
-
-The shipped economy is simulated. No real settled-revenue ingestion adapter exists.
-Simulated results must not be presented as externally verified revenue or profit.
-
-## PR #6 additional enforcement (pending merge)
-
-* Runtime checks inspect the lexical venv path, its entire tree and symlink
-  targets before privileged use; system-site-package inheritance is refused.
-* The launcher starts with trusted system Python -I -S. Privileged probes disable
-  site loading. Farm Python loads protected site packages after privilege drop.
-* Fixed launcher operations host Generation Zero, A/B and campaign scripts and
-  propagate operator config and --generations; no arbitrary script/module input.
-* Every external.fixed_write requires exact-request, single-use human approval.
-* A root-only recovery record precedes host mutation. SIGTERM invokes cleanup.
-  After SIGKILL, --cleanup takes the same host lock, kills namespace children,
-  removes recorded namespace/interface/NAT/evidence, restores forwarding and
-  removes the record last. Failed cleanup retains the record for retry.
-
-## Approved phased architecture (not enforcement on main)
-
-### Phase 1: separate broker, credentials and inference proxy
-
-Broker: separate UID and namespace, deployed in a separate VM/kernel with a
-hypervisor firewall. The farm/browser can reach only a fixed broker endpoint;
-provider credentials, policy and signing keys are unreadable by the farm.
-The broker checks service/account/method/path/field schemas, canonical wire
-content hashes, broker-clock expiry, policy version, revocation and atomic
-single-use consumption. Farm/account/destination ceilings cover requests,
-concurrency, messages, purchases, bytes and spend. Claimed agent identity is
-bookkeeping; authenticated farm/session identities enforce limits.
-
-DNS is resolved by the broker and the actual connection is pinned to a validated
-public IP. Private, loopback, link-local, multicast, metadata and prohibited IPv6
-addresses are rejected. Host and SNI must agree. Each redirect hop requires
-scope validation; no unrestricted CONNECT tunnel is allowed. Parsers need
-isolation, strict framing, body/header limits and timeouts. An independent
-hash-chained signed audit and kill switch revoke permissions and stop in-flight
-connections/streams. A restricted inference proxy exposes only validated chat;
-the inference server has independently blocked outbound access.
-
-Acceptance requires positive controls followed by kernel-proven rejections at
-farm, broker and inference boundaries. Proxy path tests complement kernel tests.
+## Future phases (not implemented)
 
 ### Phase 2: receipts, holdback and outbound money
 
@@ -273,20 +210,17 @@ from a defined distribution. It is not a bound on adaptive unknown attacks.
 
 ## Evidence and residual risk
 
-PR #5: 169 local tests and a successful real Linux kernel VM smoke. PR #6: 177
-local tests and extended VM smoke covering experiments, writable .pth refusal
-and SIGKILL recovery. Receipts/source hashes are under deploy/verification in
-the corresponding revisions. Local simulation tests inject a boundary fixture;
-they cannot prove OS isolation. GitHub CI was not demonstrated passing.
-Deployment startup must prove its own barrier on the actual host.
+The current receipts and exact source inventory are in
+[deploy/verification/PHASE1.md](deploy/verification/PHASE1.md). Kernel tests use
+owned offline TLS/inference/metadata fixtures, not external targets. They prove
+routing rejection, grants/replay, protected startup, experiment compatibility,
+secret permissions and recovery in the tested VM. They do not prove a production
+three-VM hypervisor installation, live provider contract or scientific economics.
+Unit tests inject a simulation boundary and are not OS isolation proof.
 
-No production broker, browser or inspector acceptance evidence exists on main
-at publication. No live payment, revenue provider, external relay or Windows
-Ollama connectivity was tested. Provider authorization/automation terms, account
-permissions, TLS inspection compatibility and hypervisor/network provisioning
-require operator review. Merely using a human-like UI does not establish legal
-authorization. No architecture here guarantees zero legal or security risk.
-
-Every merged security change must identify executable enforcement, configuration
-requirements, test evidence, rollback/recovery and remaining limitations. Features
-without applicable evidence remain implemented-but-unverified or designed.
+A compromised operator/root/kernel/hypervisor, runtime/TLS/broker flaw, malicious
+approved service or incorrectly scoped account can undermine protection. Signed
+SQLite audit does not by itself detect privileged rollback: retain off-VM backups.
+Human-approved text may be harmful. Review service automation authorization and
+account restrictions before deployment. Later-phase inspector judgment is not a
+promise to recognize every harmful action. No zero-risk guarantee is claimed.
