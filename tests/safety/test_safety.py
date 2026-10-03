@@ -15,7 +15,7 @@ from supervisor.safety.boundary import NetworkBoundary as RealBoundary, SafetyEr
 
 
 SPEC = {"name": "real.pay", "kind": "fixed_payment", "endpoint": "https://192.0.2.10/pay",
-        "credential_file": "/etc/qwenomatic/token.json", "payee": "operator-fixed-payee",
+        "credential_file": str(Path("/etc/qwenomatic/token.json").resolve()), "payee": "operator-fixed-payee",
         "hard_cap_cents": 5000, "approval_threshold_cents": 1000}
 
 
@@ -287,7 +287,7 @@ def test_model_code_remains_text_and_cannot_run(tmp_path):
 @pytest.fixture
 def text_farm(monkeypatch, request):
     text_spec = {"name": "real.pay", "kind": "fixed_json", "endpoint": "https://192.0.2.10/submit",
-                 "credential_file": "/etc/qwenomatic/token.json"}
+                 "credential_file": str(Path("/etc/qwenomatic/token.json").resolve())}
     monkeypatch.setattr(__import__(__name__, fromlist=["SPEC"]), "SPEC", text_spec)
     return request.getfixturevalue("farm")
 
