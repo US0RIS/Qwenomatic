@@ -64,7 +64,7 @@ def update_timeouts(root: Path):
     print('Updated broker/farm timeouts; certificates and ledger were preserved. Restart the broker.')
 
 
-def repair_tls(root: Path, farm_user: str, broker_user: str):
+def repair_tls(root: Path, farm_user: str, broker_user: str, runtime: str):
     """Replace the incompatible TLS chain while retaining audit identity and state."""
     from supervisor.safety.boundary import protected_json
     if Path('/run/qwenomatic-service-broker.json').exists():
@@ -83,6 +83,8 @@ def repair_tls(root: Path, farm_user: str, broker_user: str):
     manifest = protected_json(root / 'manifest.json')
     if broker['policy'] != policy or set(policy['farms']) != {'farm'}:
         raise SystemExit('installed broker policy differs from the local-Qwen template')
+    if policy != local_policy(policy['farms']['farm']['certificates'][0]):
+        raise SystemExit('installed broker policy is not the fixed inference-only template')
     if any(broker[k] != str(private / name) for k, name in (
             ('client_ca', 'ca.pem'), ('tls_cert', 'broker.pem'), ('tls_key', 'broker.key'))):
         raise SystemExit('installed broker TLS paths differ from the local-Qwen template')
@@ -108,7 +110,43 @@ def repair_tls(root: Path, farm_user: str, broker_user: str):
     write(private / 'farm.key', farm_key, 0o440, farm_user)
     json_write(policy_path, policy)
     json_write(broker_path, broker)
-    print('Replaced TLS certificates and updated client fingerprint; audit key, manifest and ledger were preserved. Restart the broker.')
+    migrate_tls_policy(root, runtime, broker_user)
+    print('Replaced TLS certificates and migrated the signed broker policy; audit key, manifest and ledger were preserved. Restart the broker.')
+
+
+def migrate_tls_policy(root: Path, runtime: str, broker_user: str):
+    """Migrate only the fixed local policy, as qbroker, retaining the audit DB."""
+    from supervisor.safety.boundary import protected_json
+    if Path('/run/qwenomatic-service-broker.json').exists():
+        raise SystemExit('stop the broker before migrating its TLS policy')
+    private = root / 'private'
+    broker = protected_json(private / 'broker.json')
+    policy = protected_json(private / 'policy.json')
+    if broker['policy'] != policy or set(policy['farms']) != {'farm'}:
+        raise SystemExit('installed broker policy differs from the local-Qwen template')
+    certificate = x509.load_pem_x509_certificate((private / 'farm.pem').read_bytes())
+    fingerprint = hashlib.sha256(certificate.public_bytes(serialization.Encoding.DER)).hexdigest()
+    if policy != local_policy(fingerprint) or broker['state_dir'] != str(root / 'state') or broker['signing_key'] != str(private / 'audit.key'):
+        raise SystemExit('installed broker is not the fixed inference-only template')
+    import pwd
+    user = pwd.getpwnam(broker_user)
+    code = ('import sys; from broker.server import secret; '
+            'from broker.authority import Authority; '
+            'from supervisor.safety.boundary import protected_json; '
+            'cfg=protected_json(sys.argv[2]); '
+            'print("broker policy migrated" if Authority.migrate_local_tls_policy('
+            'sys.argv[1], cfg["policy"], secret(cfg["signing_key"])) else "broker policy already current")')
+    subprocess.run(['setpriv', '--reuid', str(user.pw_uid), '--regid', str(user.pw_gid),
+                    '--clear-groups', '--bounding-set=-all', '--inh-caps=-all',
+                    '--ambient-caps=-all', '--no-new-privs', runtime, '-I', '-c', code,
+                    str(root / 'state/authority.sqlite3'), str(private / 'broker.json')], check=True)
+
+
+def local_policy(fingerprint: str):
+    limits = {'requests': 10000, 'messages': 10000, 'purchases': 0, 'bytes': 100000000,
+              'spend_cents': 0, 'concurrency': 4, 'period_seconds': 3600}
+    return {'version': 'local-qwen-v1', 'operator': 'owner', 'approval_reference': 'local-qwen-setup',
+            'farms': {'farm': {'limits': limits, 'certificates': [fingerprint]}}, 'services': {}}
 
 
 def make_ca():
@@ -163,19 +201,24 @@ def main():
     p.add_argument("--ollama-model", default="qwen3:14b")
     p.add_argument("--update-timeouts", action="store_true", help="upgrade an existing installation without rotating keys")
     p.add_argument("--repair-tls", action="store_true", help="repair Python 3.14 TLS certificates without replacing audit keys or ledger")
+    p.add_argument("--migrate-tls-policy", action="store_true", help="finish TLS repair after certificates were already replaced")
     p.add_argument("--farm-user", default="qwenomatic")
     p.add_argument("--broker-user", default="qbroker")
     a = p.parse_args()
     if os.geteuid() != 0:
         raise SystemExit("run this provisioning command with sudo")
     root, repo = Path(a.root), Path(a.repo)
-    if a.update_timeouts and a.repair_tls:
+    if sum((a.update_timeouts, a.repair_tls, a.migrate_tls_policy)) > 1:
         p.error('choose one repair operation at a time')
     if a.update_timeouts:
         update_timeouts(root)
         return
     if a.repair_tls:
-        repair_tls(root, a.farm_user, a.broker_user)
+        repair_tls(root, a.farm_user, a.broker_user, a.runtime)
+        return
+    if a.migrate_tls_policy:
+        migrate_tls_policy(root, a.runtime, a.broker_user)
+        return
         return
     if not a.ollama_host:
         p.error('--ollama-host is required for initial provisioning')
@@ -213,10 +256,7 @@ def main():
     write(private / "audit.key", audit.private_bytes_raw(), 0o440, a.broker_user)
     audit_public = audit.public_key().public_bytes_raw().hex()
 
-    limits = {"requests": 10000, "messages": 10000, "purchases": 0, "bytes": 100000000,
-              "spend_cents": 0, "concurrency": 4, "period_seconds": 3600}
-    policy = {"version": "local-qwen-v1", "operator": "owner", "approval_reference": "local-qwen-setup",
-              "farms": {"farm": {"limits": limits, "certificates": [client_fp]}}, "services": {}}
+    policy = local_policy(client_fp)
     json_write(private / "policy.json", policy)
     broker_cfg = {"policy": policy, "signing_key": str(private / "audit.key"),
                   "tls_cert": str(private / "broker.pem"), "tls_key": str(private / "broker.key"),

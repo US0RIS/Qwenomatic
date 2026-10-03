@@ -62,11 +62,22 @@ first recorded completion and reports progress every 12 ticks.
 Installations provisioned before the Python 3.14 certificate fix need a one-time
 TLS repair. Stop the broker first, then run the following and restart it. This
 rotates only the broker/farm TLS chain and updates the broker's authorized client
-fingerprint; it preserves the audit signing key, manifest and ledger:
+fingerprint, and writes a signed broker policy migration retaining its usage,
+attempt and audit records; it preserves the audit signing key, manifest and farm
+ledger:
 
 ```bash
 sudo /opt/qwenomatic-runtime/bin/python -I \
   /opt/qwenomatic/scripts/provision_local_qwen.py --repair-tls
+```
+
+If certificates were repaired with an earlier revision of this script but the
+broker refuses startup with `policy changed`, stop the broker and finish only
+the policy migration (without another certificate rotation):
+
+```bash
+sudo /opt/qwenomatic-runtime/bin/python -I \
+  /opt/qwenomatic/scripts/provision_local_qwen.py --migrate-tls-policy
 ```
 
 The clock may advance simulated time even when inference uses actual Qwen.

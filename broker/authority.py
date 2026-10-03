@@ -127,6 +127,58 @@ class Authority:
             self.db.execute("INSERT OR REPLACE INTO settings VALUES('halted','1')")
         self._audit("broker_started", {"policy": self.policy_hash})
 
+    @classmethod
+    def migrate_local_tls_policy(cls, path, policy, signing_key, clock=time.time):
+        """Operator maintenance for the single-farm TLS identity rotation.
+
+        Retains usage, attempts and the signed audit chain. Old grants are
+        revoked, and an unresolved attempted delivery still blocks migration.
+        The caller must verify the fixed local-Qwen policy and run as qbroker.
+        """
+        validate_policy(policy)
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        authority = cls.__new__(cls)
+        authority.policy_hash = digest(policy)
+        authority.key = Ed25519PrivateKey.from_private_bytes(signing_key)
+        authority.clock = clock
+        authority.lock = threading.RLock()
+        authority.db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        try:
+            authority.db.execute("PRAGMA journal_mode=WAL")
+            authority.db.execute("PRAGMA synchronous=FULL")
+            authority.verify_audit()
+            authority.db.execute("BEGIN IMMEDIATE")
+            try:
+                row = authority.db.execute("SELECT value FROM settings WHERE name='policy'").fetchone()
+                if not row:
+                    raise Rejected('existing broker policy required for TLS migration')
+                if row[0] == authority.policy_hash:
+                    authority.db.execute('COMMIT')
+                    return False
+                if authority.db.execute("SELECT 1 FROM attempts WHERE state='attempted'").fetchone():
+                    raise Rejected('unresolved attempted delivery blocks policy migration')
+                binding = None
+                for (raw,) in authority.db.execute('SELECT record FROM audit ORDER BY seq DESC'):
+                    record = decode(raw)
+                    if record.get('kind') in ('broker_started', 'policy_migrated'):
+                        binding = record
+                        break
+                bound_hash = (binding['payload'].get('policy') if binding['kind'] == 'broker_started'
+                              else binding['payload'].get('new_policy')) if binding else None
+                if bound_hash != row[0]:
+                    raise Rejected('broker policy has no matching signed audit record')
+                authority.db.execute('UPDATE grants SET revoked=1')
+                authority.db.execute("UPDATE settings SET value=? WHERE name='policy'", (authority.policy_hash,))
+                authority._audit('policy_migrated', {'old_policy': row[0], 'new_policy': authority.policy_hash,
+                                                     'operator': 'owner', 'reason': 'local_qwen_tls_rotation'})
+                authority.db.execute('COMMIT')
+                return True
+            except BaseException:
+                authority.db.execute('ROLLBACK')
+                raise
+        finally:
+            authority.db.close()
+
     def checked_time(self):
         # Period rollover and expiry must not be reset by a backwards wall clock.
         with self.lock:
