@@ -104,6 +104,8 @@ def operation_command(args, root):
     argv += ["--data-dir" if args.operation == "generation-zero" else "--root", args.data_dir]
     if args.generations is not None:
         argv += ["--generations", str(args.generations)]
+    if args.operation == "generation-zero" and getattr(args, "ticks", None) is not None:
+        argv += ["--ticks", str(args.ticks)]
     if args.operation in ("campaign", "market-validity"):
         argv += ["--pairs", str(args.pairs)]
     return bootstrap + "from scripts." + scripts[args.operation] + " import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
