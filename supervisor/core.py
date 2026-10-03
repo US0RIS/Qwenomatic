@@ -71,6 +71,8 @@ class Supervisor:
         self.boundary = NetworkBoundary(config)
         if backend is not None and backend.name != "simulated":
             raise ValueError("injected network backends are prohibited")
+        from .improvements import Improvements, settings
+        settings(config.farm.get('improvements'))  # reject invalid supervisor controls before any work
         self.config = config
         self.data_dir = Path(config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -134,15 +136,25 @@ class Supervisor:
             policy=self.policy_engine, new_id=self.ids.new, farm_spend_day=self._farm_spend_day,
             on_hard_violation=self._on_hard_violation,
         )
+        self.improvements = Improvements(self)
+        self.gateway.payout_held = self.improvements.payout_held
+        small = None
+        if self.improvements.cfg['small_model']['enabled']:
+            import copy
+            small_config = copy.deepcopy(farm['inference'])
+            small_config['openai_compatible']['model'] = self.improvements.cfg['small_model']['model']
+            small_config['simulated']['model'] = 'small-policy-emulator'
+            small = build_backend(small_config, config.seed)
         self.backend = backend or build_backend(farm["inference"], config.seed)
         esc = farm["inference"].get("escalation", {})
         self.inference = InferenceService(
-            self.backend,
+            self.backend, small=small,
             escalation_allowed=lambda: bool(esc.get("enabled")) and self._cloud_spend_total() < float(esc.get("ceiling_usd", 0)),
             new_id=lambda: self.ids.new("job"),
         )
         self.runtime = AgentRuntime(store=self.store, registry=self.registry, gateway=self.gateway,
                                     config=farm["runtime"])
+        self.runtime.improvements = self.improvements
         self.mutations = MutationEngine(
             farm["mutation"], segments=segments, granted_tools=sorted(self.config.policy.get("capabilities", {})),
             max_mutations=int(farm["evolution"].get("max_mutations", 2)),
@@ -215,7 +227,18 @@ class Supervisor:
             "policy": self.config.policy,
             "scheduler": farm["scheduler"],
             "evolution": farm["evolution"],
+            "improvements": self.improvements.cfg,
+            "mutation": farm["mutation"],
         }
+        import copy
+        cfg = copy.deepcopy(cfg)
+        from .tuning import effective_settings
+        effective_settings(self, cfg)
+        if self.improvements.shift_active():
+            shift = self.store.iter_events(types=[EventType.MARKET_SHIFT])[-1].payload
+            cfg['scheduler']['exploration_share'] = shift['exploration_share']
+            cfg['scheduler']['exploitation_share'] = 1 - shift['exploration_share']
+            cfg['evolution']['immigration_rate'] = shift['immigration_rate']
         cfg["timing"] = {"tick_seconds": self.config.tick_seconds,
                          "gpu_count": int(farm["inference"].get("gpu_count", 1))}
         cfg["hashes"] = {k: config_hash(v) for k, v in cfg.items()}
@@ -233,7 +256,13 @@ class Supervisor:
 
     def scheduler_for(self, generation: int) -> Scheduler:
         cfg = self.generation_config(generation)
-        return Scheduler(cfg["scheduler"], seed=self.config.seed,
+        import copy
+        sched = copy.deepcopy(cfg['scheduler'])
+        if self.improvements.shift_active():
+            acfg = cfg['improvements']['adaptation']
+            sched['exploration_share'] = acfg['exploration_share']
+            sched['exploitation_share'] = 1 - acfg['exploration_share']
+        return Scheduler(sched, seed=self.config.seed,
                          min_exposure_steps=int(cfg["fitness"].get("min_exposure_steps", 0)),
                          variance_floor=float(cfg["fitness"].get("posterior", {}).get("variance_floor", 0.25)))
 
@@ -299,6 +328,7 @@ class Supervisor:
              "cohort": {a: ("control" if a in control else "treatment") for a in sorted(population)}},
             generation_id=number, idempotency_key=f"genstart:{number}",
         )
+        self.improvements.start(number, population)
         engine = self.policy_engine()
         for agent_id in sorted(population):
             caps = self._capabilities_for(agent_id, engine)
@@ -393,6 +423,7 @@ class Supervisor:
             self.payments.reconcile(now, gen, tick)
             self._execute_granted_approvals(gen, tick)
             self._enforce_status(gen)
+            self.improvements.observe_tick(gen, tick)
 
         reason = None
         health = self.inference.health()
@@ -422,6 +453,8 @@ class Supervisor:
                                       {"component": "agent_state", "kind": "state_corrupted", "detail": "reset"},
                                       agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
                 request = self.runtime.build_request(agent, st, self.config.seed)
+                mode, repeat_action, anchor = self.improvements.route(agent, st)
+                request.metadata.update(supervisor_route=mode, repeat_action=repeat_action, routine_anchor=anchor)
                 counters = self.state.counter(gen, agent.id)
                 remaining_tokens = float(agent.budgets.get("inference_tokens", 1e12)) - counters.tokens
                 step_id = self.ids.new("step")
@@ -446,13 +479,17 @@ class Supervisor:
                     if job.state != "done":
                         self.store.append(
                             EventType.INFERENCE_JOB_FAILED,
-                            {"job_id": job_id, "step_id": step_id, "tick": tick, "error": job.error or job.state},
+                            {"job_id": job_id, "step_id": step_id, "tick": tick, "error": job.error or job.state,
+                             "usage": job.usage.to_dict() if job.usage else None},
                             agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
                             idempotency_key=f"jobfail:{job_id}",
                         )
                         self.store.append(EventType.HEALTH_EVENT,
                                           {"component": "inference", "kind": "job_failed", "detail": job.error},
                                           agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
+                        if job.usage:
+                            self.compute.charge(Attribution(agent.id, agent.lineage_id, gen, step_id, tick, self.clock.now_dt()),
+                                                job_id, job.usage.gpu_seconds, job.usage.cloud_usd)
                         result.failed += 1
                         continue
                     self._complete_step(agent, gen, tick, job, step_id, version, st)
@@ -474,7 +511,9 @@ class Supervisor:
         self.store.append(
             EventType.INFERENCE_JOB_COMPLETED,
             {"job_id": job.job_id, "step_id": step_id, "tick": tick, "usage": usage.to_dict(),
-             "output_digest": digest(job.text or "")},
+             "output_digest": digest(job.text or ""),
+             "route": job.request.metadata.get('supervisor_route', 'primary'),
+             "fallback": job.request.metadata.get('fallback')},
             agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen,
             idempotency_key=f"jobdone:{job.job_id}",
         )
@@ -637,6 +676,17 @@ class Supervisor:
                     self.emergency_stop(cmd.get("reason", "operator stop"), operator=operator)
                 elif kind == "resume":
                     self.resume(operator=operator)
+                elif kind == 'review_anomaly':
+                    self.improvements.review_anomaly(cmd['flag_id'], operator, cmd.get('note', ''))
+                elif kind == 'propose_tuning':
+                    from .tuning import propose_tuning
+                    propose_tuning(self, cmd['changes'], cmd['campaign'])
+                elif kind == 'run_tuning':
+                    from .tuning import run_tuning
+                    run_tuning(self)
+                elif kind == 'resolve_tuning':
+                    from .tuning import resolve_tuning
+                    resolve_tuning(self, cmd['proposal_id'], cmd['granted'], operator, cmd.get('note', ''))
                 elif kind in ("approve", "deny"):
                     self.resolve_approval(cmd["approval_id"], granted=kind == "approve", operator=operator,
                                           note=cmd.get("note", ""))

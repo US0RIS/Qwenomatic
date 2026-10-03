@@ -58,6 +58,10 @@ class SimulatedBackend(InferenceBackend):
         step = int(meta.get("step_index", 0))
         segment = g.get("target", {}).get("segment")
         price = float(g.get("pricing_parameters", {}).get("price", 10.0))
+        facts = meta.get('knowledge', [])
+        matching = [f for f in facts if f['segment'] == segment]
+        if matching:
+            price = .8 * price + .2 * matching[0]['mean_price']
         tools = set(g.get("tool_preferences", []))
         survey_every = max(1, int(planning.get("survey_every", 5)))
         workflow = g.get("workflow", "offer_first")
@@ -112,6 +116,12 @@ class SimulatedBackend(InferenceBackend):
             "actions": actions,
             "memory": f"last price {price}",
         }
+        if meta.get('forecasts_requested'):
+            recent = [m for m in memory if m.get('tool') == 'market.offer' and m.get('status') == 'ok']
+            forecast = (1 + sum(m.get('result', {}).get('converted', False) for m in recent)) / (2 + len(recent))
+            for action in actions:
+                if action['tool'] == 'market.offer':
+                    action['prediction'] = forecast
         if claims:
             out["claims"] = claims
         return json.dumps(out)

@@ -58,6 +58,7 @@ class SimulatedMarket:
     def __init__(self, config: dict[str, Any], seed: int, start: datetime) -> None:
         self.seed = seed
         self.start = start
+        self.regimes = sorted(config.get('regimes', []), key=lambda r: r['after_hours'])
         self.survey_noise = float(config.get("survey_noise", 0.25))
         self.segments = {n: SegmentParams.from_dict(n, d) for n, d in config["segments"].items()}
         # Test hook: multiplies conversion for offers using a named tactic. The
@@ -75,9 +76,18 @@ class SimulatedMarket:
         half_life = float(seg.decay["half_life_hours"])
         return max(float(seg.decay.get("floor", 0.0)), 0.5 ** (hours / half_life))
 
+    def regime_values(self, segment, now):
+        hours = max(0, (now - self.start).total_seconds() / 3600)
+        values = {'conversion_multiplier': 1., 'refund_rate': self.segments[segment].refund_rate}
+        for regime in self.regimes:
+            if hours >= regime['after_hours']:
+                values.update(regime.get('segments', {}).get(segment, {}))
+        return values
+
     def conversion_probability(self, segment: str, price: float, now: datetime, tactic: str | None = None) -> float:
         seg = self.segments[segment]
         p = seg.base_conversion * math.exp(-price / seg.reference_price) * self.decay_factor(seg, now)
+        p *= self.regime_values(segment, now)['conversion_multiplier']
         if tactic:
             p *= self.tactic_multipliers.get(tactic, 1.0)
         return min(max(p, 0.0), 0.99)
@@ -86,7 +96,7 @@ class SimulatedMarket:
         seg = self.segments[segment]
         p = self.conversion_probability(segment, price, now)
         fee = seg.fee_rate * price + seg.fee_fixed
-        return p * (price * (1 - seg.refund_rate) - fee) - seg.ad_cost
+        return p * (price * (1 - self.regime_values(segment, now)['refund_rate']) - fee) - seg.ad_cost
 
     def resolve_offer(
         self, opportunity_id: str, segment: str, price: float, now: datetime, tactic: str | None = None
@@ -97,7 +107,7 @@ class SimulatedMarket:
         rng = self._rng("offer", opportunity_id)
         prob = self.conversion_probability(segment, price, now, tactic)
         converted = rng.random() < prob
-        refund = converted and rng.random() < seg.refund_rate
+        refund = converted and rng.random() < self.regime_values(segment, now)['refund_rate']
         return OfferOutcome(
             opportunity_id=opportunity_id, segment=segment, price=round(price, 2), converted=converted,
             fee=round(seg.fee_rate * price + seg.fee_fixed, 6) if converted else 0.0,

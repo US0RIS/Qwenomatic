@@ -15,6 +15,8 @@ Required interface (DESIGN §6):
 from __future__ import annotations
 
 import threading
+import copy
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -40,8 +42,10 @@ class Job:
 
 class InferenceService:
     def __init__(self, backend: InferenceBackend, *, escalation: InferenceBackend | None = None,
+                 small: InferenceBackend | None = None,
                  escalation_allowed: Callable[[], bool] | None = None, new_id: Callable[[], str] | None = None) -> None:
         self.backend = backend
+        self.small = small
         self.escalation = escalation
         self.escalation_allowed = escalation_allowed or (lambda: False)
         self._new_id = new_id
@@ -113,7 +117,41 @@ class InferenceService:
         backend = self.backend
         try:
             try:
-                gen: Generation = backend.generate(job.request)
+                route = job.request.metadata.get('supervisor_route', 'primary')
+                if route == 'autopilot':
+                    text = json.dumps({'actions': [job.request.metadata['repeat_action']]})
+                    gen = Generation(text, 0, 0, 0, 0)
+                elif route == 'small' and self.small is not None:
+                    backend = self.small
+                    small_request = copy.deepcopy(job.request)
+                    small_request.max_tokens = max(1, job.request.max_tokens // 2)
+                    first = None
+                    try:
+                        first = backend.generate(small_request)
+                        acceptable = routine_output(first.text, job.request.metadata.get('routine_anchor'),
+                                                     require_predictions=job.request.metadata.get('forecasts_requested', False))
+                    except BackendUnavailable:
+                        acceptable = False
+                    if acceptable:
+                        gen = first
+                    else:
+                        if first:
+                            job.usage = Usage(backend.model, backend.quantization, backend.name, job.agent_id,
+                                              first.prompt_tokens, first.completion_tokens, first.wall_seconds,
+                                              first.gpu_seconds, 0, first.cloud_usd)
+                        backend = self.backend
+                        primary_request = copy.deepcopy(job.request)
+                        if first:
+                            primary_request.max_tokens = max(1, job.request.max_tokens - first.completion_tokens)
+                        gen = backend.generate(primary_request)
+                        if first:
+                            gen = Generation(gen.text, gen.prompt_tokens + first.prompt_tokens,
+                                             gen.completion_tokens + first.completion_tokens,
+                                             gen.wall_seconds + first.wall_seconds, gen.gpu_seconds + first.gpu_seconds,
+                                             gen.cloud_usd + first.cloud_usd)
+                        job.request.metadata['fallback'] = 'uncertain_or_material_change'
+                else:
+                    gen = backend.generate(job.request)
             except BackendUnavailable:
                 if self.escalation is None or not self.escalation_allowed():
                     raise
@@ -128,9 +166,33 @@ class InferenceService:
         queue_latency = 0.0 if getattr(backend, "simulated", False) else max(0.0, started - job.submitted_wall)
         job.text = gen.text
         job.usage = Usage(
-            model=backend.model, quantization=backend.quantization, backend=backend.name, owner=job.agent_id,
+            model=('autopilot' if job.request.metadata.get('supervisor_route') == 'autopilot' else backend.model), quantization=backend.quantization, backend=backend.name, owner=job.agent_id,
             prompt_tokens=gen.prompt_tokens, completion_tokens=gen.completion_tokens,
             wall_seconds=round(gen.wall_seconds, 6), gpu_seconds=round(gen.gpu_seconds, 6),
             queue_latency_seconds=round(queue_latency, 6), cloud_usd=round(gen.cloud_usd, 6),
         )
         job.state = "done"
+
+
+def routine_output(text, anchor, *, require_predictions=False):
+    """Small-model output can only retain an observed operating region; claims cannot waive review."""
+    from runtime.agent.parsing import parse_output, MalformedOutput, _extract_json
+    if not anchor:
+        return False
+    try:
+        raw = _extract_json(text)
+        if raw.get('uncertain') or raw.get('strategy_suggestion') or raw.get('claims'):
+            return False
+        parsed = parse_output(text, max_actions=3, require_predictions=require_predictions)
+        if not parsed.actions or parsed.dropped_actions:
+            return False
+        for action in parsed.actions:
+            args = action['args']
+            if action['tool'] != 'market.offer' or set(args) - {'segment', 'price', 'tactic'}:
+                return False
+            if (args.get('segment') != anchor['segment'] or type(args.get('price')) not in (float, int)
+                    or args['price'] != anchor['price'] or args.get('tactic', 'standard') != anchor.get('tactic', 'standard')):
+                return False
+        return True
+    except (MalformedOutput, ValueError, TypeError, AttributeError):
+        return False

@@ -91,6 +91,14 @@ def operation_command(args, root):
                 if value is not None:
                     argv += [flag, str(value)]
         return bootstrap + "from supervisor.cli import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
+    if args.operation == 'improvement-campaign':
+        if not args.feature:
+            raise SafetyError('improvement-campaign needs --feature')
+        argv = ['improvement_campaign', '--config-dir', args.config_dir, '--output', args.data_dir,
+                '--feature', args.feature, '--generations', str(args.generations or 3)]
+        if args.candidate:
+            argv += ['--candidate', args.candidate]
+        return bootstrap + "from scripts.improvement_campaign import main; sys.argv=" + repr(argv) + "; raise SystemExit(main())"
     scripts = {"evolution-ab": "evolution_ab", "campaign": "evolution_ab_campaign", "generation-zero": "generation_zero"}
     argv = [scripts[args.operation], "--config-dir", args.config_dir]
     argv += ["--data-dir" if args.operation == "generation-zero" else "--root", args.data_dir]
@@ -158,7 +166,9 @@ def main():
     p.add_argument("--ticks", type=int)
     p.add_argument("--generations", type=int)
     p.add_argument("--pairs", type=int, default=2)
-    p.add_argument("--operation", choices=["run", "init", "verify", "evolution-ab", "campaign", "generation-zero"], default="run")
+    p.add_argument("--operation", choices=["run", "init", "verify", "evolution-ab", "campaign", "generation-zero", "improvement-campaign"], default="run")
+    p.add_argument('--feature', choices=['knowledge','archive','crossover','small_model','autopilot','crowding','predictions','adaptation','red_team','fraud','self_tuning'])
+    p.add_argument('--candidate', choices=['exploration','retirement','mutation','reserve'])
     args = p.parse_args()
     if os.geteuid() != 0:
         raise SafetyError("launcher requires root; farm does not")

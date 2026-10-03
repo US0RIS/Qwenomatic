@@ -278,6 +278,12 @@ class FarmState:
         c = self._c(e)
         if c:
             c.jobs_failed += 1
+            if e.payload.get('usage'):
+                u = e.payload['usage']
+                c.prompt_tokens += u['prompt_tokens']
+                c.completion_tokens += u['completion_tokens']
+                c.gpu_seconds += u['gpu_seconds']
+                self.gpu_by_tick[e.payload.get('tick', self.last_tick)] += u['gpu_seconds']
 
     def _on_inference_job_cancelled(self, e: Event) -> None:
         self.jobs_inflight.pop(e.payload["job_id"], None)

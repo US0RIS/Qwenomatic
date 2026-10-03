@@ -55,6 +55,7 @@ class ToolGateway:
         self.new_id = new_id
         self.farm_spend_day = farm_spend_day
         self.on_hard_violation = on_hard_violation
+        self.payout_held = lambda lineage: False
         self._calls: dict[tuple[str, str, int], int] = defaultdict(int)
         self._calls_tick: int | None = None
 
@@ -93,6 +94,9 @@ class ToolGateway:
                 self._decision(step, request_id, str(tool), "invalid", Decision.DENY,
                                "invalid tool arguments", 0.0, args)
                 return ToolResult(False, "denied", error="invalid tool arguments")
+        if adapter and getattr(adapter, 'payment', False) and self.payout_held(step.lineage_id):
+            self._decision(step, request_id, str(tool), action_class, Decision.DENY, 'lineage payout held for anomaly review', 0.0, args)
+            return ToolResult(False, 'denied', error='lineage payout held for anomaly review')
         if approval_id is not None:
             approval = self.state.approvals.get(approval_id)
             requested = approval.get("request", {}) if approval else {}
@@ -181,6 +185,7 @@ class ToolGateway:
                 and receipt.payload.get("policy_digest") == digest(self.policy().config)
                 and p["manifest_digest"] == digest(boundary.manifest)
                 and not self.state.halted and agent is not None and agent.status == "running"
+                and not (getattr(tool, 'payment', False) and self.payout_held(queued.lineage_id))
                 and queued.generation_id == self.state.current_generation
                 and p["tool"] in self.policy().capabilities
                 and not self.policy().is_forbidden(tool.classify(p["args"]))

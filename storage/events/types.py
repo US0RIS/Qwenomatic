@@ -56,6 +56,23 @@ class EventType(str, Enum):
     FINANCIAL_REJECTED = "financial_rejected"
     MILESTONE_VALIDATED = "milestone_validated"
 
+    # Supervisor-owned improvement evidence and controls
+    FEATURE_ASSIGNMENT = "feature_assignment"
+    KNOWLEDGE_SNAPSHOT = "knowledge_snapshot"
+    RETIREMENT_REPORT = "retirement_report"
+    ROUTING_DECISION = "routing_decision"
+    OFFER_OBSERVED = "offer_observed"
+    PREDICTION_RECORDED = "prediction_recorded"
+    PREDICTION_SCORED = "prediction_scored"
+    REGIME_OBSERVATION = "regime_observation"
+    MARKET_SHIFT = "market_shift"
+    ANOMALY_FLAG = "anomaly_flag"
+    ANOMALY_REVIEW = "anomaly_review"
+    RESERVE_UPDATED = "reserve_updated"
+    RED_TEAM_FINDING = "red_team_finding"
+    TUNING_PROPOSED = "tuning_proposed"
+    TUNING_RESOLVED = "tuning_resolved"
+
     # Operations
     ARTIFACT_RECORDED = "artifact_recorded"
     HEALTH_EVENT = "health_event"
@@ -81,7 +98,7 @@ AGENT_AUTHORABLE = frozenset({EventType.AGENT_CLAIM, EventType.STRATEGY_SUGGESTI
 
 # Economic evidence must come from a trusted adapter (I3).
 ADAPTER_ONLY = frozenset(
-    {EventType.FINANCIAL_EVENT, EventType.OPPORTUNITY, EventType.MILESTONE_VALIDATED}
+    {EventType.FINANCIAL_EVENT, EventType.OPPORTUNITY, EventType.MILESTONE_VALIDATED, EventType.OFFER_OBSERVED}
 )
 
 

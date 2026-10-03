@@ -456,3 +456,11 @@ It restarts Ollama at parallelism 1, 2, 3, and 4 with Flash Attention enabled an
 
 This is preferable to choosing the highest concurrency blindly: once the GPU is saturated, more parallel contexts can reduce per-request speed or cause memory pressure.
 
+
+## Twelve reversible farm improvements
+
+See [IMPROVEMENTS.md](IMPROVEMENTS.md) for the complete implementation map,
+feature switches, randomized campaigns, operator controls and verification
+limits. Economic treatments are opt-in; the canonical shared prompt prefix is
+always used. Agent capabilities and the existing safety startup barrier remain
+supervisor-controlled.

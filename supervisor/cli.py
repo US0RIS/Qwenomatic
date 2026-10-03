@@ -211,6 +211,34 @@ def cmd_resume(args: argparse.Namespace) -> int:
     return _operator_command(_config(args), {"command": "resume", "operator": args.operator})
 
 
+def cmd_improvements(args):
+    cfg = _config(args)
+    from .experiments.improvements import prediction_report
+    from .improvements import settings
+    types = [t for t in __import__('storage.events', fromlist=['EventType']).EventType
+             if t.value in ('anomaly_flag', 'anomaly_review', 'reserve_updated', 'red_team_finding',
+                            'tuning_proposed', 'tuning_resolved', 'market_shift', 'routing_decision')]
+    with_store = EventStore(_db(cfg), read_only=True)
+    try:
+        print(json.dumps({'settings': settings(cfg.farm.get('improvements')),
+                          'events': [e.to_dict() for e in with_store.iter_events(types=types, limit=100, descending=True)]}, indent=2))
+    finally:
+        with_store.close()
+    return 0
+
+
+def cmd_improvement_control(args):
+    cmd = {'command': args.command.replace('-', '_'), 'operator': args.operator}
+    if args.command == 'review-anomaly':
+        cmd.update(flag_id=args.flag_id, note=args.note)
+    if args.command == 'propose-tuning':
+        report = json.loads(Path(args.report).read_text(encoding='utf-8'))
+        cmd.update(changes=report['changes'], campaign=report)
+    if args.command == 'resolve-tuning':
+        cmd.update(proposal_id=args.proposal_id, granted=args.decision == 'approve', note=args.note)
+    return _operator_command(_config(args), cmd)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="qwenomatic", description="Qwenomatic evolutionary agent farm")
     p.add_argument("--config-dir", default=None, help="directory with farm.yaml, policy.yaml, fitness.yaml")
@@ -249,6 +277,21 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--operator", default=getpass.getuser())
     rs = add("resume", cmd_resume, help="resume after a stop")
     rs.add_argument("--operator", default=getpass.getuser())
+    add('improvements', cmd_improvements, help='inspect feature telemetry and operator review items')
+    tr = add('run-tuning', cmd_improvement_control, help='run isolated supervisor settings campaign and propose a change')
+    tr.add_argument('--operator', default=getpass.getuser())
+    ar = add('review-anomaly', cmd_improvement_control, help='release a payout hold after explicit review')
+    ar.add_argument('flag_id')
+    ar.add_argument('--note', required=True)
+    ar.add_argument('--operator', default=getpass.getuser())
+    pt = add('propose-tuning', cmd_improvement_control, help='submit a matching isolated campaign for operator review')
+    pt.add_argument('--report', required=True)
+    pt.add_argument('--operator', default=getpass.getuser())
+    ts = add('resolve-tuning', cmd_improvement_control, help='approve or deny a tested settings proposal for the next generation')
+    ts.add_argument('proposal_id')
+    ts.add_argument('decision', choices=['approve', 'deny'])
+    ts.add_argument('--note', required=True)
+    ts.add_argument('--operator', default=getpass.getuser())
     return p
 
 

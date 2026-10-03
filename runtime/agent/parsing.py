@@ -66,7 +66,7 @@ def _extract_json(text: str) -> Any:
     raise MalformedOutput("no JSON object found")
 
 
-def parse_output(text: str, *, max_actions: int) -> ParsedOutput:
+def parse_output(text: str, *, max_actions: int, require_predictions: bool = False) -> ParsedOutput:
     data = _extract_json(text or "")
     if not isinstance(data, dict):
         raise MalformedOutput("top-level value must be an object")
@@ -80,7 +80,15 @@ def parse_output(text: str, *, max_actions: int) -> ParsedOutput:
         args = a.get("args", {})
         if not isinstance(args, dict):
             raise MalformedOutput("action args must be an object")
-        clean.append({"tool": a["tool"][:100], "args": args})
+        action = {"tool": a["tool"][:100], "args": args}
+        if require_predictions and a["tool"] == "market.offer" and "prediction" not in a:
+            raise MalformedOutput("offer requires a pre-action conversion prediction")
+        if "prediction" in a:
+            pred = a["prediction"]
+            if type(pred) not in (int, float) or not 0 <= pred <= 1:
+                raise MalformedOutput("prediction must be a finite probability in [0,1]")
+            action["prediction"] = pred
+        clean.append(action)
     claims = data.get("claims")
     # Numbers the model asserts about its own performance are recorded as
     # claims and ignored by accounting.

@@ -166,3 +166,21 @@ simulation:
         settlement_delay_hours: 36
         refund_rate: 0.0
         refund_delay_hours: 0
+
+# Reversible supervisor-owned treatments. Economic features are opt-in until
+# paired campaigns and hardware/real-revenue checks justify promotion.
+# The canonical shared prompt prefix is always used and grants no authority.
+improvements:
+  knowledge: {enabled: false, access_fraction: 0.5, max_segment_share: 0.6, min_samples: 5}
+  archive: {enabled: false, max_return_share: 0.5, shift_only: true}
+  crossover: {enabled: false, probability: 0.5}
+  small_model: {enabled: false, model: "Qwen3-4B", review_every: 8}
+  autopilot: {enabled: false, review_every: 4, min_offers: 6, max_rate_change: 0.15}
+  crowding: {enabled: false, weight: 0.15}
+  predictions: {enabled: false}
+  adaptation: {enabled: false, window_ticks: 12, min_samples: 20, confirm_ticks: 3, duration_ticks: 12,
+               conversion_drop: 0.35, refund_increase: 0.15, exploration_share: 0.5, immigration_rate: 0.3}
+  red_team: {enabled: false, every_ticks: 24}
+  fraud: {enabled: false, min_samples: 20, refund_rate: 0.25, conversion_spike: 0.5,
+          customer_repeat_share: 0.5, reserve_fraction: 0.25}
+  self_tuning: {enabled: false}

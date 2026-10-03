@@ -290,3 +290,23 @@ authorization. No architecture here guarantees zero legal or security risk.
 Every merged security change must identify executable enforcement, configuration
 requirements, test evidence, rollback/recovery and remaining limitations. Features
 without applicable evidence remain implemented-but-unverified or designed.
+
+
+## Reversible improvement controls
+
+The twelve mechanisms documented in [IMPROVEMENTS.md](IMPROVEMENTS.md) introduce
+no population authority. Knowledge and retirement evidence derive from trusted
+adapter outcomes, never agent claims. Settings proposals are restricted to
+bounded economics parameters; identified operator decisions enter a new frozen
+generation without editing policy or spending ceilings. Anomaly holds are
+rechecked both at payment authorization and outbound dispatch. Small-model and
+autopilot actions still pass through the same capability gateway and accounting.
+The red-team copy has only local simulated adapters and an ephemeral workspace;
+its findings never modify executable code. Its entire fixed corpus has committed
+adversarial regression tests. Telemetry uses a separate deterministic event-ID
+namespace so experimental instrumentation does not perturb market random draws.
+
+Simulation campaigns require the existing protected simulation launcher.
+Unit-test receipts use the documented test-only empty boundary and do not prove
+production kernel isolation. No evidence in this release promotes an economic
+treatment, authorizes a real-world destination or grants an external payment.

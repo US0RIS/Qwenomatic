@@ -36,7 +36,8 @@ class FakeQwen(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         FakeQwen.requests.append(body)
         system = body["messages"][0]["content"]
-        segment = system.split("Target segment: ")[1].split("\n")[0]
+        context = json.loads(body['messages'][1]['content'])
+        segment = context['strategy']['target']['segment']
         content = ("<think>The survey suggests a moderate price.</think>\n"
                    + json.dumps({"thought": "offer", "memory": "tried 19",
                                  "actions": [{"tool": "market.offer", "args": {"segment": segment, "price": 19}}]}))
@@ -58,7 +59,8 @@ def test_client_wire_format(server):
     b = OpenAICompatibleBackend({"base_url": server, "model": "Qwen3-14B-Instruct", "quantization": "Q4_K_M",
                                  "max_concurrency": 2})
     assert b.health().ok
-    gen = b.generate(InferenceRequest(messages=[{"role": "system", "content": "Target segment: s\n"}],
+    gen = b.generate(InferenceRequest(messages=[{"role": "system", "content": "Tool catalog"},
+                                                {"role": "user", "content": json.dumps({"strategy":{"target":{"segment":"s"}}})}],
                                       max_tokens=100, temperature=0.2, metadata={"seed": 424242}))
     assert gen.prompt_tokens == 480 and gen.completion_tokens == 64 and gen.gpu_seconds > 0
     sent = FakeQwen.requests[-1]
@@ -89,7 +91,7 @@ def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     assert usage["prompt_tokens"] == 480
     # The prompt carries strategy and tools, never credentials or supervisor internals.
     prompt = json.dumps(FakeQwen.requests[-1]["messages"])
-    assert "Tools:" in prompt and "market.offer" in prompt
+    assert "Tool catalog" in prompt and "market.offer" in prompt
     for secret in ("supervisor.key", "fitness.yaml", "risk_aversion", sup.token_for(steps[0].agent_id, 0)):
         assert secret not in prompt
 

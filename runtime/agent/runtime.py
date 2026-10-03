@@ -34,6 +34,7 @@ class AgentRuntime:
         self.registry = registry
         self.gateway = gateway
         self.max_actions = int(config.get("max_actions_per_step", 3))
+        self.improvements = None
         self.memory_items = int(config.get("memory_items", 12))
 
     def load_state(self, agent_id: str) -> tuple[int, dict[str, Any], bool]:
@@ -53,14 +54,19 @@ class AgentRuntime:
     def build_request(self, agent: Any, state: dict[str, Any], seed: int) -> InferenceRequest:
         g = agent.genotype
         tools = self.registry.describe(g["tool_preferences"])
-        messages = build_messages(g, tools, state["memory"], state["notes"], state["step_index"], self.max_actions)
+        messages = build_messages(g, tools, state["memory"], state["notes"], state["step_index"], self.max_actions,
+                                  catalog=self.registry.describe(self.registry.names()),
+                                  knowledge=self.improvements.knowledge(agent) if self.improvements else [],
+                                  predictions=bool(self.improvements and self.improvements.generation_cfg()['predictions']['enabled'] and self.improvements.treated('predictions', agent.id)))
         request_seed = int(digest([seed, agent.id, state["step_index"], "inference"])[:8], 16)
         return InferenceRequest(
             messages=messages,
             max_tokens=int(g["planning_parameters"]["max_tokens"]),
             temperature=float(g["planning_parameters"]["temperature"]),
             metadata={"agent_id": agent.id, "step_index": state["step_index"], "genotype": g,
-                      "memory": state["memory"], "seed": request_seed},
+                      "memory": state["memory"], "seed": request_seed,
+                      "knowledge": self.improvements.knowledge(agent) if self.improvements else [],
+                      "forecasts_requested": bool(self.improvements and self.improvements.generation_cfg()['predictions']['enabled'] and self.improvements.treated('predictions', agent.id))},
         )
 
     def execute(self, agent: Any, token: str, step: Any, text: str, version: int, state: dict[str, Any]) -> StepOutcome:
@@ -69,7 +75,9 @@ class AgentRuntime:
         error: str | None = None
         actions = denied = 0
         try:
-            parsed = parse_output(text, max_actions=self.max_actions)
+            parsed = parse_output(text, max_actions=self.max_actions, require_predictions=bool(
+                self.improvements and self.improvements.generation_cfg()['predictions']['enabled']
+                and self.improvements.treated('predictions', agent.id)))
         except MalformedOutput as exc:
             parsed = None
             error = str(exc)
@@ -87,8 +95,28 @@ class AgentRuntime:
                     author=agent_author(agent.id), agent_id=agent.id, lineage_id=agent.lineage_id,
                     generation_id=step.generation_id,
                 )
-            for action in parsed.actions:
+            for index, action in enumerate(parsed.actions):
+                prediction = None
+                if action['tool'] == 'market.offer' and self.improvements and self.improvements.generation_cfg()['predictions']['enabled'] and self.improvements.treated('predictions', agent.id):
+                    from supervisor.improvements import emit
+                    # Record before dispatch. Missing predictions get no trust credit.
+                    prediction = emit(self.improvements.sup, EventType.PREDICTION_RECORDED,
+                                      {'probability': action.get('prediction'), 'args_digest': digest(action['args']),
+                                       'step_id': step.step_id, 'timing': 'before_gateway'},
+                                      f'prediction:{step.step_id}:{index}', agent=agent, generation=step.generation_id)
+                before_seq = self.store.head()[0]
                 result = self.gateway.invoke(token, action["tool"], action["args"], step)
+                if prediction is not None:
+                    from supervisor.improvements import emit
+                    rows = self.store.iter_events(after_seq=before_seq, types=[EventType.OFFER_OBSERVED], agent_id=agent.id)
+                    p = prediction.payload['probability']
+                    if rows and p is not None:
+                        observed = rows[-1]
+                        emit(self.improvements.sup, EventType.PREDICTION_SCORED,
+                             {'prediction_id': prediction.event_id, 'outcome_seq': observed.seq,
+                              'probability': p, 'converted': observed.payload['converted'],
+                              'brier_error': (p - int(observed.payload['converted'])) ** 2},
+                             'score:' + prediction.event_id, agent=agent, generation=step.generation_id)
                 actions += 1
                 if result.status == "denied":
                     denied += 1
