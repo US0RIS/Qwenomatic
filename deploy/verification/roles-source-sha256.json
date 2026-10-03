@@ -58,7 +58,7 @@
   "storage/events/projection.py": "58b90c9c3cea45d7c01333fa8fd52bc3fab54e40ab0d229f18cd021ba5276eb8",
   "storage/events/store.py": "ec4f166758f6bbb839c8cfaa124e0c495ba66df4da1555950d272ee18a750ca1",
   "storage/events/types.py": "96208cb95c348a06578ae33668e72d050c092518080a522e2e769c136fbb9c55",
-  "storage/migrations/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+  "storage/migrations/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "supervisor/__init__.py": "b4c779416670668a7b4a1a48240ee9a3113f2f84f282a1c0ba3405c05b211b07",
   "supervisor/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
   "supervisor/accounting/__init__.py": "4721564cc87f414b50f3ee9828d235029ecae1a196cc57a67cf26f66d96977de",
