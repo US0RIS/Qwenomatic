@@ -28,7 +28,7 @@ Version 1 is accepted only for empty simulation (no model URL or real adapter).
 Legacy direct-access manifests refuse; migration is an operator decision.
 
 The broker resolves approved DNS names using protected operator pins, validates
-all answers and connects to a checked public IPv4 address while verifying the
+all IPv4 answers and connects to a checked public IPv4 address while verifying the
 configured DNS certificate name. Host and SNI agree. Private, loopback,
 link-local, multicast, metadata, IPv6 and addresses outside installed rules
 refuse. No DNS/UDP egress is granted. All redirects refuse, including same-host
@@ -133,3 +133,15 @@ refunds, revenue ingestion, holdback, payout envelopes or account provisioning.
 Those are Phase 2. Browser UI automation and TLS inspection are Phase 3; autonomous
 inspector grants are Phase 4; the full adversarial campaign is Phase 5. None is
 implied by this branch, and no zero-risk guarantee is claimed.
+
+## Phase 1 review limits
+
+Ceilings are fixed-window limits, permitting up to twice a period cap across a
+boundary. The farm deliberately retains reservations on pre-attempt broker
+refusals; that is conservative accounting, not proof of spending. Audit throughput
+and O(chain length) startup verification need measurement at production scale.
+The sandboxed TLS frontend remains trusted to report authenticated fingerprints.
+Backward clock steps refuse; provider IP changes require operator relaunch.
+These limits and the root-only grant/revoke/halt utility are documented in
+[deploy/BROKER.md](deploy/BROKER.md). No automatic accounting release, inspector
+permission or expanded adapter authority is introduced by merge preparation.

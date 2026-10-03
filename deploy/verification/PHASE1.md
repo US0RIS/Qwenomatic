@@ -1,8 +1,8 @@
 # Phase 1 verification and delivery report
 
-This change is based on the exact contents of PR #6, head
-`a51db52a12147e026cb39c4a171bea9820b12647`, which remains an unmerged prerequisite.
-It is a draft implementation change, not installation on the operator's computer.
+PR #6 is merged into main at `a1e65ba25d3f3148b353405f444aebe13f167a33`.
+This Phase 1 change includes the reviewed IPv4 and thinking-option fixes and a
+root-only grant/revoke/halt utility. It is not installation on the operator's computer.
 
 ## Enforced by code
 
@@ -53,11 +53,10 @@ metadata/inference servers are local controlled services, never Internet targets
   mTLS positive control, independent grant, replay refusal, direct farm provider/
   inference/metadata rejection, broker metadata/canary rejection, inference egress
   rejection and farm inability to read provider/signing/config secrets; exit zero.
-- `phase1-source-sha256.json`: 77 production/configuration/acceptance files compared
-  byte-for-byte against the final VM rootfs before publication. The baseline
-  acceptance test and its exercised production sources are unchanged between
-  those successful runs. Tests/source fixtures are not substituted for kernel rules.
-- `phase1-tests.txt`: full local regression and broker adversarial suite: **231 passed**.
+- `phase1-source-sha256.json`: 78 production/configuration/acceptance files compared
+  byte-for-byte against the final VM rootfs before publication. Both acceptance scripts run sequentially in the same freshly packed VM image;
+  grants and halt use the documented root operator utility. Tests/source fixtures are not substituted for kernel rules.
+- `phase1-tests.txt`: full local regression and broker adversarial suite: **233 passed**.
 
 Intentional SIGTERM at fixture shutdown produces KeyboardInterrupt tracebacks in
 service-launcher logs; the acceptance process still exits zero after cleanup.
@@ -79,3 +78,10 @@ or roll back its storage; external backups are necessary to detect rollback.
 Configuration mistakes and authorization/automation terms need operator review.
 The controlled VM validates namespaces/UIDs, not separate hypervisor kernels.
 No zero-risk or blanket legal guarantee is made.
+
+The reviewed Phase 1 limits are explicit in BROKER.md and security.md: fixed
+window boundaries can allow a burst across two windows; the farm retains a
+conservative expense reservation on a pre-attempt broker refusal; signed inference
+audit events require fsync and startup scans the audit chain; TLS peer fingerprint
+forwarding trusts the broker frontend. Clock failure, certificate/IP rotation and
+external audit anchoring remain operator responsibilities.

@@ -93,8 +93,8 @@ outer fields and an inner service file with exactly `listen`, `executable`;
 the operator-installed executable is started with the fixed argument `serve`.
 
 Resolve approved DNS names as an operator and install protected `/etc/hosts`
-pins in the broker VM. At launch and each connection, every resolved address is
-checked; IPv6 and all non-global IPv4 are refused, including LAN, loopback,
+pins in the broker VM. At launch and each connection, every resolved IPv4 answer is
+checked; AAAA records are not requested or routed; IPv6 and all non-global IPv4 are refused, including LAN, loopback,
 metadata and mapped addresses. A changed answer outside the installed firewall
 refuses the operation. Names without a usable protected DNS/hosts resolution
 fail closed. DNS rotation requires an operator relaunch, never an automatic
@@ -217,3 +217,59 @@ paired with ICMP administrative-rejection evidence; timeout/refused connections
 alone are not accepted as network safety proof. Unit tests cover replay races,
 canonical mutation, shared ceilings, expiry/revocation, restart, backwards clock,
 forged authorship, schema attacks, smuggling, DNS rebinding and syscall denial.
+
+## Operator command utility and review disposition
+
+Use the root-only helper rather than constructing IPC manually. Prepare an
+immutable root-owned JSON request file containing exactly `service`, `args`,
+`invocation_id`, using the invocation ID in the farm's durable outbound intent.
+Review the configured service, account and actual content before granting.
+
+```sh
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+  --config /etc/qwenomatic/broker.json --operator owner \
+  grant --farm farm --request-file /etc/qwenomatic/action.json --ttl 60
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+  --config /etc/qwenomatic/broker.json --operator owner \
+  revoke --farm farm --invocation-id exact-invocation
+sudo /usr/bin/python3 -I -S /opt/qwenomatic/deploy/operator.py \
+  --config /etc/qwenomatic/broker.json --operator owner halt
+```
+
+The helper validates protected config/request files, broker-private state and
+socket permissions, then checks the Unix peer UID. The broker independently
+checks root caller credentials and all grant scope/expiry. A returned refusal
+exits unsuccessfully. TTL is 1..300 seconds; the broker's clock remains expiry
+authority. This helper is operator software, not a model-exposed tool. No new
+credential, executable adapter or autonomous access expansion is added.
+
+The following deliberate limits were reviewed before merge:
+
+* **Fixed periods, not rolling windows.** A cap C permits up to 2C in a short
+  interval straddling a period boundary. For example, 100 cents/hour can permit
+  100 cents at 12:59:59 and another 100 at 13:00:00. Configure caps/float for this
+  burst exposure. Concurrency and all other scope checks still apply. A rolling
+  exposure envelope is a separate money-flow change, not silently claimed here.
+* **Conservative farm accounting.** Broker refusals before dispatch are currently
+  treated as unknown by the farm gateway, and the local expense reservation stays
+  charged. This prevents unsafe refunds/retries but may exhaust a budget despite
+  no send. Signed pre-attempt refusal reconciliation belongs to a subsequent
+  accounting change; do not erase broker/farm state to recover capacity.
+* **Audit scale.** Each inference request signs/fsyncs audit; startup verifies the
+  whole chain in O(number of records). The acceptance test does not establish
+  sustained production throughput or startup performance at large volume. Keep
+  audit backups; measured, operator-reviewed retention/anchoring is needed before
+  changing this persistence guarantee.
+* **TLS frontend trust.** The main broker receives authenticated certificate
+  fingerprints from its disposable frontend. Seccomp removes credentials and
+  broad syscall authority, but does not prove the frontend/TLS library cannot be
+  compromised or falsify that report. Treat it as part of the broker's trusted
+  authentication implementation, not an independently proven identity oracle.
+* **Clock and rotation.** A backward wall-clock step can refuse broker startup
+  and operations. Restore correct time conservatively; never reset persistent
+  authority/usage to work around it. Provider IP rotation outside installed pins
+  requires operator relaunch. Off-VM backups, not the SQLite chain alone, detect
+  privileged rollback/truncation.
+
+The inference template option accepts only `chat_template_kwargs` with exactly
+one boolean `enable_thinking`; arbitrary template parameters remain prohibited.

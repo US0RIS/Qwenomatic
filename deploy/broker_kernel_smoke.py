@@ -228,14 +228,15 @@ for path,status in [('/v1/chat/completions',200),('/api/pull',403)]:
             clientcode='from broker.client import Client;from broker.protocol import Rejected;c=Client('+repr(transport)+');'
             farm_code(clientcode+'\ntry:c.submit("text",{"text":"approved fixture"},"single-action")\nexcept Rejected:pass\nelse:raise AssertionError("missing approval allowed")')
             assert not calls
-            with socket.socket(socket.AF_UNIX) as admin:
-                admin.connect(str(state/'operator.sock'));send(admin,dict(action='grant',farm='farm',request=r,expires=time.time()+60,operator='owner'));receipt=receive(admin);assert receipt['record']['kind']=='operator_grant'
+            operator_command=['/usr/bin/python3','-I','-S',str(root/'deploy/operator.py'),'--config',broker_cfg,'--operator','owner']
+            request_file=file('operator-request.json',r)
+            receipt=json.loads(run(*(operator_command+['grant','--farm','farm','--request-file',request_file,'--ttl','60'])))
+            assert receipt['record']['kind']=='operator_grant'
             farm_code(clientcode+'assert c.submit("text",{"text":"approved fixture"},"single-action")[0]')
             assert len(calls)==1
             farm_code(clientcode+'\ntry:c.submit("text",{"text":"approved fixture"},"single-action")\nexcept Rejected:pass\nelse:raise AssertionError("replay allowed")')
             assert len(calls)==1
-            with socket.socket(socket.AF_UNIX) as admin:
-                admin.connect(str(state/'operator.sock'));send(admin,dict(action='halt',operator='owner'));assert receive(admin)['record']['kind']=='halted'
+            assert json.loads(run(*(operator_command+['halt'])))['record']['kind']=='halted'
             print('PHASE1_KERNEL_SMOKE_PASS: mTLS positive, independent grant, replay blocked; farm direct egress blocked; broker LAN/metadata blocked; inference egress blocked; credentials unreadable',flush=True)
         finally:
             for process in reversed(processes):
