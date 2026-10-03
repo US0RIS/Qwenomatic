@@ -26,8 +26,12 @@ class InferenceProxy:
 
     def validate(self, body):
         required = {"model", "messages", "max_tokens", "temperature"}
-        if not isinstance(body, dict) or not required.issubset(body) or set(body) - required - {"response_format", "seed"}:
+        if not isinstance(body, dict) or not required.issubset(body) or set(body) - required - {"response_format", "seed", "chat_template_kwargs"}:
             raise Rejected("inference schema")
+        if "chat_template_kwargs" in body:
+            kwargs = body["chat_template_kwargs"]
+            if not isinstance(kwargs, dict) or set(kwargs) != {"enable_thinking"} or type(kwargs["enable_thinking"]) is not bool:
+                raise Rejected("invalid chat template option")
         if body["model"] != self.config["model"] or type(body["max_tokens"]) is not int or not 1 <= body["max_tokens"] <= self.config["max_tokens"]:
             raise Rejected("model/token scope")
         t = body["temperature"]

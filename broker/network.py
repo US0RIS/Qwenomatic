@@ -44,7 +44,9 @@ def service_url(value):
 
 def resolve_public(host):
     # Validate ALL returned addresses; never silently skip an unsafe answer.
-    answers = socket.getaddrinfo(host, 443, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM)
+    # IPv4 only: the firewall and pinned connection never use IPv6, so AAAA
+    # records on a dual-stack provider are ignored rather than refusing the host.
+    answers = socket.getaddrinfo(host, 443, family=socket.AF_INET, type=socket.SOCK_STREAM)
     if not answers:
         raise Rejected("empty DNS answer")
     return sorted({public_ip(item[4][0]) for item in answers})

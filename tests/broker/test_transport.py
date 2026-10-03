@@ -16,6 +16,16 @@ def test_nonpublic_routing_rejected(address):
     with pytest.raises(Rejected): public_ip(address)
 
 
+def test_dns_resolution_requests_ipv4_only(monkeypatch):
+    seen = {}
+    def fake(*a, **kw):
+        seen.update(kw)
+        return [(2,1,6,'',('93.184.216.34',443))]
+    monkeypatch.setattr(socket, 'getaddrinfo', fake)
+    assert resolve_public('dual-stack.example.com') == ['93.184.216.34']
+    assert seen['family'] == socket.AF_INET
+
+
 def test_dns_mixed_or_rebound_answer_refuses(monkeypatch):
     monkeypatch.setattr(socket, 'getaddrinfo', lambda *a, **kw: [(2,1,6,'',('93.184.216.34',443)),(2,1,6,'',('127.0.0.1',443))])
     with pytest.raises(Rejected): resolve_public('example.com')
@@ -91,6 +101,14 @@ def test_fixed_chat_only():
     for content in ([{'type':'image_url','image_url':{'url':'http://evil'}}],):
         value=chat();value['messages'][0]['content']=content
         with pytest.raises(Rejected): inference().validate(value)
+
+
+def test_only_the_thinking_switch_template_option_is_allowed():
+    for enabled in (True, False):
+        inference().validate({**chat(), 'chat_template_kwargs': {'enable_thinking': enabled}})
+    for bad in ({'enable_thinking': 1}, {'enable_thinking': 'yes'}, {'enable_thinking': True, 'other': 1},
+                {'system': 'x'}, {}, 'enable_thinking', None, ['enable_thinking']):
+        with pytest.raises(Rejected): inference().validate({**chat(), 'chat_template_kwargs': bad})
 
 
 def test_provider_redirect_is_never_followed(monkeypatch):
