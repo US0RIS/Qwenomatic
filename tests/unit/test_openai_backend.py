@@ -75,6 +75,30 @@ def test_unreachable_server_is_unavailable():
         b.generate(InferenceRequest(messages=[]))
 
 
+def test_real_backend_outage_does_not_advance_simulated_economy(tmp_path):
+    from supervisor.core import Supervisor
+    from supervisor.config import FarmConfig
+    from supervisor.safety.boundary import NetworkBoundary
+
+    # The normal acceptance harness installs an empty test boundary. Only the
+    # real backend's unavailable transport is under test here.
+    cfg = FarmConfig.load(data_dir=tmp_path / "farm", overrides={"farm": {
+        "inference": {"backend": "openai_compatible", "openai_compatible": {
+            "base_url": "http://127.0.0.1:9/v1", "model": "missing",
+            "timeout_seconds": 1}}}})
+    sup = Supervisor(cfg)
+    try:
+        sup.bootstrap()
+        before = sup.clock.tick
+        with pytest.raises(BackendUnavailable, match="stopped without advancing simulated time"):
+            sup.tick()
+        assert sup.clock.tick == before
+        assert not sup.store.iter_events(types=[EventType.FINANCIAL_EVENT, EventType.SCHEDULER_ALLOCATION])
+        assert any(e.payload.get("ok") is False for e in sup.store.iter_events(types=[EventType.HEALTH_EVENT]))
+    finally:
+        sup.close()
+
+
 def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     backend = OpenAICompatibleBackend({"base_url": server, "model": "Qwen3-14B-Instruct",
                                        "quantization": "Q4_K_M", "max_concurrency": 4})
@@ -94,4 +118,3 @@ def test_farm_runs_on_an_openai_compatible_server(tmp_path, server):
     assert "Tool catalog" in prompt and "market.offer" in prompt
     for secret in ("supervisor.key", "fitness.yaml", "risk_aversion", sup.token_for(steps[0].agent_id, 0)):
         assert secret not in prompt
-

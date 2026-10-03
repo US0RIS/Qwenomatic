@@ -90,6 +90,14 @@ def inference():
                               max_messages=4,max_content_bytes=128, requests_per_period=4,period_seconds=3600,concurrency=1))
 
 
+def test_inference_timeout_is_bounded_and_explicit():
+    cfg = dict(inference().config, timeout_seconds=120)
+    assert InferenceProxy(cfg).timeout_seconds == 120
+    for value in (9, 181, True, '120'):
+        with pytest.raises(Rejected, match='bounded inference timeout'):
+            InferenceProxy(dict(cfg, timeout_seconds=value))
+
+
 def chat():
     return dict(model='fixed',messages=[dict(role='user',content='hello')],max_tokens=32,temperature=0)
 

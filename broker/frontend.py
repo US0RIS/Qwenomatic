@@ -34,6 +34,8 @@ def main():
             value = {'fingerprint': hashlib.sha256(connection.getpeercert(binary_form=True)).hexdigest(),
                      'path': parsed['path'], 'body': parsed['body']}
             sys.stdout.buffer.write(canonical(value) + b'\n');sys.stdout.buffer.flush()
+            if parsed['path'] == '/v1/chat/completions':
+                connection.settimeout(cfg['inference_timeout'] + 8)
             reply = decode(sys.stdin.buffer.readline(65537))
             fields(reply, ('status','body'))
             response(connection, reply['body'], reply['status'])

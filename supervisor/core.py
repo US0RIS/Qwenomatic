@@ -474,7 +474,24 @@ class Supervisor:
             return result
         gv = self.state.generations[gen]
         now = self.clock.now_dt()
+        # A simulated clock must not turn a broken real-model connection into
+        # days of apparent economic results. Check before time-based charges or
+        # generation close, and retain the failed health event for diagnosis.
+        real_model = self.backend.name != 'simulated'
+        if real_model:
+            health = self.inference.health()
+            if not health.ok:
+                self.store.append(EventType.HEALTH_EVENT,
+                                  {"component": "inference", "kind": "backend_health",
+                                   "ok": False, "detail": health.detail})
+                from runtime.inference import BackendUnavailable
+                raise BackendUnavailable(f"real-model inference unavailable; run stopped without advancing simulated time: {health.detail}")
         if now >= parse_ts(gv.ends_at):
+            if real_model and not self.store.iter_events(
+                    types=[EventType.INFERENCE_JOB_COMPLETED], generation_ids=[gen], limit=1):
+                from runtime.inference import BackendUnavailable
+                raise BackendUnavailable(
+                    f"generation {gen} has no successful real-model inference; refusing to close an invalid run")
             self.close_generation()
             result.closed_generation = gen
             return result
@@ -488,7 +505,7 @@ class Supervisor:
             self.improvements.observe_tick(gen, tick)
 
         reason = None
-        health = self.inference.health()
+        health = health if real_model else self.inference.health()
         if health.ok != self._last_backend_ok:
             self.store.append(EventType.HEALTH_EVENT, {"component": "inference", "kind": "backend_health",
                                                        "ok": health.ok, "detail": health.detail})
@@ -566,6 +583,14 @@ class Supervisor:
                                   {"component": "supervisor", "kind": "step_exception", "detail": repr(exc)[:500]},
                                   agent_id=agent.id, lineage_id=agent.lineage_id, generation_id=gen)
                 result.failed += 1
+        if real_model and result.failed:
+            # Persist the partially completed tick exactly once. Retrying the
+            # same tick could replay successful offers with new job IDs.
+            self.clock.set_tick(tick + 1)
+            from runtime.inference import BackendUnavailable
+            raise BackendUnavailable(
+                f"real-model run stopped at tick {tick}: {result.failed} inference/step job(s) failed; "
+                "inspect inference health and job_failed events before resuming")
         self.clock.set_tick(tick + 1)
         return result
 

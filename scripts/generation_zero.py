@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -41,12 +42,32 @@ def main() -> int:
     sup = Supervisor(cfg)
     try:
         sup.bootstrap()
-        print(f"Market: {sup.market.model}; decision backend: {sup.backend.name}")
+        print(f"Market: {sup.market.model}; configured decision backend: {sup.backend.name}", flush=True)
         print('Synthetic customers and assumed delivery quality; real-world validity is unestablished.')
         if sup.backend.name == 'simulated':
             print('Scripted policy emulator: Qwen is not running; GPU time is emulated.')
         start = sup.state.current_generation
-        sup.run(generations=args.generations)
+        target = start + args.generations
+        started = time.monotonic()
+        ticks = 0
+        proved = bool(sup.store.iter_events(types=[EventType.INFERENCE_JOB_COMPLETED],
+                                            generation_ids=[start], limit=1))
+        while sup.state.current_generation < target:
+            result = sup.tick()
+            if result.halted:
+                raise RuntimeError(f"farm halted: {sup.state.halt_reason}")
+            ticks += 1
+            if sup.backend.name != 'simulated' and result.completed and not proved:
+                proved = True
+                print("Real-model inference verified: first completion recorded in the ledger.", flush=True)
+            if ticks % 12 == 0 or result.closed_generation is not None:
+                gv = sup.state.generations[sup.state.current_generation]
+                print(f"Progress: generation {sup.state.current_generation}, "
+                      f"tick {sup.clock.tick - gv.start_tick}/{cfg.ticks_per_generation}, "
+                      f"{(time.monotonic() - started)/60:.1f} wall minutes", flush=True)
+            sup.clock.sleep_until_next_tick()
+        if sup.backend.name != 'simulated' and not proved:
+            raise RuntimeError("no successful real-model inference; run is invalid")
         for g in range(start, sup.state.current_generation):
             fit = sup.state.fitness[g]
             plan = sup.state.selections[g]["plan"]

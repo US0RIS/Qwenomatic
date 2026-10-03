@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,30 @@ def write(path: Path, data: bytes, mode: int = 0o444, group: str | None = None):
 
 def json_write(path: Path, value: dict, mode: int = 0o444, group: str | None = None):
     write(path, (json.dumps(value, indent=2) + "\n").encode(), mode, group)
+
+
+def update_timeouts(root: Path):
+    """Upgrade an installed broker without rotating certificates or touching state."""
+    from supervisor.safety.boundary import protected_json
+    if Path('/run/qwenomatic-service-broker.json').exists():
+        raise SystemExit('stop the broker before changing its protected configuration')
+    broker_path = root / 'private/broker.json'
+    broker = protected_json(broker_path)
+    if not isinstance(broker.get('inference'), dict):
+        raise SystemExit('installed broker has no fixed inference endpoint')
+    farm_path = root / 'config/farm.yaml'
+    for item in (farm_path, *farm_path.parents):
+        info = item.lstat()
+        if info.st_uid != 0 or info.st_mode & 0o022 or stat.S_ISLNK(info.st_mode):
+            raise SystemExit(f'unsafe installed configuration path: {item}')
+    farm = yaml.safe_load(farm_path.read_text())
+    if farm['inference']['backend'] != 'openai_compatible':
+        raise SystemExit('installed farm is not configured for real-model inference')
+    broker['inference']['timeout_seconds'] = 120
+    farm['inference']['openai_compatible']['timeout_seconds'] = 140
+    json_write(broker_path, broker)
+    write(farm_path, yaml.safe_dump(farm, sort_keys=False).encode())
+    print('Updated broker/farm timeouts; certificates and ledger were preserved. Restart the broker.')
 
 
 def cert(ca_key, ca_cert, name: str, ip: str | None = None):
@@ -62,15 +87,21 @@ def main():
     p.add_argument("--root", default="/etc/qwenomatic/local-qwen")
     p.add_argument("--repo", default="/opt/qwenomatic")
     p.add_argument("--runtime", default="/opt/qwenomatic-runtime/bin/python")
-    p.add_argument("--ollama-host", required=True, help="Windows host address visible from WSL")
+    p.add_argument("--ollama-host", help="Windows host address visible from WSL")
     p.add_argument("--ollama-model", default="qwen3:14b")
+    p.add_argument("--update-timeouts", action="store_true", help="upgrade an existing installation without rotating keys")
     p.add_argument("--farm-user", default="qwenomatic")
     p.add_argument("--broker-user", default="qbroker")
     a = p.parse_args()
     if os.geteuid() != 0:
         raise SystemExit("run this provisioning command with sudo")
-    ipaddress.IPv4Address(a.ollama_host)
     root, repo = Path(a.root), Path(a.repo)
+    if a.update_timeouts:
+        update_timeouts(root)
+        return
+    if not a.ollama_host:
+        p.error('--ollama-host is required for initial provisioning')
+    ipaddress.IPv4Address(a.ollama_host)
     if not (repo / "config/farm.yaml").is_file():
         raise SystemExit(f"repository not found: {repo}")
     import pwd
@@ -124,7 +155,8 @@ def main():
                   "inference": {"endpoint": f"http://{a.ollama_host}:11434/v1/chat/completions",
                                  "model": a.ollama_model, "max_tokens": 4096, "max_messages": 32,
                                  "max_content_bytes": 65536, "requests_per_period": 10000,
-                                 "period_seconds": 3600, "concurrency": 4}}
+                                 "period_seconds": 3600, "concurrency": 4,
+                                 "timeout_seconds": 120}}
     json_write(private / "broker.json", broker_cfg)
     json_write(root / "deploy-broker.json", {"service": str(private / "broker.json"),
                                                "subnet": "10.204.1.0/30", "peers": ["10.204.1.1"]})
@@ -142,7 +174,8 @@ def main():
     farm = yaml.safe_load(farm_path.read_text())
     farm["inference"]["backend"] = "openai_compatible"
     farm["inference"]["openai_compatible"].update(base_url="https://10.204.1.2:9443/v1",
-                                                     model=a.ollama_model, local=True)
+                                                     model=a.ollama_model, local=True,
+                                                     timeout_seconds=140)
     write(farm_path, yaml.safe_dump(farm, sort_keys=False).encode(), 0o444)
     for path in cfg.rglob("*"):
         if path.is_file(): path.chmod(0o444); os.chown(path, 0, 0)

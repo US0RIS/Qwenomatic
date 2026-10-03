@@ -84,8 +84,13 @@ class OpenAICompatibleBackend(InferenceBackend):
             try:
                 self._post("/chat/completions", {"model": self.model, "messages": [{"role": "user", "content": "Reply OK"}], "max_tokens": 1, "temperature": 0})
                 return Health(True, self.name, self.model, "broker chat verified")
-            except Exception:
-                return Health(False, self.name, self.model, "broker chat unavailable")
+            except urllib.error.HTTPError as exc:
+                return Health(False, self.name, self.model,
+                              f"broker chat rejected (HTTP {exc.code}); inspect the broker terminal")
+            except Exception as exc:
+                # Do not log response bodies, prompts or certificate material.
+                return Health(False, self.name, self.model,
+                              f"broker chat unavailable ({type(exc).__name__}); inspect the broker terminal")
         req = urllib.request.Request(f"{self.base_url}/models")
         try:
             with self._opener.open(req, timeout=5) as resp:
@@ -93,4 +98,3 @@ class OpenAICompatibleBackend(InferenceBackend):
         except Exception as exc:
             return Health(False, self.name, self.model, str(exc))
         return Health(ok, self.name, self.model, "ok" if ok else "unhealthy")
-

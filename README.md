@@ -43,6 +43,22 @@ empty simulation manifest permits the emulator only. Set the protected
 `inference.openai_compatible` configuration to the approved service, model and
 concurrency. The farm still starts through the Linux launcher.
 
+For an existing installation created by `scripts/provision_local_qwen.py`, stop
+the broker and upgrade its bounded inference timeout without rotating TLS keys
+or replacing its ledger:
+
+```bash
+sudo /opt/qwenomatic-runtime/bin/python -I \
+  /opt/qwenomatic/scripts/provision_local_qwen.py --update-timeouts
+```
+
+Restart the broker before starting the farm. Do not use `-S` for provisioning;
+it needs PyYAML and cryptography from the virtual environment. `-I -S` remains
+required for privileged launchers. A real backend that cannot complete broker
+health now stops before simulated time advances or overhead is charged. A
+configured backend name alone is not proof of inference: the run prints its
+first recorded completion and reports progress every 12 ticks.
+
 The clock may advance simulated time even when inference uses actual Qwen.
 Every completion records model, token counts and attributed inference usage.
 Model inference alone does not make synthetic customer demand or assumed
