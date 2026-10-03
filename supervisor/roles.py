@@ -146,7 +146,7 @@ class SpecialistRuntime:
             max_tokens=min(1024, agent.genotype['planning_parameters']['max_tokens']), temperature=.3,
             metadata={'agent_id': agent.id, 'role': agent.role, 'role_slot': agent.role_slot,
                       'step_index': state['step_index'], 'scope': list(scope),
-                      'seed': int(digest([sup.config.seed, agent.id, state['step_index']])[:8], 16),
+                      'seed': int(digest([sup.config.seed, agent.id, state['step_index']])[:8], 16) & 0x7fffffff,
                       'supervisor_route': 'primary'})
 
     def _setting(self, path):
