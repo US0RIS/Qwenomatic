@@ -59,6 +59,11 @@ health now stops before simulated time advances or overhead is charged. A
 configured backend name alone is not proof of inference: the run prints its
 first recorded completion and reports progress every 12 ticks.
 
+For a short proof before a full generation, use `--operation generation-zero
+--ticks 1` with a fresh farm data directory. This runs one scheduler batch,
+prints the first recorded real-model completion, audits the partial ledger and
+leaves generation zero open. It does not establish real-world profitability.
+
 Installations provisioned before the Python 3.14 certificate fix need a one-time
 TLS repair. Stop the broker first, then run the following and restart it. This
 rotates only the broker/farm TLS chain and updates the broker's authorized client
