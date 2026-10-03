@@ -98,9 +98,12 @@ class Supervisor:
         self._rebuild_state()
         self.store.subscribe(self.state)
         recovered = self.state.last_seq > 0
-        self.boundary.record(self.store)
         sessions = len(self.store.iter_events(types=[EventType.SUPERVISOR_STARTED]))
         self.ids.start_session(sessions + 1)
+        # Start a new deterministic ID namespace before recording startup
+        # evidence. Otherwise a retry after a failed launch reuses the first
+        # session's event ID and SQLite rejects the barrier record.
+        self.boundary.record(self.store)
         self.clock.set_tick(self.state.last_tick + 1)
 
         self.authority = TokenAuthority(load_or_create_secret(self.data_dir / "secrets" / "supervisor.key"))
